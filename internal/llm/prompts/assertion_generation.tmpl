@@ -1,0 +1,14 @@
+{{/* internal/llm/prompts/assertion_generation.tmpl */}}
+Given this API operation and its success response schema, generate additional
+business assertions beyond basic status code checks.
+
+For each assertion provide:
+- target: JSON path to the field (e.g. "body.id", "body.email")
+- operator: one of "eq", "ne", "lt", "gt", "contains", "matches"
+- expected: the expected value or pattern
+- rationale: one sentence why this assertion is meaningful
+
+Operation: {{.Method}} {{.Path}}
+Success response schema: {{.ResponseSchema}}
+
+Respond with ONLY a JSON array of assertion objects.
