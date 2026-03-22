@@ -192,8 +192,11 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) sche
 
 	// Step 3: teardown — DELETE (optional)
 	if g.delete != nil {
+		// The DELETE path may use a different param name than the GET path,
+		// so derive the actual OpenAPI param name from the DELETE path independently.
+		deleteParamName := captureVarName(g.delete.Path)
 		deletePath := strings.ReplaceAll(g.delete.Path,
-			fmt.Sprintf("{%s}", captureName),
+			fmt.Sprintf("{%s}", deleteParamName),
 			fmt.Sprintf("{{%s}}", captureName))
 		steps = append(steps, schema.Step{
 			ID:         "step-teardown",

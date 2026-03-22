@@ -131,6 +131,43 @@ func TestChainCaseTeardownStepPresent(t *testing.T) {
 	assert.True(t, hasTeardown, "should have a teardown step when DELETE exists")
 }
 
+func TestChainCaseTeardownWithMismatchedParamName(t *testing.T) {
+	// Verify that teardown substitution works even when DELETE uses a different
+	// param name than GET (e.g., GET /users/{userId} but DELETE /users/{id}).
+	ps := &spec.ParsedSpec{
+		Operations: []*spec.Operation{
+			{
+				OperationID: "createUser", Method: "POST", Path: "/users",
+				Responses: map[string]*spec.Response{"201": {Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{Type: "object",
+						Properties: map[string]*spec.Schema{"id": {Type: "integer"}}}},
+				}}},
+			},
+			{
+				OperationID: "getUser", Method: "GET", Path: "/users/{userId}",
+				Parameters: []*spec.Parameter{{Name: "userId", In: "path", Required: true, Schema: &spec.Schema{Type: "integer"}}},
+				Responses:  map[string]*spec.Response{"200": {}},
+			},
+			{
+				OperationID: "deleteUser", Method: "DELETE", Path: "/users/{id}",
+				Parameters: []*spec.Parameter{{Name: "id", In: "path", Required: true, Schema: &spec.Schema{Type: "integer"}}},
+				Responses:  map[string]*spec.Response{"204": {}},
+			},
+		},
+	}
+	ct := NewChainTechnique()
+	cases, err := ct.Generate(ps)
+	require.NoError(t, err)
+	require.NotEmpty(t, cases)
+
+	for _, s := range cases[0].Steps {
+		if s.Type == "teardown" {
+			assert.Contains(t, s.Path, "{{userId}}", "teardown path must use captured variable, even when DELETE param name differs")
+			assert.NotContains(t, s.Path, "{id}", "raw OpenAPI param must not appear in rendered path")
+		}
+	}
+}
+
 func TestChainTechniqueNoGroupWhenNoCRUD(t *testing.T) {
 	ps := &spec.ParsedSpec{
 		Operations: []*spec.Operation{
