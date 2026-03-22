@@ -2,6 +2,8 @@
 package config
 
 import (
+	"os"
+
 	"github.com/spf13/viper"
 )
 
@@ -39,7 +41,7 @@ func Load() (*Config, error) {
 	}
 	// API key override from environment
 	if cfg.AI.APIKey == "" {
-		cfg.AI.APIKey = viper.GetString("ANTHROPIC_API_KEY")
+		cfg.AI.APIKey = os.Getenv("ANTHROPIC_API_KEY")
 	}
 	return &cfg, nil
 }
