@@ -27,7 +27,7 @@ type SpecTechnique interface {
 
 type Engine struct {
 	techniques     []Technique
-	specTechniques []SpecTechnique // ← add this
+	specTechniques []SpecTechnique
 	llm            llm.LLMProvider
 }
 
