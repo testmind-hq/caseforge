@@ -18,24 +18,26 @@ type AffectedCase struct {
 // Suggest returns the test cases likely affected by Breaking or PotentiallyBreaking changes.
 // cases should be loaded via writer.NewJSONSchemaWriter().Read(indexPath) before calling.
 func Suggest(result DiffResult, cases []schema.TestCase) []AffectedCase {
-	// Build a set of breaking change paths for fast lookup
+	// Build a set of breaking changes keyed by "METHOD /path" for unambiguous lookup.
+	breakingOps := map[string]Change{}
+	// Also keep a path-only set for step-level matching (steps don't carry a method).
 	breakingPaths := map[string]Change{}
 	for _, c := range result.Changes {
 		if c.Kind == Breaking || c.Kind == PotentiallyBreaking {
+			breakingOps[c.Method+" "+c.Path] = c
 			breakingPaths[c.Path] = c
 		}
 	}
-	if len(breakingPaths) == 0 {
+	if len(breakingOps) == 0 {
 		return nil
 	}
 
 	var affected []AffectedCase
 	for _, tc := range cases {
 		reason := ""
-		// Match via Source.SpecPath ("METHOD /path" → extract path)
-		specPath := extractPath(tc.Source.SpecPath)
-		if change, ok := breakingPaths[specPath]; ok {
-			reason = fmt.Sprintf("%s change on %s: %s", change.Kind, change.Path, change.Description)
+		// Match via Source.SpecPath ("METHOD /path" → direct key lookup)
+		if change, ok := breakingOps[tc.Source.SpecPath]; ok {
+			reason = fmt.Sprintf("%s change on %s %s: %s", change.Kind, change.Method, change.Path, change.Description)
 		}
 		// Match via Steps[].Path (normalize {{x}} → {x}, then match structurally)
 		if reason == "" {

@@ -155,7 +155,6 @@ func buildTestScript(step schema.Step) string {
 		case strings.HasPrefix(a.Target, "jsonpath "):
 			expr := strings.TrimPrefix(a.Target, "jsonpath ")
 			fieldPath := strings.TrimPrefix(expr, "$.")
-			fieldPath = strings.ReplaceAll(fieldPath, ".", ".")
 			valJS := postmanJSValue(a.Expected)
 			switch a.Operator {
 			case "eq":

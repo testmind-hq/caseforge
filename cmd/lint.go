@@ -46,42 +46,36 @@ func runLint(cmd *cobra.Command, args []string) error {
 	issues := lint.RunAll(parsedSpec)
 	score := lint.Score(issues)
 
+	errCount := 0
+	warnCount := 0
+	hasError := false
+	for _, iss := range issues {
+		switch iss.Severity {
+		case "error":
+			color.Red("  ✗ [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
+			errCount++
+			hasError = true
+		case "warning":
+			color.Yellow("  ⚠ [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
+			warnCount++
+		}
+	}
+
 	if len(issues) == 0 {
 		color.Green("✓ No lint issues found")
-	} else {
-		hasError := false
-		for _, iss := range issues {
-			switch iss.Severity {
-			case "error":
-				color.Red("  ✗ [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
-				hasError = true
-			case "warning":
-				color.Yellow("  ⚠ [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
-			}
-		}
-		errCount := 0
-		warnCount := 0
-		for _, iss := range issues {
-			switch iss.Severity {
-			case "error":
-				errCount++
-			case "warning":
-				warnCount++
-			}
-		}
-		fmt.Fprintf(os.Stderr, "\nSpec Score: %d/100  (%d errors, %d warnings)\n", score, errCount, warnCount)
+	}
+	fmt.Fprintf(os.Stderr, "\nSpec Score: %d/100  (%d errors, %d warnings)\n", score, errCount, warnCount)
 
-		shouldFail := hasError
-		if cfg.Lint.FailOn == "warning" {
-			shouldFail = len(issues) > 0
-		}
-		if !shouldFail && lintMinScore > 0 && score < lintMinScore {
-			fmt.Fprintf(os.Stderr, "exit code 3 (score %d < min-score %d)\n", score, lintMinScore)
-			shouldFail = true
-		}
-		if shouldFail {
-			os.Exit(3)
-		}
+	shouldFail := hasError
+	if cfg.Lint.FailOn == "warning" {
+		shouldFail = len(issues) > 0
+	}
+	if !shouldFail && lintMinScore > 0 && score < lintMinScore {
+		fmt.Fprintf(os.Stderr, "score %d < min-score %d\n", score, lintMinScore)
+		shouldFail = true
+	}
+	if shouldFail {
+		os.Exit(3)
 	}
 	return nil
 }

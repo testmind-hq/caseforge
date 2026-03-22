@@ -184,7 +184,11 @@ func (t *SecurityTechnique) buildAPI6Case(op *spec.Operation) schema.TestCase {
 		body[k] = v
 	}
 
-	assertions := []schema.Assertion{{Target: "status_code", Operator: "eq", Expected: 201}}
+	expectedStatus := 201
+	if strings.EqualFold(op.Method, "PUT") || strings.EqualFold(op.Method, "PATCH") {
+		expectedStatus = 200
+	}
+	assertions := []schema.Assertion{{Target: "status_code", Operator: "eq", Expected: expectedStatus}}
 	for field, val := range readonlyFields {
 		assertions = append(assertions, schema.Assertion{
 			Target: fmt.Sprintf("jsonpath $.%s", field), Operator: "ne", Expected: val,
