@@ -2,13 +2,15 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/testmind-hq/caseforge/internal/output/schema"
+	"github.com/testmind-hq/caseforge/internal/llm"
+	"github.com/testmind-hq/caseforge/internal/methodology"
+	"github.com/testmind-hq/caseforge/internal/output/render"
+	"github.com/testmind-hq/caseforge/internal/output/writer"
+	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
 var genCmd = &cobra.Command{
@@ -34,35 +36,63 @@ func init() {
 }
 
 func runGen(cmd *cobra.Command, args []string) error {
-	// STUB: return one hardcoded test case to prove the pipeline compiles
-	tc := schema.TestCase{
-		Schema:   schema.SchemaBaseURL,
-		Version:  "1",
-		ID:       "TC-0001",
-		Title:    "STUB: spec not yet parsed",
-		Kind:     "single",
-		Priority: "P1",
-		Source: schema.CaseSource{
-			Technique: "stub",
-			SpecPath:  genSpec,
-			Rationale: "stub output — real implementation in Week 4",
-		},
-		Steps: []schema.Step{
-			{
-				ID:     "step-main",
-				Title:  "stub step",
-				Type:   "test",
-				Method: "GET",
-				Path:   "/stub",
-				Assertions: []schema.Assertion{
-					{Target: "status_code", Operator: "eq", Expected: 200},
-				},
-			},
-		},
-		GeneratedAt: time.Now(),
+	// 1. Build LLM provider
+	var provider llm.LLMProvider
+	if genNoAI {
+		provider = &llm.NoopProvider{}
+	} else {
+		// NewProvider falls back to NoopProvider if no API key is set
+		provider = llm.NewProvider("", "anthropic", "")
 	}
 
-	out, _ := json.MarshalIndent(tc, "", "  ")
-	fmt.Fprintln(os.Stdout, string(out))
+	// 2. Load the spec
+	loader := spec.NewLoader()
+	parsedSpec, err := loader.Load(genSpec)
+	if err != nil {
+		return fmt.Errorf("loading spec: %w", err)
+	}
+
+	// 3. Build the methodology engine with all 6 techniques
+	engine := methodology.NewEngine(
+		provider,
+		methodology.NewEquivalenceTechnique(),
+		methodology.NewBoundaryTechnique(),
+		methodology.NewDecisionTechnique(),
+		methodology.NewStateTechnique(),
+		methodology.NewIdempotentTechnique(),
+		methodology.NewPairwiseTechnique(),
+	)
+
+	// 4. Generate test cases
+	cases, err := engine.Generate(parsedSpec)
+	if err != nil {
+		return fmt.Errorf("generating test cases: %w", err)
+	}
+
+	// 5. Write index.json
+	w := writer.NewJSONSchemaWriter()
+	if err := w.Write(cases, genOutput); err != nil {
+		return fmt.Errorf("writing index.json: %w", err)
+	}
+
+	// 6. Render output files
+	var renderer render.Renderer
+	switch genFormat {
+	case "hurl":
+		renderer = render.NewHurlRenderer("")
+	case "markdown", "csv":
+		// Task 20 will implement these; fall back to hurl for now
+		fmt.Fprintf(os.Stderr, "Warning: format %q is not yet supported (Task 20); falling back to hurl\n", genFormat)
+		renderer = render.NewHurlRenderer("")
+	default:
+		fmt.Fprintf(os.Stderr, "Warning: unknown format %q; falling back to hurl\n", genFormat)
+		renderer = render.NewHurlRenderer("")
+	}
+
+	if err := renderer.Render(cases, genOutput); err != nil {
+		return fmt.Errorf("rendering %s files: %w", renderer.Format(), err)
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
 	return nil
 }
