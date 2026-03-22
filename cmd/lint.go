@@ -27,7 +27,10 @@ func init() {
 }
 
 func runLint(cmd *cobra.Command, args []string) error {
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
 
 	loader := spec.NewLoader()
 	parsedSpec, err := loader.Load(lintSpec)
