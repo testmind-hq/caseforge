@@ -18,6 +18,14 @@ func buildTestCase(op *spec.Operation, body map[string]any, suffix, title, specP
 		headers["Content-Type"] = "application/json"
 	}
 
+	// Avoid nil-typed-interface issue: only set Body to a non-nil any when body is non-nil.
+	// Assigning nil map[string]any to any creates a non-nil interface with a nil value,
+	// which would cause the Hurl renderer to emit a spurious "null" body block.
+	var bodyAny any
+	if body != nil {
+		bodyAny = body
+	}
+
 	tc := schema.TestCase{
 		Schema:   schema.SchemaBaseURL,
 		Version:  "1",
@@ -34,7 +42,7 @@ func buildTestCase(op *spec.Operation, body map[string]any, suffix, title, specP
 				Method: op.Method,
 				Path:   op.Path,
 				Headers: headers,
-				Body:    body,
+				Body:    bodyAny,
 				Assertions: assertpkg.BasicAssertions(op),
 			},
 		},
