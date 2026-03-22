@@ -31,10 +31,7 @@ func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
 // dispatches each operation to applicable techniques.
 func (e *Engine) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 	// Step 1: Enrich all operations with LLM semantic annotations
-	if err := e.annotateOperations(s.Operations); err != nil {
-		// Annotation failure is non-fatal; techniques will see nil SemanticInfo
-		_ = err
-	}
+	e.annotateOperations(s.Operations)
 
 	// Step 2: For each operation, apply all applicable techniques
 	var allCases []schema.TestCase
@@ -54,9 +51,9 @@ func (e *Engine) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 	return allCases, nil
 }
 
-func (e *Engine) annotateOperations(ops []*spec.Operation) error {
+func (e *Engine) annotateOperations(ops []*spec.Operation) {
 	if !e.llm.IsAvailable() {
-		return nil // NoopProvider: skip annotation, SemanticInfo stays nil
+		return // NoopProvider: skip annotation, SemanticInfo stays nil
 	}
 	// For each operation, call LLM to get semantic annotation
 	for _, op := range ops {
@@ -67,7 +64,6 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) error {
 		}
 		op.SemanticInfo = annotation
 	}
-	return nil
 }
 
 func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation, error) {
