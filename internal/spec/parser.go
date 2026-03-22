@@ -40,9 +40,11 @@ func convertDoc(doc *openapi3.T) *ParsedSpec {
 		}
 	}
 
-	for name, ref := range doc.Components.Schemas {
-		if ref.Value != nil {
-			ps.Schemas[name] = convertSchema(ref.Value)
+	if doc.Components != nil {
+		for name, ref := range doc.Components.Schemas {
+			if ref.Value != nil {
+				ps.Schemas[name] = convertSchema(ref.Value)
+			}
 		}
 	}
 

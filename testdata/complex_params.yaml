@@ -1,0 +1,46 @@
+openapi: 3.0.3
+info:
+  title: Search API
+  version: "1.0"
+paths:
+  /search:
+    get:
+      operationId: searchItems
+      summary: Search items with filters
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, archived]
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [electronics, clothing, food]
+        - name: price_range
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: in_stock
+          in: query
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
