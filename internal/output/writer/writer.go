@@ -11,6 +11,9 @@ import (
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 )
 
+// IndexSchemaURL is the JSON Schema URL for the CaseForge index.json file.
+const IndexSchemaURL = "https://caseforge.dev/schema/v1/index.json"
+
 type SchemaWriter interface {
 	Write(cases []schema.TestCase, outDir string) error
 	Read(indexPath string) ([]schema.TestCase, error)
@@ -28,12 +31,13 @@ type JSONSchemaWriter struct{}
 
 func NewJSONSchemaWriter() *JSONSchemaWriter { return &JSONSchemaWriter{} }
 
+// Write serializes cases to index.json in outDir. Any pre-existing index.json is overwritten.
 func (w *JSONSchemaWriter) Write(cases []schema.TestCase, outDir string) error {
 	if err := os.MkdirAll(outDir, 0755); err != nil {
 		return fmt.Errorf("creating output dir: %w", err)
 	}
 	index := IndexFile{
-		Schema:      "https://caseforge.dev/schema/v1/index.json",
+		Schema:      IndexSchemaURL,
 		Version:     "1",
 		GeneratedAt: time.Now(),
 		TestCases:   cases,
@@ -42,7 +46,10 @@ func (w *JSONSchemaWriter) Write(cases []schema.TestCase, outDir string) error {
 	if err != nil {
 		return fmt.Errorf("marshaling index: %w", err)
 	}
-	return os.WriteFile(filepath.Join(outDir, "index.json"), data, 0644)
+	if err := os.WriteFile(filepath.Join(outDir, "index.json"), data, 0644); err != nil {
+		return fmt.Errorf("writing index.json: %w", err)
+	}
+	return nil
 }
 
 func (w *JSONSchemaWriter) Read(indexPath string) ([]schema.TestCase, error) {
