@@ -3,6 +3,7 @@ package methodology
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -114,10 +115,20 @@ func findIDField(op *spec.Operation) string {
 			continue
 		}
 		if mt, ok := resp.Content["application/json"]; ok && mt.Schema != nil {
+			// Prefer exact "id" match first, then fall back to suffix match.
+			// Iterating maps is non-deterministic in Go, so we collect candidates.
+			if _, ok := mt.Schema.Properties["id"]; ok {
+				return "id"
+			}
+			var candidates []string
 			for name := range mt.Schema.Properties {
-				if name == "id" || strings.HasSuffix(strings.ToLower(name), "id") {
-					return name
+				if strings.HasSuffix(strings.ToLower(name), "id") {
+					candidates = append(candidates, name)
 				}
+			}
+			if len(candidates) > 0 {
+				sort.Strings(candidates)
+				return candidates[0]
 			}
 		}
 	}
