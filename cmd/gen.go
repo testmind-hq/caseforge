@@ -80,10 +80,10 @@ func runGen(cmd *cobra.Command, args []string) error {
 	switch genFormat {
 	case "hurl":
 		renderer = render.NewHurlRenderer("")
-	case "markdown", "csv":
-		// Task 20 will implement these; fall back to hurl for now
-		fmt.Fprintf(os.Stderr, "Warning: format %q is not yet supported (Task 20); falling back to hurl\n", genFormat)
-		renderer = render.NewHurlRenderer("")
+	case "markdown":
+		renderer = render.NewMarkdownRenderer()
+	case "csv":
+		renderer = render.NewCSVRenderer()
 	default:
 		fmt.Fprintf(os.Stderr, "Warning: unknown format %q; falling back to hurl\n", genFormat)
 		renderer = render.NewHurlRenderer("")
