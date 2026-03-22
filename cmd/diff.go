@@ -23,6 +23,7 @@ var diffCmd = &cobra.Command{
 	Short:         "Compare two OpenAPI specs and classify breaking changes",
 	RunE:          runDiff,
 	SilenceErrors: true, // suppress cobra's "Error: breaking changes detected" message
+	SilenceUsage:  true, // suppress usage on error
 }
 
 var (

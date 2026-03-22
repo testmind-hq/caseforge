@@ -10,9 +10,9 @@ import (
 
 // AffectedCase describes a test case that may be broken by a spec change.
 type AffectedCase struct {
-	ID     string
-	Title  string
-	Reason string
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Reason string `json:"reason"`
 }
 
 // Suggest returns the test cases likely affected by Breaking or PotentiallyBreaking changes.
@@ -61,8 +61,8 @@ func Suggest(result DiffResult, cases []schema.TestCase) []AffectedCase {
 
 // extractPath extracts the path from a SpecPath string like "GET /users/{id}" → "/users/{id}".
 func extractPath(specPath string) string {
-	parts := strings.SplitN(specPath, " ", 2)
-	if len(parts) == 2 {
+	parts := strings.Fields(specPath)
+	if len(parts) >= 2 {
 		return parts[1]
 	}
 	return specPath

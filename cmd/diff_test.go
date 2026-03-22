@@ -21,6 +21,8 @@ func TestDiffCommand_BasicText(t *testing.T) {
 		diffNew = ""
 		diffFormat = "text"
 		diffCases = ""
+		diffCmd.SetOut(nil)
+		diffCmd.SetErr(nil)
 	})
 	buf := &bytes.Buffer{}
 	diffCmd.SetOut(buf)
@@ -43,6 +45,8 @@ func TestDiffCommand_JSONFormat(t *testing.T) {
 		diffNew = ""
 		diffFormat = "text"
 		diffCases = ""
+		diffCmd.SetOut(nil)
+		diffCmd.SetErr(nil)
 	})
 	buf := &bytes.Buffer{}
 	diffCmd.SetOut(buf)
