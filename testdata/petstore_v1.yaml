@@ -1,0 +1,39 @@
+openapi: "3.0.3"
+info:
+  title: Petstore v1
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  email:
+                    type: string
+  /pets/{petId}:
+    delete:
+      operationId: deletePet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
