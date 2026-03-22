@@ -50,7 +50,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 	if genNoAI {
 		cfg.AI.Provider = "noop"
 	}
-	if cmd.Flags().Changed("format") {
+	if cmd.Flags().Changed("format") || genFormat != "" {
 		cfg.Output.DefaultFormat = genFormat
 	}
 
