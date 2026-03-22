@@ -20,11 +20,11 @@ const (
 
 // Change describes a single detected difference between two spec versions.
 type Change struct {
-	Kind        ChangeKind
-	Method      string
-	Path        string
-	Location    string // "requestBody", "response.200", "param.limit", etc.
-	Description string
+	Kind        ChangeKind `json:"kind"`
+	Method      string     `json:"method"`
+	Path        string     `json:"path"`
+	Location    string     `json:"location,omitempty"` // "requestBody", "response.200", "param.limit", etc.
+	Description string     `json:"description"`
 }
 
 // DiffResult holds all detected changes.
