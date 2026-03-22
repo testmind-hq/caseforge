@@ -10,13 +10,13 @@ import (
 )
 
 func TestEquivalenceAppliesAlways(t *testing.T) {
-	tech := &EquivalenceTechnique{}
+	tech := NewEquivalenceTechnique()
 	op := &spec.Operation{Method: "GET", Path: "/users"}
 	assert.True(t, tech.Applies(op))
 }
 
 func TestEquivalenceGeneratesPositiveAndNegativeCases(t *testing.T) {
-	tech := &EquivalenceTechnique{}
+	tech := NewEquivalenceTechnique()
 	op := &spec.Operation{
 		OperationID: "createUser",
 		Method:      "POST",

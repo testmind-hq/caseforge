@@ -21,6 +21,18 @@ func IPOG(params []PairwiseParam) [][]any {
 	if len(params) == 0 {
 		return nil
 	}
+	if len(params) < 2 {
+		// Need at least 2 parameters for pairwise coverage
+		if len(params) == 1 {
+			// Return one row per value of the single parameter
+			var rows [][]any
+			for _, v := range params[0].Values {
+				rows = append(rows, []any{v})
+			}
+			return rows
+		}
+		return nil
+	}
 	// Start with the first two parameters: full Cartesian product
 	var rows [][]any
 	for _, v1 := range params[0].Values {
