@@ -40,25 +40,40 @@ func (t *DecisionTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 		return nil, nil
 	}
 	var cases []schema.TestCase
-	// Generate one test case per enum value for each enum field
+	// Generate one test case per enum value for each enum field, and two cases (true/false) for boolean fields
 	for fieldName, fieldSchema := range s.Properties {
-		if len(fieldSchema.Enum) == 0 {
-			continue
-		}
-		for i, enumVal := range fieldSchema.Enum {
-			body := t.buildValidBody(op)
-			body[fieldName] = enumVal
-			tc := buildTestCase(op, body,
-				fmt.Sprintf("%s_enum_%d", fieldName, i),
-				fmt.Sprintf("%s = %v", fieldName, enumVal),
-				fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName))
-			tc.Priority = "P1"
-			tc.Source = schema.CaseSource{
-				Technique: "decision_table",
-				SpecPath:  fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName),
-				Rationale: fmt.Sprintf("decision table: %s takes enum value %v", fieldName, enumVal),
+		if len(fieldSchema.Enum) > 0 {
+			for i, enumVal := range fieldSchema.Enum {
+				body := t.buildValidBody(op)
+				body[fieldName] = enumVal
+				tc := buildTestCase(op, body,
+					fmt.Sprintf("%s_enum_%d", fieldName, i),
+					fmt.Sprintf("%s = %v", fieldName, enumVal),
+					fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName))
+				tc.Priority = "P1"
+				tc.Source = schema.CaseSource{
+					Technique: "decision_table",
+					SpecPath:  fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName),
+					Rationale: fmt.Sprintf("decision table: %s takes enum value %v", fieldName, enumVal),
+				}
+				cases = append(cases, tc)
 			}
-			cases = append(cases, tc)
+		} else if fieldSchema.Type == "boolean" {
+			for _, val := range []any{true, false} {
+				body := t.buildValidBody(op)
+				body[fieldName] = val
+				tc := buildTestCase(op, body,
+					fmt.Sprintf("%s_%v", fieldName, val),
+					fmt.Sprintf("%s = %v", fieldName, val),
+					fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName))
+				tc.Priority = "P1"
+				tc.Source = schema.CaseSource{
+					Technique: "decision_table",
+					SpecPath:  fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName),
+					Rationale: fmt.Sprintf("decision table: %s takes boolean value %v", fieldName, val),
+				}
+				cases = append(cases, tc)
+			}
 		}
 	}
 	return cases, nil

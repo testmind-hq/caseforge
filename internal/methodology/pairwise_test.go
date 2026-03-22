@@ -14,7 +14,10 @@ func TestPairwiseAppliesForFourOrMoreParams(t *testing.T) {
 	tech := &PairwiseTechnique{}
 	op := &spec.Operation{
 		Parameters: []*spec.Parameter{
-			{Name: "a"}, {Name: "b"}, {Name: "c"}, {Name: "d"},
+			{Name: "a", Schema: &spec.Schema{Enum: []any{"x", "y"}}},
+			{Name: "b", Schema: &spec.Schema{Enum: []any{"1", "2"}}},
+			{Name: "c", Schema: &spec.Schema{Type: "boolean"}},
+			{Name: "d", Schema: &spec.Schema{Enum: []any{"p", "q"}}},
 		},
 	}
 	assert.True(t, tech.Applies(op))
@@ -24,7 +27,9 @@ func TestPairwiseDoesNotApplyForThreeParams(t *testing.T) {
 	tech := &PairwiseTechnique{}
 	op := &spec.Operation{
 		Parameters: []*spec.Parameter{
-			{Name: "a"}, {Name: "b"}, {Name: "c"},
+			{Name: "a", Schema: &spec.Schema{Enum: []any{"x", "y"}}},
+			{Name: "b", Schema: &spec.Schema{Enum: []any{"1", "2"}}},
+			{Name: "c", Schema: &spec.Schema{Type: "boolean"}},
 		},
 	}
 	assert.False(t, tech.Applies(op))

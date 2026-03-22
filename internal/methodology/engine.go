@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
@@ -92,6 +93,15 @@ func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation
 }
 
 func parseSemanticAnnotation(text string) *spec.SemanticAnnotation {
+	text = strings.TrimSpace(text)
+	// Strip markdown code fence wrappers (```json ... ``` or ``` ... ```)
+	if strings.HasPrefix(text, "```") {
+		if idx := strings.Index(text, "\n"); idx != -1 {
+			text = text[idx+1:]
+		}
+		text = strings.TrimSuffix(strings.TrimSpace(text), "```")
+		text = strings.TrimSpace(text)
+	}
 	// Parse JSON response from LLM
 	var raw struct {
 		ResourceType    string   `json:"resource_type"`
