@@ -136,7 +136,7 @@ func TestHurlRendererRendersCaptureBlock(t *testing.T) {
 	// [Captures] must appear before [Asserts]
 	capturesIdx := strings.Index(content, "[Captures]")
 	assertsIdx := strings.Index(content, "[Asserts]")
-	if capturesIdx >= 0 && assertsIdx >= 0 {
-		assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
-	}
+	require.True(t, capturesIdx >= 0, "[Captures] block must be present in output")
+	require.True(t, assertsIdx >= 0, "[Asserts] block must be present in output")
+	assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
 }

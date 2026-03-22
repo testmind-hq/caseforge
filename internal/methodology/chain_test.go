@@ -125,6 +125,7 @@ func TestChainCaseTeardownStepPresent(t *testing.T) {
 			hasTeardown = true
 			assert.Equal(t, "DELETE", s.Method)
 			assert.Contains(t, s.Path, "{{userId}}")
+			assert.Equal(t, []string{"step-setup", "step-test"}, s.DependsOn, "teardown must depend on both setup and test")
 		}
 	}
 	assert.True(t, hasTeardown, "should have a teardown step when DELETE exists")
