@@ -74,10 +74,14 @@ func buildPostmanRequest(name string, step schema.Step) map[string]any {
 		"header": buildPostmanHeaders(step.Headers),
 	}
 	if step.Body != nil {
-		data, _ := json.Marshal(step.Body)
+		data, err := json.Marshal(step.Body)
+		rawBody := string(data)
+		if err != nil {
+			rawBody = fmt.Sprintf("// ERROR: body serialization failed: %v", err)
+		}
 		req["body"] = map[string]any{
 			"mode": "raw",
-			"raw":  string(data),
+			"raw":  rawBody,
 			"options": map[string]any{
 				"raw": map[string]any{"language": "json"},
 			},
