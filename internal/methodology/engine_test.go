@@ -83,6 +83,49 @@ func TestEngineCallsSpecTechnique(t *testing.T) {
 	assert.Contains(t, cases, schema.TestCase{ID: "chain-1"}, "cases returned by SpecTechnique must be in output")
 }
 
+func TestEngineGeneratesChainCasesFromCRUDSpec(t *testing.T) {
+	noop := &llm.NoopProvider{}
+	engine := NewEngine(noop)
+	engine.AddSpecTechnique(NewChainTechnique())
+
+	ps := &spec.ParsedSpec{
+		Operations: []*spec.Operation{
+			{
+				OperationID: "createItem",
+				Method:      "POST", Path: "/items",
+				RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{Type: "object",
+						Properties: map[string]*spec.Schema{"name": {Type: "string"}}}},
+				}},
+				Responses: map[string]*spec.Response{"201": {Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{Type: "object",
+						Properties: map[string]*spec.Schema{"id": {Type: "integer"}}}},
+				}}},
+			},
+			{
+				OperationID: "getItem",
+				Method:      "GET", Path: "/items/{itemId}",
+				Parameters: []*spec.Parameter{{Name: "itemId", In: "path", Required: true,
+					Schema: &spec.Schema{Type: "integer"}}},
+				Responses: map[string]*spec.Response{"200": {Description: "OK"}},
+			},
+		},
+	}
+
+	cases, err := engine.Generate(ps)
+	require.NoError(t, err)
+
+	var chainCases []schema.TestCase
+	for _, c := range cases {
+		if c.Kind == "chain" {
+			chainCases = append(chainCases, c)
+		}
+	}
+	require.Len(t, chainCases, 1)
+	assert.Equal(t, "chain_crud", chainCases[0].Source.Technique)
+	assert.Len(t, chainCases[0].Steps, 2) // setup + test (no DELETE in spec)
+}
+
 // mockSpecTechnique is a test double for SpecTechnique.
 type mockSpecTechnique struct {
 	onGenerate func(*spec.ParsedSpec) ([]schema.TestCase, error)

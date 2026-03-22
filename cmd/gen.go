@@ -74,6 +74,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
 	)
+	engine.AddSpecTechnique(methodology.NewChainTechnique())
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)
