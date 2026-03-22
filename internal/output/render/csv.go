@@ -1,6 +1,4 @@
 // internal/output/render/csv.go
-// CSVRenderer is a Phase 2 stub. It writes a minimal CSV with ID and title only.
-// Full implementation (all fields, proper escaping) is scheduled for Phase 2.
 package render
 
 import (
@@ -8,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 )
@@ -17,10 +16,10 @@ type CSVRenderer struct{}
 func NewCSVRenderer() *CSVRenderer { return &CSVRenderer{} }
 func (r *CSVRenderer) Format() string { return "csv" }
 
-// Render writes a minimal CSV. Phase 2 will add full field coverage.
+// Render writes cases.csv to outDir with full field coverage.
 func (r *CSVRenderer) Render(cases []schema.TestCase, outDir string) error {
 	if err := os.MkdirAll(outDir, 0755); err != nil {
-		return err
+		return fmt.Errorf("creating output dir: %w", err)
 	}
 	f, err := os.Create(filepath.Join(outDir, "cases.csv"))
 	if err != nil {
@@ -29,10 +28,37 @@ func (r *CSVRenderer) Render(cases []schema.TestCase, outDir string) error {
 	defer f.Close()
 
 	w := csv.NewWriter(f)
-	_ = w.Write([]string{"id", "title", "priority", "technique", "spec_path", "rationale"})
+	header := []string{
+		"id", "title", "priority", "kind", "tags",
+		"technique", "spec_path", "rationale",
+		"method", "path", "steps_count", "generated_at",
+	}
+	if err := w.Write(header); err != nil {
+		return err
+	}
 	for _, tc := range cases {
-		_ = w.Write([]string{tc.ID, tc.Title, tc.Priority,
-			tc.Source.Technique, tc.Source.SpecPath, tc.Source.Rationale})
+		method, path := "", ""
+		if len(tc.Steps) > 0 {
+			method = tc.Steps[0].Method
+			path = tc.Steps[0].Path
+		}
+		row := []string{
+			tc.ID,
+			tc.Title,
+			tc.Priority,
+			tc.Kind,
+			strings.Join(tc.Tags, ";"),
+			tc.Source.Technique,
+			tc.Source.SpecPath,
+			tc.Source.Rationale,
+			method,
+			path,
+			fmt.Sprintf("%d", len(tc.Steps)),
+			tc.GeneratedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		}
+		if err := w.Write(row); err != nil {
+			return err
+		}
 	}
 	w.Flush()
 	return w.Error()
