@@ -129,7 +129,7 @@ func (t *PairwiseTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 		for j, p := range params {
 			queryParams[p.Name] = row[j]
 		}
-		tc := buildTestCase(op, nil, fmt.Sprintf("combo_%d", i),
+		tc := buildTestCase(op, nil,
 			fmt.Sprintf("pairwise combination %d", i+1),
 			fmt.Sprintf("%s %s", op.Method, op.Path))
 		tc.Priority = "P2"

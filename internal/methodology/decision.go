@@ -43,11 +43,13 @@ func (t *DecisionTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 	// Generate one test case per enum value for each enum field, and two cases (true/false) for boolean fields
 	for fieldName, fieldSchema := range s.Properties {
 		if len(fieldSchema.Enum) > 0 {
-			for i, enumVal := range fieldSchema.Enum {
-				body := t.buildValidBody(op)
+			for _, enumVal := range fieldSchema.Enum {
+				body := buildValidBody(t.gen, op)
+				if body == nil {
+					body = map[string]any{}
+				}
 				body[fieldName] = enumVal
 				tc := buildTestCase(op, body,
-					fmt.Sprintf("%s_enum_%d", fieldName, i),
 					fmt.Sprintf("%s = %v", fieldName, enumVal),
 					fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName))
 				tc.Priority = "P1"
@@ -60,10 +62,12 @@ func (t *DecisionTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 			}
 		} else if fieldSchema.Type == "boolean" {
 			for _, val := range []any{true, false} {
-				body := t.buildValidBody(op)
+				body := buildValidBody(t.gen, op)
+				if body == nil {
+					body = map[string]any{}
+				}
 				body[fieldName] = val
 				tc := buildTestCase(op, body,
-					fmt.Sprintf("%s_%v", fieldName, val),
 					fmt.Sprintf("%s = %v", fieldName, val),
 					fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName))
 				tc.Priority = "P1"
@@ -79,14 +83,3 @@ func (t *DecisionTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 	return cases, nil
 }
 
-func (t *DecisionTechnique) buildValidBody(op *spec.Operation) map[string]any {
-	s := getJSONSchema(op.RequestBody)
-	if s == nil {
-		return map[string]any{}
-	}
-	body := map[string]any{}
-	for name, fieldSchema := range s.Properties {
-		body[name] = t.gen.Generate(fieldSchema, name)
-	}
-	return body
-}

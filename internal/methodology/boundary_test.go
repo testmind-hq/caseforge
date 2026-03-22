@@ -58,4 +58,9 @@ func TestBoundaryGeneratesMinMaxCases(t *testing.T) {
 	require.NoError(t, err)
 	// Expect: min valid, min-1 invalid, max valid, max+1 invalid = 4 cases for "age"
 	assert.GreaterOrEqual(t, len(cases), 4)
+	for _, tc := range cases {
+		assert.Equal(t, "boundary_value", tc.Source.Technique)
+		assert.NotEmpty(t, tc.Source.Rationale)
+		assert.NotEmpty(t, tc.ID)
+	}
 }

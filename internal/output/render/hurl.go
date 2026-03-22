@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
@@ -26,7 +27,7 @@ func (r *HurlRenderer) Format() string { return "hurl" }
 
 func (r *HurlRenderer) Render(cases []schema.TestCase, outDir string) error {
 	if err := os.MkdirAll(outDir, 0755); err != nil {
-		return err
+		return fmt.Errorf("creating output dir: %w", err)
 	}
 	for _, tc := range cases {
 		content := r.renderCase(tc)
@@ -69,17 +70,26 @@ func (r *HurlRenderer) renderStep(step schema.Step) string {
 	// Request line
 	b.WriteString(fmt.Sprintf("%s %s%s\n", step.Method, r.baseURL, step.Path))
 
-	// Headers
-	for k, v := range step.Headers {
-		b.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+	// Headers — sort keys for deterministic output
+	headerKeys := make([]string, 0, len(step.Headers))
+	for k := range step.Headers {
+		headerKeys = append(headerKeys, k)
+	}
+	sort.Strings(headerKeys)
+	for _, k := range headerKeys {
+		b.WriteString(fmt.Sprintf("%s: %s\n", k, step.Headers[k]))
 	}
 
 	// Body
 	if step.Body != nil {
-		data, _ := json.MarshalIndent(step.Body, "", "  ")
-		b.WriteString("```json\n")
-		b.WriteString(string(data))
-		b.WriteString("\n```\n")
+		data, err := json.MarshalIndent(step.Body, "", "  ")
+		if err != nil {
+			b.WriteString(fmt.Sprintf("# ERROR: body serialization failed: %v\n", err))
+		} else {
+			b.WriteString("```json\n")
+			b.WriteString(string(data))
+			b.WriteString("\n```\n")
+		}
 	}
 
 	b.WriteString("\n")

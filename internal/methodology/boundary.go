@@ -29,7 +29,10 @@ func (t *BoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 		return nil, nil
 	}
 	var cases []schema.TestCase
-	base := t.buildValidBody(op)
+	base := buildValidBody(t.gen, op)
+	if base == nil {
+		base = map[string]any{}
+	}
 
 	for fieldName, fieldSchema := range s.Properties {
 		if !hasBoundary(fieldSchema) {
@@ -49,7 +52,6 @@ func (t *BoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 			body := copyMap(base)
 			body[fieldName] = t.gen.GenerateBoundary(fieldSchema, b.kind)
 			tc := buildTestCase(op, body,
-				fmt.Sprintf("%s_%s", fieldName, b.label),
 				fmt.Sprintf("%s at %s boundary", fieldName, b.label),
 				fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName))
 			if b.valid {
@@ -69,18 +71,6 @@ func (t *BoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 		}
 	}
 	return cases, nil
-}
-
-func (t *BoundaryTechnique) buildValidBody(op *spec.Operation) map[string]any {
-	s := getJSONSchema(op.RequestBody)
-	if s == nil {
-		return map[string]any{}
-	}
-	body := map[string]any{}
-	for name, fieldSchema := range s.Properties {
-		body[name] = t.gen.Generate(fieldSchema, name)
-	}
-	return body
 }
 
 func hasRangeConstraints(op *spec.Operation) bool {
