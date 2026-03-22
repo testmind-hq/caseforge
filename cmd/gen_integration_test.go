@@ -17,8 +17,14 @@ func TestGenCommandWithPetstoreSpec(t *testing.T) {
 	genOutput = outDir
 	genNoAI = true
 	genFormat = "hurl"
+	t.Cleanup(func() {
+		genSpec = ""
+		genOutput = "./cases"
+		genNoAI = false
+		genFormat = "hurl"
+	})
 
-	err := runGen(nil, nil)
+	err := runGen(genCmd, nil)
 	require.NoError(t, err)
 
 	// index.json must exist
