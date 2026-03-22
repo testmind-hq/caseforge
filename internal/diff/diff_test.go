@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -56,7 +55,7 @@ func TestDiffResponseFieldRemoved(t *testing.T) {
 	assert.True(t, found, "response field deletion should be BREAKING")
 }
 
-func TestDiffParamTypeChanged(t *testing.T) {
+func TestDiffRequestBodyFieldTypeChanged(t *testing.T) {
 	result := Diff(v1Spec(), v2Spec())
 	var found bool
 	for _, c := range result.Changes {
@@ -64,7 +63,24 @@ func TestDiffParamTypeChanged(t *testing.T) {
 			found = true
 		}
 	}
-	assert.True(t, found, "param type change should be BREAKING")
+	assert.True(t, found, "request body field type change should be BREAKING")
+}
+
+func TestDiffParamTypeChanged(t *testing.T) {
+	old := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{Method: "GET", Path: "/users", Parameters: []*spec.Parameter{{Name: "limit", In: "query", Schema: &spec.Schema{Type: "integer"}}}, Responses: map[string]*spec.Response{"200": {}}},
+	}}
+	new := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{Method: "GET", Path: "/users", Parameters: []*spec.Parameter{{Name: "limit", In: "query", Schema: &spec.Schema{Type: "string"}}}, Responses: map[string]*spec.Response{"200": {}}},
+	}}
+	result := Diff(old, new)
+	var found bool
+	for _, c := range result.Changes {
+		if c.Kind == Breaking && c.Path == "/users" && strings.Contains(c.Description, "limit") {
+			found = true
+		}
+	}
+	assert.True(t, found, "query parameter type change should be BREAKING")
 }
 
 func TestDiffNewEndpoint(t *testing.T) {
@@ -89,5 +105,3 @@ func TestDiffNewOptionalParam(t *testing.T) {
 	assert.True(t, found, "new optional param should be NON_BREAKING")
 }
 
-// ensure require import is used
-var _ = require.New
