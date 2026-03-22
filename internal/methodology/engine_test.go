@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testmind-hq/caseforge/internal/llm"
+	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -59,4 +60,32 @@ func TestEngineGeneratesFromParsedSpec(t *testing.T) {
 		assert.NotEmpty(t, tc.Source.Rationale)
 		assert.Equal(t, "1", tc.Version)
 	}
+}
+
+func TestEngineCallsSpecTechnique(t *testing.T) {
+	called := false
+	noop := &llm.NoopProvider{}
+	engine := NewEngine(noop)
+	engine.AddSpecTechnique(&mockSpecTechnique{onGenerate: func(s *spec.ParsedSpec) ([]schema.TestCase, error) {
+		called = true
+		require.NotNil(t, s)
+		return nil, nil
+	}})
+
+	ps := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{Method: "GET", Path: "/x", Responses: map[string]*spec.Response{"200": {}}},
+	}}
+	_, err := engine.Generate(ps)
+	require.NoError(t, err)
+	assert.True(t, called, "SpecTechnique should have been called")
+}
+
+// mockSpecTechnique is a test double for SpecTechnique.
+type mockSpecTechnique struct {
+	onGenerate func(*spec.ParsedSpec) ([]schema.TestCase, error)
+}
+
+func (m *mockSpecTechnique) Name() string { return "mock_spec" }
+func (m *mockSpecTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
+	return m.onGenerate(s)
 }

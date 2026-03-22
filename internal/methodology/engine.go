@@ -18,13 +18,26 @@ type Technique interface {
 	Generate(op *spec.Operation) ([]schema.TestCase, error)
 }
 
+// SpecTechnique generates test cases that require cross-operation context.
+// Use this for patterns like chain cases that span multiple operations.
+type SpecTechnique interface {
+	Name() string
+	Generate(s *spec.ParsedSpec) ([]schema.TestCase, error)
+}
+
 type Engine struct {
-	techniques []Technique
-	llm        llm.LLMProvider
+	techniques     []Technique
+	specTechniques []SpecTechnique // ← add this
+	llm            llm.LLMProvider
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
 	return &Engine{techniques: techniques, llm: provider}
+}
+
+// AddSpecTechnique registers a spec-level technique with the engine.
+func (e *Engine) AddSpecTechnique(t SpecTechnique) {
+	e.specTechniques = append(e.specTechniques, t)
 }
 
 // Generate annotates all operations with LLM semantic info, then
@@ -47,6 +60,15 @@ func (e *Engine) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 			}
 			allCases = append(allCases, cases...)
 		}
+	}
+
+	// Step 3: Apply spec-level techniques (cross-operation, e.g. chain cases)
+	for _, tech := range e.specTechniques {
+		cases, err := tech.Generate(s)
+		if err != nil {
+			return nil, fmt.Errorf("spec technique %s: %w", tech.Name(), err)
+		}
+		allCases = append(allCases, cases...)
 	}
 	return allCases, nil
 }
