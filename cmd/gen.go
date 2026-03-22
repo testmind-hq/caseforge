@@ -87,8 +87,6 @@ func runGen(cmd *cobra.Command, args []string) error {
 		tuiDone = doneCh
 	}
 
-	_ = bus // TODO: wire bus into engine (Task 11)
-
 	// Generate test cases
 	engine := methodology.NewEngine(provider,
 		methodology.NewEquivalenceTechnique(),
@@ -99,6 +97,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewPairwiseTechnique(),
 	)
 	engine.AddSpecTechnique(methodology.NewChainTechnique())
+	engine.SetSink(bus)
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)

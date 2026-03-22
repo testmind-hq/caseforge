@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
@@ -29,6 +30,7 @@ type Engine struct {
 	techniques     []Technique
 	specTechniques []SpecTechnique
 	llm            llm.LLMProvider
+	sink           event.Sink // ← add this line only
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
@@ -38,6 +40,17 @@ func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
 // AddSpecTechnique registers a spec-level technique with the engine.
 func (e *Engine) AddSpecTechnique(t SpecTechnique) {
 	e.specTechniques = append(e.specTechniques, t)
+}
+
+// SetSink registers an event sink for progress events.
+func (e *Engine) SetSink(s event.Sink) {
+	e.sink = s
+}
+
+func (e *Engine) emit(ev event.Event) {
+	if e.sink != nil {
+		e.sink.Emit(ev)
+	}
 }
 
 // Generate annotates all operations with LLM semantic info, then
@@ -58,8 +71,12 @@ func (e *Engine) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 				return nil, fmt.Errorf("technique %s on %s %s: %w",
 					tech.Name(), op.Method, op.Path, err)
 			}
+			for range cases {
+				e.emit(event.Event{Type: event.EventCaseGenerated})
+			}
 			allCases = append(allCases, cases...)
 		}
+		e.emit(event.Event{Type: event.EventOperationDone, Payload: op.Path})
 	}
 
 	// Step 3: Apply spec-level techniques (cross-operation, e.g. chain cases)
