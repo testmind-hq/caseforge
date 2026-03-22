@@ -64,20 +64,23 @@ func TestEngineGeneratesFromParsedSpec(t *testing.T) {
 
 func TestEngineCallsSpecTechnique(t *testing.T) {
 	called := false
+	var gotSpec *spec.ParsedSpec
 	noop := &llm.NoopProvider{}
 	engine := NewEngine(noop)
 	engine.AddSpecTechnique(&mockSpecTechnique{onGenerate: func(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 		called = true
-		require.NotNil(t, s)
-		return nil, nil
+		gotSpec = s
+		return []schema.TestCase{{ID: "chain-1"}}, nil
 	}})
 
 	ps := &spec.ParsedSpec{Operations: []*spec.Operation{
 		{Method: "GET", Path: "/x", Responses: map[string]*spec.Response{"200": {}}},
 	}}
-	_, err := engine.Generate(ps)
+	cases, err := engine.Generate(ps)
 	require.NoError(t, err)
 	assert.True(t, called, "SpecTechnique should have been called")
+	assert.NotNil(t, gotSpec, "SpecTechnique should receive the ParsedSpec")
+	assert.Contains(t, cases, schema.TestCase{ID: "chain-1"}, "cases returned by SpecTechnique must be in output")
 }
 
 // mockSpecTechnique is a test double for SpecTechnique.
