@@ -61,15 +61,6 @@ func Suggest(result DiffResult, cases []schema.TestCase) []AffectedCase {
 	return affected
 }
 
-// extractPath extracts the path from a SpecPath string like "GET /users/{id}" → "/users/{id}".
-func extractPath(specPath string) string {
-	parts := strings.Fields(specPath)
-	if len(parts) >= 2 {
-		return parts[1]
-	}
-	return specPath
-}
-
 // pathsMatch returns true if two paths have the same structure, treating any
 // {param} segment as a wildcard so {id} and {userId} both match.
 func pathsMatch(a, b string) bool {

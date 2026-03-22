@@ -105,3 +105,33 @@ func TestDiffNewOptionalParam(t *testing.T) {
 	assert.True(t, found, "new optional param should be NON_BREAKING")
 }
 
+func TestDiffResponseCodeRemoved(t *testing.T) {
+	old := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{
+			Method: "GET", Path: "/items",
+			Responses: map[string]*spec.Response{
+				"200": {Content: map[string]*spec.MediaType{"application/json": {Schema: &spec.Schema{Properties: map[string]*spec.Schema{"id": {Type: "integer"}}}}}},
+				"404": {},
+			},
+		},
+	}}
+	newSpec := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{
+			Method: "GET", Path: "/items",
+			Responses: map[string]*spec.Response{
+				"200": {Content: map[string]*spec.MediaType{"application/json": {Schema: &spec.Schema{Properties: map[string]*spec.Schema{"id": {Type: "integer"}}}}}},
+				// 404 removed
+			},
+		},
+	}}
+	result := Diff(old, newSpec)
+	var found bool
+	for _, c := range result.Changes {
+		if c.Kind == Breaking && c.Method == "GET" && c.Path == "/items" && c.Location == "response.404" {
+			found = true
+			assert.Contains(t, c.Description, "404")
+		}
+	}
+	assert.True(t, found, "removing a response code should be BREAKING")
+}
+

@@ -131,3 +131,24 @@ func TestPostmanStatusCodeTestScript(t *testing.T) {
 	content := string(data)
 	assert.Contains(t, content, "pm.response.to.have.status(200)")
 }
+
+func TestPostmanHeaderEqTestScript(t *testing.T) {
+	tc := schema.TestCase{
+		ID: "TC-header", Title: "header eq check", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "GET", Path: "/resource",
+			Assertions: []schema.Assertion{
+				{Target: "header Content-Type", Operator: "eq", Expected: "application/json"},
+				{Target: "header X-Custom", Operator: "ne", Expected: "forbidden"},
+			},
+		}},
+	}
+	r := NewPostmanRenderer()
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+
+	data, _ := os.ReadFile(filepath.Join(dir, "collection.json"))
+	content := string(data)
+	assert.Contains(t, content, `pm.response.headers.get(\"Content-Type\")).to.eql`)
+	assert.Contains(t, content, `pm.response.headers.get(\"X-Custom\")).to.not.eql`)
+}
