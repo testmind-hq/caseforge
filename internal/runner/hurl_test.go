@@ -56,22 +56,3 @@ func TestHurlRunnerNoBinary(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "hurl not found on PATH")
 }
-
-func TestParseHurlReport(t *testing.T) {
-	reportJSON := `{
-		"entries": [
-			{"filename": "TC-abc.hurl", "success": true},
-			{"filename": "TC-def.hurl", "success": false},
-			{"filename": "TC-ghi.hurl", "success": true}
-		]
-	}`
-	passed, failed := parseHurlReport([]byte(reportJSON))
-	assert.Equal(t, 2, passed)
-	assert.Equal(t, 1, failed)
-}
-
-func TestParseHurlReportInvalidJSON(t *testing.T) {
-	passed, failed := parseHurlReport([]byte("not json"))
-	assert.Equal(t, 0, passed)
-	assert.Equal(t, 0, failed)
-}

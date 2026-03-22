@@ -1,5 +1,7 @@
 // internal/event/event.go
 // Package event defines event types for CaseForge's event-driven architecture.
+// Phase 1: type definitions and a NoopSink only.
+// Phase 2 will add the event bus and TUI/CLI subscribers.
 package event
 
 // EventType identifies what happened.
@@ -28,8 +30,3 @@ type Sink interface {
 type NoopSink struct{}
 
 func (s *NoopSink) Emit(_ Event) {}
-
-// SinkFunc is a function adapter that implements Sink.
-type SinkFunc func(Event)
-
-func (f SinkFunc) Emit(e Event) { f(e) }
