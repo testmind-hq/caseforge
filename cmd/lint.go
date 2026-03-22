@@ -62,9 +62,10 @@ func runLint(cmd *cobra.Command, args []string) error {
 		errCount := 0
 		warnCount := 0
 		for _, iss := range issues {
-			if iss.Severity == "error" {
+			switch iss.Severity {
+			case "error":
 				errCount++
-			} else {
+			case "warning":
 				warnCount++
 			}
 		}
@@ -75,7 +76,7 @@ func runLint(cmd *cobra.Command, args []string) error {
 			shouldFail = len(issues) > 0
 		}
 		if !shouldFail && lintMinScore > 0 && score < lintMinScore {
-			fmt.Fprintf(os.Stderr, "exit code 1 (score %d < min-score %d)\n", score, lintMinScore)
+			fmt.Fprintf(os.Stderr, "exit code 3 (score %d < min-score %d)\n", score, lintMinScore)
 			shouldFail = true
 		}
 		if shouldFail {
