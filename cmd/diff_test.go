@@ -1,6 +1,4 @@
 // cmd/diff_test.go
-//go:build integration
-
 package cmd
 
 import (

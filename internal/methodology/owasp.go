@@ -113,12 +113,8 @@ func buildAPI2Case(op *spec.Operation) schema.TestCase {
 
 func (t *SecurityTechnique) buildAPI3Case(op *spec.Operation) schema.TestCase {
 	body := map[string]any{}
-	if op.RequestBody != nil {
-		if mt, ok := op.RequestBody.Content["application/json"]; ok && mt.Schema != nil {
-			for k, v := range buildValidBody(t.gen, op) {
-				body[k] = v
-			}
-		}
+	for k, v := range buildValidBody(t.gen, op) {
+		body[k] = v
 	}
 	body["is_admin"] = true
 	body["role"] = "admin"

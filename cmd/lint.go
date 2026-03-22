@@ -75,7 +75,7 @@ func runLint(cmd *cobra.Command, args []string) error {
 		shouldFail = true
 	}
 	if shouldFail {
-		os.Exit(3)
+		os.Exit(1)
 	}
 	return nil
 }

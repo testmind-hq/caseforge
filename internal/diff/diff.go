@@ -165,6 +165,13 @@ func diffResponseFields(oldOp, newOp *spec.Operation) []Change {
 	for code, oldResp := range oldOp.Responses {
 		newResp, exists := newOp.Responses[code]
 		if !exists {
+			// Entire response code removed — treat as BREAKING
+			_ = oldResp
+			changes = append(changes, Change{
+				Kind: Breaking, Method: oldOp.Method, Path: oldOp.Path,
+				Location:    fmt.Sprintf("response.%s", code),
+				Description: fmt.Sprintf("response code %s removed", code),
+			})
 			continue
 		}
 		oldSchema := responseJSONSchema(oldResp)
@@ -291,7 +298,9 @@ func findBestRename(oldPath string, candidates map[string]bool) (string, int) {
 				diffCount++
 			}
 		}
-		if !paramSame || diffCount == 0 {
+		// Require exactly 1 differing segment to avoid false-positive renames
+		// between semantically unrelated paths (e.g. /users removed + /orders added).
+		if !paramSame || diffCount == 0 || diffCount > 1 {
 			continue
 		}
 		if bestDiff < 0 || diffCount < bestDiff || (diffCount == bestDiff && cand < best) {

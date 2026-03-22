@@ -191,7 +191,14 @@ func buildTestScript(step schema.Step) string {
 		case strings.HasPrefix(a.Target, "header "):
 			headerName := strings.TrimPrefix(a.Target, "header ")
 			valJS := postmanJSValue(a.Expected)
-			if a.Operator == "ne" {
+			switch a.Operator {
+			case "eq":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" eq "+fmt.Sprint(a.Expected)),
+					fmt.Sprintf("    pm.expect(pm.response.headers.get(%q)).to.eql(%s);", headerName, valJS),
+					"});",
+				)
+			case "ne":
 				lines = append(lines,
 					fmt.Sprintf("pm.test(%q, function () {", a.Target+" ne "+fmt.Sprint(a.Expected)),
 					fmt.Sprintf("    pm.expect(pm.response.headers.get(%q)).to.not.eql(%s);", headerName, valJS),

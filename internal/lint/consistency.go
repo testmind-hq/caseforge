@@ -27,6 +27,7 @@ func (r *ruleL007) Severity() string { return "warning" }
 func (r *ruleL007) Check(ps *spec.ParsedSpec) []LintIssue {
 	var issues []LintIssue
 	for _, op := range ps.Operations {
+		found := ""
 		for _, seg := range strings.Split(strings.Trim(op.Path, "/"), "/") {
 			if strings.HasPrefix(seg, "{") {
 				continue // skip path parameter placeholders like {listId}
@@ -34,15 +35,21 @@ func (r *ruleL007) Check(ps *spec.ParsedSpec) []LintIssue {
 			lower := strings.ToLower(seg)
 			for _, verb := range verbSegments {
 				if strings.HasPrefix(lower, verb) {
-					issues = append(issues, LintIssue{
-						RuleID:   "L007",
-						Severity: "warning",
-						Message:  fmt.Sprintf("verb %q found in path segment", verb),
-						Path:     fmt.Sprintf("%s %s", op.Method, op.Path),
-					})
+					found = verb
 					break
 				}
 			}
+			if found != "" {
+				break
+			}
+		}
+		if found != "" {
+			issues = append(issues, LintIssue{
+				RuleID:   "L007",
+				Severity: "warning",
+				Message:  fmt.Sprintf("verb %q found in path segment", found),
+				Path:     fmt.Sprintf("%s %s", op.Method, op.Path),
+			})
 		}
 	}
 	return issues
