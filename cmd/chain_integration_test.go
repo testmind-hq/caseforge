@@ -60,3 +60,27 @@ func TestEndToEndChainCase(t *testing.T) {
 		assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
 	}
 }
+
+func TestEndToEndPhase2CSVWithChainCases(t *testing.T) {
+	outDir := t.TempDir()
+	t.Cleanup(func() {
+		genSpec = ""
+		genOutput = "./cases"
+		genNoAI = false
+		genFormat = "hurl"
+	})
+
+	genSpec = "../testdata/crud_users.yaml"
+	genOutput = outDir
+	genNoAI = true
+	genFormat = "csv"
+
+	err := runGen(genCmd, nil)
+	require.NoError(t, err)
+
+	// Verify CSV exists and has chain case
+	data, err := os.ReadFile(filepath.Join(outDir, "cases.csv"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "chain")
+	assert.Contains(t, string(data), "chain_crud")
+}
