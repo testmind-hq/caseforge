@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/testmind-hq/caseforge/internal/config"
+	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/methodology"
 	"github.com/testmind-hq/caseforge/internal/output/render"
 	"github.com/testmind-hq/caseforge/internal/output/writer"
 	"github.com/testmind-hq/caseforge/internal/spec"
+	"github.com/testmind-hq/caseforge/internal/tui"
 )
 
 var genCmd = &cobra.Command{
@@ -46,7 +50,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 	if genNoAI {
 		cfg.AI.Provider = "noop"
 	}
-	if cmd.Flags().Changed("format") {
+	if cmd.Flags().Changed("format") || genFormat != "" {
 		cfg.Output.DefaultFormat = genFormat
 	}
 
@@ -65,6 +69,24 @@ func runGen(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
+	// Set up event bus
+	bus := event.NewBus()
+
+	// Wire TUI if stderr is a terminal
+	var tuiDone <-chan struct{}
+	if isatty.IsTerminal(os.Stderr.Fd()) {
+		model := tui.NewProgressModel(len(parsedSpec.Operations))
+		prog := tea.NewProgram(model, tea.WithOutput(os.Stderr))
+		sink := tui.NewTUISink(prog)
+		bus.Subscribe(sink)
+		doneCh := make(chan struct{})
+		go func() {
+			defer close(doneCh)
+			_, _ = prog.Run()
+		}()
+		tuiDone = doneCh
+	}
+
 	// Generate test cases
 	engine := methodology.NewEngine(provider,
 		methodology.NewEquivalenceTechnique(),
@@ -74,6 +96,8 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
 	)
+	engine.AddSpecTechnique(methodology.NewChainTechnique())
+	engine.SetSink(bus)
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)
@@ -99,6 +123,12 @@ func runGen(cmd *cobra.Command, args []string) error {
 	if err := renderer.Render(cases, genOutput); err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Render failed: %v\n", err)
 		os.Exit(5)
+	}
+
+	bus.Emit(event.Event{Type: event.EventRenderDone})
+
+	if tuiDone != nil {
+		<-tuiDone
 	}
 
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
