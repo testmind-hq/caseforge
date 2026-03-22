@@ -1,0 +1,32 @@
+// internal/event/event.go
+// Package event defines event types for CaseForge's event-driven architecture.
+// Phase 1: type definitions and a NoopSink only.
+// Phase 2 will add the event bus and TUI/CLI subscribers.
+package event
+
+// EventType identifies what happened.
+type EventType string
+
+const (
+	EventSpecLoaded    EventType = "spec.loaded"
+	EventOperationDone EventType = "operation.done"
+	EventCaseGenerated EventType = "case.generated"
+	EventRenderDone    EventType = "render.done"
+	EventError         EventType = "error"
+)
+
+// Event carries data about something that happened.
+type Event struct {
+	Type    EventType
+	Payload any
+}
+
+// Sink receives events. Implement this to observe CaseForge progress.
+type Sink interface {
+	Emit(e Event)
+}
+
+// NoopSink discards all events. Used as default until Phase 2 TUI is wired in.
+type NoopSink struct{}
+
+func (s *NoopSink) Emit(_ Event) {}
