@@ -74,6 +74,11 @@ func (r *HurlRunner) Run(casesDir string, vars map[string]string) (passed, faile
 	reportPath := filepath.Join(reportDir, "report.json")
 	if data, readErr := os.ReadFile(reportPath); readErr == nil {
 		passed, failed = parseHurlReport(data)
+		// If the report is empty and hurl exited non-zero, this is an
+		// infrastructure failure (e.g., bad flag syntax), not a test failure.
+		if passed+failed == 0 && runErr != nil {
+			return 0, 0, fmt.Errorf("hurl infrastructure error: %w", runErr)
+		}
 		return passed, failed, nil
 	}
 
