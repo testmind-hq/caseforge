@@ -139,24 +139,47 @@ func renderCapture(c schema.Capture) string {
 }
 
 func renderAssertion(a schema.Assertion) string {
-	switch a.Target {
-	case "duration_ms":
+	switch {
+	case a.Target == "duration_ms":
 		if a.Operator == "lt" {
 			return fmt.Sprintf("duration < %v\n", a.Expected)
 		}
-	default:
-		// body.<field> or custom target
-		target := a.Target
-		if strings.HasPrefix(target, "body.") {
-			field := strings.TrimPrefix(target, "body.")
-			switch a.Operator {
-			case "eq":
-				return fmt.Sprintf("jsonpath \"$.%s\" == %s\n", field, formatHurlValue(a.Expected))
-			case "exists":
-				return fmt.Sprintf("jsonpath \"$.%s\" exists\n", field)
-			case "contains":
-				return fmt.Sprintf("jsonpath \"$.%s\" contains %s\n", field, formatHurlValue(a.Expected))
+	case strings.HasPrefix(a.Target, "jsonpath "):
+		expr := strings.TrimPrefix(a.Target, "jsonpath ")
+		switch a.Operator {
+		case "eq":
+			return fmt.Sprintf("jsonpath %q == %s\n", expr, formatHurlValue(a.Expected))
+		case "ne":
+			if a.Expected == nil {
+				return fmt.Sprintf("jsonpath %q not exists\n", expr)
 			}
+			return fmt.Sprintf("jsonpath %q != %s\n", expr, formatHurlValue(a.Expected))
+		case "exists":
+			return fmt.Sprintf("jsonpath %q exists\n", expr)
+		case "contains":
+			return fmt.Sprintf("jsonpath %q contains %s\n", expr, formatHurlValue(a.Expected))
+		}
+	case strings.HasPrefix(a.Target, "header "):
+		headerName := strings.TrimPrefix(a.Target, "header ")
+		switch a.Operator {
+		case "eq":
+			return fmt.Sprintf("header %q == %s\n", headerName, formatHurlValue(a.Expected))
+		case "ne":
+			if a.Expected == nil {
+				return fmt.Sprintf("header %q not exists\n", headerName)
+			}
+			return fmt.Sprintf("header %q != %s\n", headerName, formatHurlValue(a.Expected))
+		}
+	case strings.HasPrefix(a.Target, "body."):
+		// Legacy target format — delegate to jsonpath
+		field := strings.TrimPrefix(a.Target, "body.")
+		switch a.Operator {
+		case "eq":
+			return fmt.Sprintf("jsonpath \"$.%s\" == %s\n", field, formatHurlValue(a.Expected))
+		case "exists":
+			return fmt.Sprintf("jsonpath \"$.%s\" exists\n", field)
+		case "contains":
+			return fmt.Sprintf("jsonpath \"$.%s\" contains %s\n", field, formatHurlValue(a.Expected))
 		}
 	}
 	return fmt.Sprintf("# unrendered assertion: %s %s %v\n", a.Target, a.Operator, a.Expected)

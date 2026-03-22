@@ -95,8 +95,10 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewStateTechnique(),
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
+		methodology.NewSecurityTechnique(),
 	)
 	engine.AddSpecTechnique(methodology.NewChainTechnique())
+	engine.AddSpecTechnique(methodology.NewSecuritySpecTechnique())
 	engine.SetSink(bus)
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {

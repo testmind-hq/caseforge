@@ -36,7 +36,7 @@ type Step struct {
 }
 
 type Assertion struct {
-	Target   string `json:"target"`   // "status_code"|"body.<field>"|"duration_ms"
+	Target   string `json:"target"`   // "status_code"|"jsonpath $.<field>"|"header <HeaderName>"|"duration_ms"
 	Operator string `json:"operator"` // "eq"|"ne"|"lt"|"gt"|"contains"|"matches"
 	Expected any    `json:"expected"`
 }
