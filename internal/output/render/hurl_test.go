@@ -110,6 +110,7 @@ func TestHurlRendererRendersCaptureBlock(t *testing.T) {
 				Body:    map[string]any{"name": "Alice"},
 				Assertions: []schema.Assertion{
 					{Target: "status_code", Operator: "eq", Expected: 201},
+					{Target: "jsonpath $.id", Operator: "exists", Expected: nil},
 				},
 				Captures: []schema.Capture{
 					{Name: "userId", From: "jsonpath $.id"},

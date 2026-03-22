@@ -28,15 +28,18 @@ func (t *ChainTechnique) Name() string { return "chain_crud" }
 
 func (t *ChainTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 	groups := groupByResource(s.Operations)
+	keys := make([]string, 0, len(groups))
+	for k := range groups {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 	var cases []schema.TestCase
-	for resourcePath, group := range groups {
+	for _, resourcePath := range keys {
+		group := groups[resourcePath]
 		if group.create == nil || group.read == nil {
 			continue // Need at least POST + GET to form a chain
 		}
-		tc, err := t.buildChainCase(resourcePath, group)
-		if err != nil {
-			return nil, err
-		}
+		tc := t.buildChainCase(resourcePath, group)
 		cases = append(cases, tc)
 	}
 	return cases, nil
@@ -108,7 +111,13 @@ func captureVarName(itemPath string) string {
 
 // findIDField returns the name of an `id`-like field in a 2xx response body schema.
 func findIDField(op *spec.Operation) string {
-	for code, resp := range op.Responses {
+	codes := make([]string, 0, len(op.Responses))
+	for code := range op.Responses {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+	for _, code := range codes {
+		resp := op.Responses[code]
 		n := 0
 		fmt.Sscanf(code, "%d", &n)
 		if n < 200 || n >= 300 {
@@ -135,7 +144,7 @@ func findIDField(op *spec.Operation) string {
 	return "id" // sensible default
 }
 
-func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) (schema.TestCase, error) {
+func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) schema.TestCase {
 	id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 	captureName := captureVarName(g.read.Path)
 	idField := findIDField(g.create)
@@ -192,7 +201,7 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) (sch
 			Type:       "teardown",
 			Method:     g.delete.Method,
 			Path:       deletePath,
-			DependsOn:  []string{"step-setup"},
+			DependsOn:  []string{"step-setup", "step-test"},
 			Assertions: assertpkg.BasicAssertions(g.delete),
 		})
 	}
@@ -213,5 +222,5 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) (sch
 		Steps:       steps,
 		GeneratedAt: time.Now(),
 	}
-	return tc, nil
+	return tc
 }
