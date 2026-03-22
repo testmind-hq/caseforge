@@ -1,0 +1,16 @@
+{{/* internal/llm/prompts/semantic_analysis.tmpl */}}
+Analyze the following OpenAPI operation and return a JSON object with these fields:
+- resource_type: the primary resource this operation works with (e.g. "user", "order")
+- action_type: one of "create", "read", "update", "delete", "action"
+- has_state_machine: true if there is a status/state field that follows a workflow
+- state_field: the field name if has_state_machine is true, else ""
+- unique_fields: array of field names that likely have uniqueness constraints
+- implicit_rules: array of business rules implied but not stated (e.g. "email must be unique per account")
+
+Operation: {{.Method}} {{.Path}}
+Summary: {{.Summary}}
+Description: {{.Description}}
+Parameters: {{.Parameters}}
+Request body: {{.RequestBody}}
+
+Respond with ONLY valid JSON, no markdown fences.
