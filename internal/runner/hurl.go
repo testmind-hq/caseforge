@@ -37,7 +37,7 @@ func (r *HurlRunner) Run(casesDir string, vars map[string]string) (passed, faile
 
 	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			_ = exitErr
+			_ = exitErr // TODO: parse exitErr.ExitCode() or --report-json for per-file pass/fail in Phase 2
 			return 0, len(files), nil // hurl exits non-zero on test failures
 		}
 		return 0, 0, err

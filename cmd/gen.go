@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/testmind-hq/caseforge/internal/config"
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/methodology"
 	"github.com/testmind-hq/caseforge/internal/output/render"
@@ -36,25 +37,36 @@ func init() {
 }
 
 func runGen(cmd *cobra.Command, args []string) error {
-	// 1. Build LLM provider
-	var provider llm.LLMProvider
-	if genNoAI {
-		provider = &llm.NoopProvider{}
-	} else {
-		// NewProvider falls back to NoopProvider if no API key is set
-		provider = llm.NewProvider("", "anthropic", "")
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
 	}
 
-	// 2. Load the spec
+	// Override config from flags
+	if genNoAI {
+		cfg.AI.Provider = "noop"
+	}
+	if genFormat != "" {
+		cfg.Output.DefaultFormat = genFormat
+	}
+
+	// Resolve LLM provider
+	provider := llm.NewProvider(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model)
+	if cfg.AI.Provider != "noop" && !provider.IsAvailable() {
+		fmt.Fprintln(os.Stderr, "warning: LLM provider unavailable, degrading to --no-ai mode")
+		provider = &llm.NoopProvider{}
+	}
+
+	// Load spec
 	loader := spec.NewLoader()
 	parsedSpec, err := loader.Load(genSpec)
 	if err != nil {
-		return fmt.Errorf("loading spec: %w", err)
+		fmt.Fprintf(os.Stderr, "✗ Failed to parse spec: %v\n", err)
+		os.Exit(2)
 	}
 
-	// 3. Build the methodology engine with all 6 techniques
-	engine := methodology.NewEngine(
-		provider,
+	// Generate test cases
+	engine := methodology.NewEngine(provider,
 		methodology.NewEquivalenceTechnique(),
 		methodology.NewBoundaryTechnique(),
 		methodology.NewDecisionTechnique(),
@@ -62,35 +74,31 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
 	)
-
-	// 4. Generate test cases
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)
 	}
 
-	// 5. Write index.json
+	// Write index.json
 	w := writer.NewJSONSchemaWriter()
 	if err := w.Write(cases, genOutput); err != nil {
-		return fmt.Errorf("writing index.json: %w", err)
+		fmt.Fprintf(os.Stderr, "✗ Failed to write output: %v\n", err)
+		os.Exit(5)
 	}
 
-	// 6. Render output files
+	// Render to target format
 	var renderer render.Renderer
-	switch genFormat {
-	case "hurl":
-		renderer = render.NewHurlRenderer("")
+	switch cfg.Output.DefaultFormat {
 	case "markdown":
 		renderer = render.NewMarkdownRenderer()
 	case "csv":
 		renderer = render.NewCSVRenderer()
-	default:
-		fmt.Fprintf(os.Stderr, "Warning: unknown format %q; falling back to hurl\n", genFormat)
+	default: // "hurl" and anything unrecognised
 		renderer = render.NewHurlRenderer("")
 	}
-
 	if err := renderer.Render(cases, genOutput); err != nil {
-		return fmt.Errorf("rendering %s files: %w", renderer.Format(), err)
+		fmt.Fprintf(os.Stderr, "✗ Render failed: %v\n", err)
+		os.Exit(5)
 	}
 
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
