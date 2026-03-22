@@ -1,0 +1,43 @@
+// internal/spec/types.go
+package spec
+
+// Parameter, RequestBody, Response, Schema are thin wrappers
+// over kin-openapi types. Fields added as needed during implementation.
+// See parser.go for conversion from kin-openapi to these types.
+
+type Parameter struct {
+	Name     string
+	In       string // "query"|"path"|"header"|"cookie"
+	Required bool
+	Schema   *Schema
+}
+
+type RequestBody struct {
+	Required bool
+	Content  map[string]*MediaType // key: "application/json" etc.
+}
+
+type MediaType struct {
+	Schema *Schema
+}
+
+type Response struct {
+	Description string
+	Content     map[string]*MediaType
+}
+
+type Schema struct {
+	Type        string
+	Format      string
+	Description string
+	Properties  map[string]*Schema
+	Items       *Schema // for array type
+	Enum        []any
+	Minimum     *float64
+	Maximum     *float64
+	MinLength   *int64
+	MaxLength   *int64
+	Required    []string
+	Nullable    bool
+	Ref         string // original $ref path if applicable
+}
