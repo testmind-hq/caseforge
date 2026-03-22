@@ -18,11 +18,15 @@ var lintCmd = &cobra.Command{
 	RunE:  runLint,
 }
 
-var lintSpec string
+var (
+	lintSpec     string
+	lintMinScore int
+)
 
 func init() {
 	rootCmd.AddCommand(lintCmd)
 	lintCmd.Flags().StringVar(&lintSpec, "spec", "", "OpenAPI spec file or URL (required)")
+	lintCmd.Flags().IntVar(&lintMinScore, "min-score", 0, "Fail if spec score is below this threshold (0 = disabled)")
 	_ = lintCmd.MarkFlagRequired("spec")
 }
 
@@ -40,28 +44,43 @@ func runLint(cmd *cobra.Command, args []string) error {
 	}
 
 	issues := lint.RunAll(parsedSpec)
+	score := lint.Score(issues)
+
 	if len(issues) == 0 {
 		color.Green("✓ No lint issues found")
-		return nil
-	}
-
-	hasError := false
-	for _, iss := range issues {
-		switch iss.Severity {
-		case "error":
-			color.Red("  [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
-			hasError = true
-		case "warning":
-			color.Yellow("  [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
+	} else {
+		hasError := false
+		for _, iss := range issues {
+			switch iss.Severity {
+			case "error":
+				color.Red("  ✗ [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
+				hasError = true
+			case "warning":
+				color.Yellow("  ⚠ [%s] %s: %s", iss.RuleID, iss.Path, iss.Message)
+			}
 		}
-	}
+		errCount := 0
+		warnCount := 0
+		for _, iss := range issues {
+			if iss.Severity == "error" {
+				errCount++
+			} else {
+				warnCount++
+			}
+		}
+		fmt.Fprintf(os.Stderr, "\nSpec Score: %d/100  (%d errors, %d warnings)\n", score, errCount, warnCount)
 
-	shouldFail := hasError
-	if cfg.Lint.FailOn == "warning" {
-		shouldFail = len(issues) > 0
-	}
-	if shouldFail {
-		os.Exit(3)
+		shouldFail := hasError
+		if cfg.Lint.FailOn == "warning" {
+			shouldFail = len(issues) > 0
+		}
+		if !shouldFail && lintMinScore > 0 && score < lintMinScore {
+			fmt.Fprintf(os.Stderr, "exit code 1 (score %d < min-score %d)\n", score, lintMinScore)
+			shouldFail = true
+		}
+		if shouldFail {
+			os.Exit(3)
+		}
 	}
 	return nil
 }
