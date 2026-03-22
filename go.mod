@@ -3,22 +3,22 @@ module github.com/testmind-hq/caseforge
 go 1.26.1
 
 require (
+	github.com/anthropics/anthropic-sdk-go v1.27.1
+	github.com/brianvoe/gofakeit/v7 v7.14.1
+	github.com/fatih/color v1.19.0
+	github.com/getkin/kin-openapi v0.134.0
+	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 )
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.27.1 // indirect
-	github.com/brianvoe/gofakeit/v7 v7.14.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/fatih/color v1.19.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/getkin/kin-openapi v0.134.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

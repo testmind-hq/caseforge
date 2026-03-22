@@ -104,9 +104,9 @@ type PairwiseTechnique struct{}
 func NewPairwiseTechnique() *PairwiseTechnique { return &PairwiseTechnique{} }
 func (t *PairwiseTechnique) Name() string      { return "pairwise" }
 
-// Applies when there are 4 or more parameters (independent parameters for combinatorial coverage).
+// Applies when there are 4 or more independent (enum or boolean) parameters for combinatorial coverage.
 func (t *PairwiseTechnique) Applies(op *spec.Operation) bool {
-	return len(op.Parameters) >= 4
+	return countIndependentParams(op) >= 4
 }
 
 func (t *PairwiseTechnique) Generate(op *spec.Operation) ([]schema.TestCase, error) {
