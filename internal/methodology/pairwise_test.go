@@ -3,6 +3,7 @@ package methodology
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,4 +83,14 @@ func TestPairwiseGeneratesTestCases(t *testing.T) {
 	for _, tc := range cases {
 		assert.Equal(t, "pairwise", tc.Source.Technique)
 	}
+}
+
+func TestBuildPathWithQueryURLEncodesValues(t *testing.T) {
+	path := buildPathWithQuery("/search", map[string]any{
+		"q":      "hello world",
+		"filter": "a+b",
+	})
+	assert.Contains(t, path, "q=hello+world", "spaces should be encoded as +")
+	assert.Contains(t, path, "filter=a%2Bb", "literal + should be percent-encoded")
+	assert.True(t, strings.HasPrefix(path, "/search?"))
 }

@@ -3,6 +3,7 @@ package methodology
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
@@ -184,7 +185,7 @@ func buildPathWithQuery(path string, params map[string]any) string {
 		if q != "" {
 			q += "&"
 		}
-		q += fmt.Sprintf("%s=%v", k, params[k])
+		q += fmt.Sprintf("%s=%s", k, url.QueryEscape(fmt.Sprintf("%v", params[k])))
 	}
 	return path + "?" + q
 }
