@@ -2,10 +2,12 @@
 package methodology
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
@@ -124,6 +126,47 @@ func TestEngineGeneratesChainCasesFromCRUDSpec(t *testing.T) {
 	require.Len(t, chainCases, 1)
 	assert.Equal(t, "chain_crud", chainCases[0].Source.Technique)
 	assert.Len(t, chainCases[0].Steps, 2) // setup + test (no DELETE in spec)
+}
+
+func TestEngineEmitsEventsToSink(t *testing.T) {
+	type emitted struct{ typ event.EventType }
+	var got []emitted
+	mu := sync.Mutex{}
+
+	sink := event.SinkFunc(func(e event.Event) {
+		mu.Lock()
+		got = append(got, emitted{e.Type})
+		mu.Unlock()
+	})
+
+	noop := &llm.NoopProvider{}
+	engine := NewEngine(noop, NewEquivalenceTechnique())
+	engine.SetSink(sink)
+
+	ps := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{
+			OperationID: "createUser",
+			Method:      "POST", Path: "/users",
+			RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+				"application/json": {Schema: &spec.Schema{
+					Type: "object",
+					Properties: map[string]*spec.Schema{
+						"email": {Type: "string", Format: "email"},
+					},
+				}},
+			}},
+			Responses: map[string]*spec.Response{"201": {}},
+		},
+	}}
+	_, err := engine.Generate(ps)
+	require.NoError(t, err)
+
+	types := make([]event.EventType, len(got))
+	for i, g := range got {
+		types[i] = g.typ
+	}
+	assert.Contains(t, types, event.EventOperationDone)
+	assert.Contains(t, types, event.EventCaseGenerated)
 }
 
 // mockSpecTechnique is a test double for SpecTechnique.
