@@ -36,15 +36,14 @@ func (t *BoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 			continue
 		}
 		bounds := []struct {
-			kind         datagen.BoundaryKind
-			label        string
-			valid        bool
-			expectStatus int
+			kind  datagen.BoundaryKind
+			label string
+			valid bool
 		}{
-			{datagen.BoundaryMin, "min_valid", true, 200},
-			{datagen.BoundaryMinMinusOne, "min_minus_one_invalid", false, 422},
-			{datagen.BoundaryMax, "max_valid", true, 200},
-			{datagen.BoundaryMaxPlusOne, "max_plus_one_invalid", false, 422},
+			{datagen.BoundaryMin, "min_valid", true},
+			{datagen.BoundaryMinMinusOne, "min_minus_one_invalid", false},
+			{datagen.BoundaryMax, "max_valid", true},
+			{datagen.BoundaryMaxPlusOne, "max_plus_one_invalid", false},
 		}
 		for _, b := range bounds {
 			body := copyMap(base)
