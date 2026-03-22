@@ -30,7 +30,7 @@ type Engine struct {
 	techniques     []Technique
 	specTechniques []SpecTechnique
 	llm            llm.LLMProvider
-	sink           event.Sink // ← add this line only
+	sink           event.Sink
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {

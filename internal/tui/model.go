@@ -32,7 +32,7 @@ func (m ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case EventMsg:
 		switch msg.Type {
-		case event.EventCaseGenerated, event.EventOperationDone:
+		case event.EventOperationDone:
 			m.done++
 		case event.EventRenderDone:
 			m.finished = true
