@@ -28,6 +28,9 @@ func (r *ruleL007) Check(ps *spec.ParsedSpec) []LintIssue {
 	var issues []LintIssue
 	for _, op := range ps.Operations {
 		for _, seg := range strings.Split(strings.Trim(op.Path, "/"), "/") {
+			if strings.HasPrefix(seg, "{") {
+				continue // skip path parameter placeholders like {listId}
+			}
 			lower := strings.ToLower(seg)
 			for _, verb := range verbSegments {
 				if strings.HasPrefix(lower, verb) {
