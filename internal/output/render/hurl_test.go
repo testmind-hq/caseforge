@@ -91,3 +91,51 @@ func TestHurlRendererOutputContainsSourceAnnotation(t *testing.T) {
 	assert.Contains(t, s, "technique=equivalence_partitioning")
 	assert.Contains(t, s, "priority=P0")
 }
+
+func TestHurlRendererRendersCaptureBlock(t *testing.T) {
+	r := NewHurlRenderer("")
+	tc := schema.TestCase{
+		ID:       "TC-chain01",
+		Priority: "P1",
+		Kind:     "chain",
+		Source:   schema.CaseSource{Technique: "chain_crud"},
+		Steps: []schema.Step{
+			{
+				ID:     "step-setup",
+				Title:  "create user",
+				Type:   "setup",
+				Method: "POST",
+				Path:   "/users",
+				Headers: map[string]string{"Content-Type": "application/json"},
+				Body:    map[string]any{"name": "Alice"},
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "eq", Expected: 201},
+				},
+				Captures: []schema.Capture{
+					{Name: "userId", From: "jsonpath $.id"},
+				},
+			},
+			{
+				ID:     "step-test",
+				Title:  "get user",
+				Type:   "test",
+				Method: "GET",
+				Path:   "/users/{{userId}}",
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "eq", Expected: 200},
+				},
+			},
+		},
+	}
+
+	content := r.renderCase(tc)
+	assert.Contains(t, content, "[Captures]")
+	assert.Contains(t, content, `userId: jsonpath "$.id"`)
+	assert.Contains(t, content, "GET {{base_url}}/users/{{userId}}")
+	// [Captures] must appear before [Asserts]
+	capturesIdx := strings.Index(content, "[Captures]")
+	assertsIdx := strings.Index(content, "[Asserts]")
+	if capturesIdx >= 0 && assertsIdx >= 0 {
+		assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
+	}
+}

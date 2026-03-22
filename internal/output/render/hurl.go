@@ -110,14 +110,32 @@ func (r *HurlRenderer) renderStep(step schema.Step) string {
 	}
 	b.WriteString(fmt.Sprintf("HTTP %d\n", statusCode))
 
+	// Captures block must come BEFORE [Asserts] (Hurl spec ordering requirement)
+	if len(step.Captures) > 0 {
+		b.WriteString("\n[Captures]\n")
+		for _, cap := range step.Captures {
+			b.WriteString(renderCapture(cap))
+		}
+	}
+
 	if len(asserts) > 0 {
-		b.WriteString("[Asserts]\n")
+		b.WriteString("\n[Asserts]\n")
 		for _, a := range asserts {
 			b.WriteString(renderAssertion(a))
 		}
 	}
 
 	return b.String()
+}
+
+func renderCapture(c schema.Capture) string {
+	// From format: "jsonpath $.field" → `varName: jsonpath "$.field"`
+	// From format: "header X-Name"   → `varName: header "X-Name"`
+	parts := strings.SplitN(c.From, " ", 2)
+	if len(parts) == 2 {
+		return fmt.Sprintf("%s: %s %q\n", c.Name, parts[0], parts[1])
+	}
+	return fmt.Sprintf("%s: %s\n", c.Name, c.From)
 }
 
 func renderAssertion(a schema.Assertion) string {
