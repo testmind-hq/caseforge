@@ -7,11 +7,25 @@ import (
 
 	"github.com/google/uuid"
 	assertpkg "github.com/testmind-hq/caseforge/internal/assert"
+	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
-func buildTestCase(op *spec.Operation, body map[string]any, suffix, title, specPath string) schema.TestCase {
+// buildValidBody generates a body map with valid values for all fields in op's JSON schema.
+func buildValidBody(gen *datagen.Generator, op *spec.Operation) map[string]any {
+	s := getJSONSchema(op.RequestBody)
+	if s == nil {
+		return nil
+	}
+	body := map[string]any{}
+	for fieldName, fieldSchema := range s.Properties {
+		body[fieldName] = gen.Generate(fieldSchema, fieldName)
+	}
+	return body
+}
+
+func buildTestCase(op *spec.Operation, body map[string]any, title, specPath string) schema.TestCase {
 	id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 	headers := map[string]string{}
 	if body != nil {

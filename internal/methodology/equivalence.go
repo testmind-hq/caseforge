@@ -27,8 +27,8 @@ func (t *EquivalenceTechnique) Generate(op *spec.Operation) ([]schema.TestCase, 
 	var cases []schema.TestCase
 
 	// 1. Happy path: all required fields with valid data
-	happyBody := t.buildValidBody(op)
-	happyCase := buildTestCase(op, happyBody, "happy_path",
+	happyBody := buildValidBody(t.gen, op)
+	happyCase := buildTestCase(op, happyBody,
 		"valid request with all required fields",
 		fmt.Sprintf("%s %s", op.Method, op.Path))
 	happyCase.Priority = "P0"
@@ -50,7 +50,6 @@ func (t *EquivalenceTechnique) Generate(op *spec.Operation) ([]schema.TestCase, 
 			for _, requiredField := range reqSchema.Required {
 				body := t.buildBodyWithout(op, requiredField)
 				tc := buildTestCase(op, body,
-					fmt.Sprintf("missing_%s", requiredField),
 					fmt.Sprintf("missing required field %q", requiredField),
 					fmt.Sprintf("%s %s requestBody.%s", op.Method, op.Path, requiredField))
 				tc.Priority = "P1"
@@ -70,23 +69,8 @@ func (t *EquivalenceTechnique) Generate(op *spec.Operation) ([]schema.TestCase, 
 	return cases, nil
 }
 
-func (t *EquivalenceTechnique) buildValidBody(op *spec.Operation) map[string]any {
-	if op.RequestBody == nil {
-		return nil
-	}
-	s := getJSONSchema(op.RequestBody)
-	if s == nil {
-		return nil
-	}
-	body := map[string]any{}
-	for fieldName, fieldSchema := range s.Properties {
-		body[fieldName] = t.gen.Generate(fieldSchema, fieldName)
-	}
-	return body
-}
-
 func (t *EquivalenceTechnique) buildBodyWithout(op *spec.Operation, excludeField string) map[string]any {
-	body := t.buildValidBody(op)
+	body := buildValidBody(t.gen, op)
 	if body != nil {
 		delete(body, excludeField)
 	}

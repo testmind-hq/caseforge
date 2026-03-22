@@ -50,7 +50,6 @@ func (t *StateTechnique) Generate(op *spec.Operation) ([]schema.TestCase, error)
 			}
 		}
 		tc := buildTestCase(op, body,
-			fmt.Sprintf("transition_to_%v", stateVal),
 			fmt.Sprintf("transition %s to %v", stateField, stateVal),
 			fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, stateField))
 		tc.Priority = "P1"

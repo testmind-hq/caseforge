@@ -19,16 +19,17 @@ func NewIdempotentTechnique() *IdempotentTechnique {
 
 func (t *IdempotentTechnique) Name() string { return "idempotency" }
 
-// Applies to write methods (POST/PUT/DELETE).
+// Applies returns true for POST, PUT, and DELETE.
+// PATCH is excluded because its idempotency is API-contract-dependent (RFC 5789 does not guarantee it),
+// which would cause false-positive idempotency test generation for non-idempotent PATCH endpoints.
 func (t *IdempotentTechnique) Applies(op *spec.Operation) bool {
 	m := op.Method
 	return m == "POST" || m == "PUT" || m == "DELETE"
 }
 
 func (t *IdempotentTechnique) Generate(op *spec.Operation) ([]schema.TestCase, error) {
-	body := t.buildValidBody(op)
+	body := buildValidBody(t.gen, op)
 	tc := buildTestCase(op, body,
-		"duplicate_request",
 		"send identical request twice — second should not create duplicate",
 		fmt.Sprintf("%s %s", op.Method, op.Path))
 	tc.Priority = "P2"
@@ -43,14 +44,3 @@ func (t *IdempotentTechnique) Generate(op *spec.Operation) ([]schema.TestCase, e
 	return []schema.TestCase{tc}, nil
 }
 
-func (t *IdempotentTechnique) buildValidBody(op *spec.Operation) map[string]any {
-	s := getJSONSchema(op.RequestBody)
-	if s == nil {
-		return nil
-	}
-	body := map[string]any{}
-	for name, fieldSchema := range s.Properties {
-		body[name] = t.gen.Generate(fieldSchema, name)
-	}
-	return body
-}
