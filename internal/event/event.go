@@ -1,7 +1,5 @@
 // internal/event/event.go
 // Package event defines event types for CaseForge's event-driven architecture.
-// Phase 1: type definitions and a NoopSink only.
-// Phase 2 will add the event bus and TUI/CLI subscribers.
 package event
 
 // EventType identifies what happened.

@@ -17,7 +17,7 @@ func TestProgressModelInitialState(t *testing.T) {
 
 func TestProgressModelUpdate_CaseGenerated(t *testing.T) {
 	m := NewProgressModel(3)
-	updated, _ := m.Update(EventMsg{event.Event{Type: event.EventCaseGenerated}})
+	updated, _ := m.Update(EventMsg{event.Event{Type: event.EventOperationDone}})
 	pm := updated.(ProgressModel)
 	assert.Equal(t, 1, pm.done)
 }
