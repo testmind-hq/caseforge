@@ -10,6 +10,7 @@ require (
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.27.1 // indirect
+	github.com/brianvoe/gofakeit/v7 v7.14.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
