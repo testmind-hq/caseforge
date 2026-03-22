@@ -3,6 +3,7 @@ package methodology
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
@@ -31,12 +32,14 @@ func IPOG(params []PairwiseParam) [][]any {
 	// Iteratively extend each row with a new parameter
 	for col := 2; col < len(params); col++ {
 		param := params[col]
-		// Track which pairs (existing col, new col) are still uncovered
-		uncovered := make(map[[2]any]bool)
+		// Track which pairs (existing col, new col) are still uncovered.
+		// Key is [3]any{prevColIdx, prevValue, newValue} to avoid false matches
+		// when different columns share the same enum value string.
+		uncovered := make(map[[3]any]bool)
 		for prevCol := 0; prevCol < col; prevCol++ {
 			for _, v1 := range params[prevCol].Values {
 				for _, v2 := range param.Values {
-					uncovered[[2]any{v1, v2}] = true
+					uncovered[[3]any{prevCol, v1, v2}] = true
 				}
 			}
 		}
@@ -48,7 +51,7 @@ func IPOG(params []PairwiseParam) [][]any {
 			for _, candidate := range param.Values {
 				coverage := 0
 				for prevCol := 0; prevCol < col; prevCol++ {
-					key := [2]any{rows[i][prevCol], candidate}
+					key := [3]any{prevCol, rows[i][prevCol], candidate}
 					if uncovered[key] {
 						coverage++
 					}
@@ -61,7 +64,7 @@ func IPOG(params []PairwiseParam) [][]any {
 			rows[i] = append(rows[i], bestVal)
 			// Mark covered pairs
 			for prevCol := 0; prevCol < col; prevCol++ {
-				delete(uncovered, [2]any{rows[i][prevCol], bestVal})
+				delete(uncovered, [3]any{prevCol, rows[i][prevCol], bestVal})
 			}
 		}
 
@@ -74,24 +77,17 @@ func IPOG(params []PairwiseParam) [][]any {
 			}
 			// Pick a remaining uncovered pair and assign it
 			for pair := range uncovered {
-				// pair[0] is the value from some prev col, pair[1] is the new col value
-				// Find which prev col pair[0] belongs to
-				for prevCol := 0; prevCol < col; prevCol++ {
-					for _, v := range params[prevCol].Values {
-						if v == pair[0] {
-							row[prevCol] = pair[0]
-							row[col] = pair[1]
-							goto assigned
-						}
-					}
-				}
-			assigned:
+				// pair[0] is the prev col index, pair[1] is the prev col value,
+				// pair[2] is the new col value
+				prevCol := pair[0].(int)
+				row[prevCol] = pair[1]
+				row[col] = pair[2]
 				break
 			}
 			rows = append(rows, row)
 			// Mark covered pairs for this row
 			for prevCol := 0; prevCol < col; prevCol++ {
-				delete(uncovered, [2]any{row[prevCol], row[col]})
+				delete(uncovered, [3]any{prevCol, row[prevCol], row[col]})
 			}
 		}
 	}
@@ -166,12 +162,17 @@ func buildPathWithQuery(path string, params map[string]any) string {
 	if len(params) == 0 {
 		return path
 	}
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 	q := ""
-	for k, v := range params {
+	for _, k := range keys {
 		if q != "" {
 			q += "&"
 		}
-		q += fmt.Sprintf("%s=%v", k, v)
+		q += fmt.Sprintf("%s=%v", k, params[k])
 	}
 	return path + "?" + q
 }
