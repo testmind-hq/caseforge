@@ -29,6 +29,13 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		color.Green("  ✓ hurl found")
 	}
 
+	// Check k6
+	if _, err := exec.LookPath("k6"); err != nil {
+		color.Yellow("  ⚠ k6 not found — k6 runner disabled (install from https://k6.io/docs/get-started/installation/)")
+	} else {
+		color.Green("  ✓ k6 found")
+	}
+
 	// Check ANTHROPIC_API_KEY
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		color.Green("  ✓ ANTHROPIC_API_KEY set")
