@@ -16,10 +16,9 @@ var cfgFile string
 var Version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:     "caseforge",
-	Short:   "API test case generator from OpenAPI specs",
-	Long:    `CaseForge generates structured, traceable test cases from OpenAPI specs.`,
-	Version: Version,
+	Use:   "caseforge",
+	Short: "API test case generator from OpenAPI specs",
+	Long:  `CaseForge generates structured, traceable test cases from OpenAPI specs.`,
 }
 
 func Execute() {
@@ -31,6 +30,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: .caseforge.yaml)")
+	rootCmd.Version = Version // read after ldflags can overwrite the var
 }
 
 func initConfig() {
