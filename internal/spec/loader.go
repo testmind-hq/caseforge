@@ -30,6 +30,7 @@ type Operation struct {
 	RequestBody  *RequestBody
 	Responses    map[string]*Response
 	Tags         []string
+	Security     []string            // names of security schemes declared on this operation
 	SemanticInfo *SemanticAnnotation // filled by LLM pre-processing
 }
 
