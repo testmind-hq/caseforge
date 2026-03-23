@@ -27,3 +27,8 @@ func TestLoadFromViper(t *testing.T) {
 	assert.Equal(t, "anthropic", cfg.AI.Provider)
 	assert.Equal(t, "claude-sonnet-4-6", cfg.AI.Model)
 }
+
+func TestAIConfigHasBaseURL(t *testing.T) {
+	cfg := AIConfig{BaseURL: "https://api.deepseek.com/v1"}
+	assert.Equal(t, "https://api.deepseek.com/v1", cfg.BaseURL)
+}

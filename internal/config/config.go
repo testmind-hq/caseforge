@@ -14,9 +14,10 @@ type Config struct {
 }
 
 type AIConfig struct {
-	Provider string `mapstructure:"provider"` // "anthropic"|"noop"
+	Provider string `mapstructure:"provider"` // "anthropic"|"openai"|"openai-compat"|"gemini"|"noop"
 	Model    string `mapstructure:"model"`
 	APIKey   string `mapstructure:"api_key"`
+	BaseURL  string `mapstructure:"base_url"` // openai-compat only (DeepSeek, Qwen, Azure, etc.)
 }
 
 type OutputConfig struct {
@@ -41,7 +42,23 @@ func Load() (*Config, error) {
 	}
 	// API key override from environment
 	if cfg.AI.APIKey == "" {
-		cfg.AI.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+		switch cfg.AI.Provider {
+		case "openai", "openai-compat":
+			cfg.AI.APIKey = os.Getenv("OPENAI_API_KEY")
+		case "gemini":
+			cfg.AI.APIKey = firstNonEmpty(os.Getenv("GEMINI_API_KEY"), os.Getenv("GOOGLE_API_KEY"))
+		default: // "anthropic" and anything unrecognised
+			cfg.AI.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+		}
 	}
 	return &cfg, nil
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

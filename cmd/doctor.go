@@ -43,6 +43,20 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		color.Yellow("  ⚠ ANTHROPIC_API_KEY not set — AI features disabled (use --no-ai or set the key)")
 	}
 
+	// Check OPENAI_API_KEY
+	if os.Getenv("OPENAI_API_KEY") != "" {
+		color.Green("  ✓ OPENAI_API_KEY set")
+	} else {
+		color.Yellow("  ⚠ OPENAI_API_KEY not set — openai/openai-compat provider unavailable")
+	}
+
+	// Check GEMINI_API_KEY / GOOGLE_API_KEY
+	if os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != "" {
+		color.Green("  ✓ GEMINI_API_KEY set")
+	} else {
+		color.Yellow("  ⚠ GEMINI_API_KEY not set — gemini provider unavailable")
+	}
+
 	if !ok {
 		return fmt.Errorf("environment check failed")
 	}
