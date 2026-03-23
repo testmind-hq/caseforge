@@ -33,6 +33,16 @@ func NewProviderWithConfig(apiKey, providerName, model, baseURL string) LLMProvi
 			Model:   firstNonEmpty(model, "gpt-4o-mini"),
 			BaseURL: baseURL,
 		})
+	case "gemini":
+		key := firstNonEmpty(apiKey, os.Getenv("GEMINI_API_KEY"), os.Getenv("GOOGLE_API_KEY"))
+		if key == "" {
+			return &NoopProvider{}
+		}
+		p, err := newGeminiProvider(key, firstNonEmpty(model, "gemini-2.5-flash"))
+		if err != nil {
+			return &NoopProvider{}
+		}
+		return p
 	}
 	return &NoopProvider{}
 }
