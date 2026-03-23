@@ -42,11 +42,14 @@ func (p *OpenAIProvider) Complete(ctx context.Context, req *CompletionRequest) (
 			msgs = append(msgs, openai.AssistantMessage(m.Content))
 		}
 	}
-	resp, err := p.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model:     openai.ChatModel(p.model),
-		Messages:  msgs,
-		MaxTokens: openai.Int(int64(req.MaxTokens)),
-	})
+	params := openai.ChatCompletionNewParams{
+		Model:    openai.ChatModel(p.model),
+		Messages: msgs,
+	}
+	if req.MaxTokens > 0 {
+		params.MaxTokens = openai.Int(int64(req.MaxTokens))
+	}
+	resp, err := p.client.Chat.Completions.New(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("openai complete: %w", err)
 	}

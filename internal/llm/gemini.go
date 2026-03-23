@@ -47,6 +47,10 @@ func (p *GeminiProvider) Complete(ctx context.Context, req *CompletionRequest) (
 		}
 	}
 
+	if len(req.Messages) == 0 {
+		return &CompletionResponse{}, nil
+	}
+
 	chat, err := p.client.Chats.Create(ctx, p.model, cfg, history)
 	if err != nil {
 		return nil, fmt.Errorf("gemini create chat: %w", err)

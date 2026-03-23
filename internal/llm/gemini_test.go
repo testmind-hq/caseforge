@@ -15,6 +15,8 @@ func TestGeminiProviderName(t *testing.T) {
 }
 
 func TestNewProvider_GeminiWithKey(t *testing.T) {
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
 	p := NewProvider("fake-gemini-key", "gemini", "gemini-2.5-flash")
 	require.NotNil(t, p)
 	assert.Equal(t, "gemini:gemini-2.5-flash", p.Name())
@@ -28,6 +30,8 @@ func TestNewProvider_GeminiNoKey(t *testing.T) {
 }
 
 func TestNewProvider_GeminiDefaultModel(t *testing.T) {
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
 	p := NewProvider("fake-key", "gemini", "")
 	assert.Equal(t, "gemini:gemini-2.5-flash", p.Name())
 }
