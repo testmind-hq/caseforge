@@ -61,6 +61,13 @@ func convertOperation(method, path string, op *openapi3.Operation) *Operation {
 		Tags:        op.Tags,
 		Responses:   make(map[string]*Response),
 	}
+	if op.Security != nil {
+		for _, req := range *op.Security {
+			for schemeName := range req {
+				o.Security = append(o.Security, schemeName)
+			}
+		}
+	}
 	for _, p := range op.Parameters {
 		if p.Value != nil {
 			o.Parameters = append(o.Parameters, convertParameter(p.Value))

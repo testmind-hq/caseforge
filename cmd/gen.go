@@ -36,7 +36,7 @@ func init() {
 	genCmd.Flags().StringVar(&genSpec, "spec", "", "OpenAPI spec file or URL (required)")
 	genCmd.Flags().StringVar(&genOutput, "output", "./cases", "Output directory")
 	genCmd.Flags().BoolVar(&genNoAI, "no-ai", false, "Disable LLM, use pure algorithm mode")
-	genCmd.Flags().StringVar(&genFormat, "format", "hurl", "Output format: hurl|markdown|csv")
+	genCmd.Flags().StringVar(&genFormat, "format", "hurl", "Output format: hurl|markdown|csv|postman")
 	_ = genCmd.MarkFlagRequired("spec")
 }
 
@@ -95,8 +95,10 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewStateTechnique(),
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
+		methodology.NewSecurityTechnique(),
 	)
 	engine.AddSpecTechnique(methodology.NewChainTechnique())
+	engine.AddSpecTechnique(methodology.NewSecuritySpecTechnique())
 	engine.SetSink(bus)
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {
@@ -117,6 +119,8 @@ func runGen(cmd *cobra.Command, args []string) error {
 		renderer = render.NewMarkdownRenderer()
 	case "csv":
 		renderer = render.NewCSVRenderer()
+	case "postman":
+		renderer = render.NewPostmanRenderer()
 	default: // "hurl" and anything unrecognised
 		renderer = render.NewHurlRenderer("")
 	}
