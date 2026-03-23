@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 )
 
+var _ Runner = (*K6Runner)(nil)
+
 // K6Runner executes k6 test scripts via the k6 binary.
 type K6Runner struct {
 	k6Bin string // path to k6 binary; defaults to "k6" (from PATH)

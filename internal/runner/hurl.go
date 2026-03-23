@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var _ Runner = (*HurlRunner)(nil)
+
 type HurlRunner struct{}
 
 func NewHurlRunner() *HurlRunner { return &HurlRunner{} }

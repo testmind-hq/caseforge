@@ -59,7 +59,7 @@ func renderK6Group(tc schema.TestCase) string {
 			callLines = buildK6BodyCall(method, urlExpr, step.Headers, step.Body)
 		}
 		sb.WriteString(fmt.Sprintf("    const %s = %s\n", resVar, strings.Join(callLines, "\n    ")))
-		checks := buildK6Checks(step.Assertions, resVar)
+		checks := buildK6Checks(step.Assertions)
 		if len(checks) > 0 {
 			sb.WriteString(fmt.Sprintf("    check(%s, {\n", resVar))
 			for _, c := range checks {
@@ -104,7 +104,7 @@ func buildK6NoBodyCall(method, urlExpr string, headers map[string]string) []stri
 		if headerJS != "" {
 			return []string{fmt.Sprintf(`http.request("HEAD", %s, null, %s);`, urlExpr, headerJS)}
 		}
-		return []string{fmt.Sprintf(`http.request("HEAD", %s);`, urlExpr)}
+		return []string{fmt.Sprintf(`http.request("HEAD", %s, null);`, urlExpr)}
 	case "DELETE":
 		if headerJS != "" {
 			return []string{fmt.Sprintf("http.del(%s, null, %s);", urlExpr, headerJS)}
@@ -151,10 +151,10 @@ func buildK6Headers(headers map[string]string) string {
 	return "{ headers: { " + strings.Join(parts, ", ") + " } }"
 }
 
-func buildK6Checks(assertions []schema.Assertion, resVar string) []string {
+func buildK6Checks(assertions []schema.Assertion) []string {
 	var checks []string
 	for _, a := range assertions {
-		line := k6AssertionLine(a, resVar)
+		line := k6AssertionLine(a)
 		if line != "" {
 			checks = append(checks, line)
 		}
@@ -162,7 +162,7 @@ func buildK6Checks(assertions []schema.Assertion, resVar string) []string {
 	return checks
 }
 
-func k6AssertionLine(a schema.Assertion, resVar string) string {
+func k6AssertionLine(a schema.Assertion) string {
 	switch {
 	case a.Target == "status_code":
 		switch a.Operator {
