@@ -52,7 +52,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	// Check GEMINI_API_KEY / GOOGLE_API_KEY
 	if os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != "" {
-		color.Green("  ✓ GEMINI_API_KEY set")
+		color.Green("  ✓ Gemini API key set (GEMINI_API_KEY or GOOGLE_API_KEY)")
 	} else {
 		color.Yellow("  ⚠ GEMINI_API_KEY not set — gemini provider unavailable")
 	}
