@@ -87,11 +87,11 @@ func makeGenerateHandler(ctx context.Context, req *mcpsdk.CallToolRequest) (*mcp
 		if err != nil {
 			return nil, fmt.Errorf("mcp sampling: %w", err)
 		}
-		text := ""
-		if tc, ok := result.Content.(*mcpsdk.TextContent); ok {
-			text = tc.Text
+		tc, ok := result.Content.(*mcpsdk.TextContent)
+		if !ok {
+			return nil, fmt.Errorf("mcp sampling: unexpected content type %T from host", result.Content)
 		}
-		return &llm.CompletionResponse{Text: text}, nil
+		return &llm.CompletionResponse{Text: tc.Text}, nil
 	})
 
 	// Load spec
