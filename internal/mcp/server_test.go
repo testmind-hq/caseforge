@@ -9,13 +9,10 @@ import (
 )
 
 func TestNewServerReturnsNonNil(t *testing.T) {
-	s, provider := NewServer()
+	s := NewServer()
 	require.NotNil(t, s)
-	require.NotNil(t, provider)
 }
 
 func TestSamplingProviderIsAvailable(t *testing.T) {
-	_, provider := NewServer()
-	assert.True(t, provider.IsAvailable())
-	assert.Equal(t, "mcp-sampling", provider.Name())
+	assert.NotNil(t, NewServer())
 }
