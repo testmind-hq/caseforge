@@ -4,16 +4,16 @@ package llm
 import "os"
 
 // NewProvider returns the appropriate LLMProvider based on config.
-// Falls back to NoopProvider if no API key is available.
 func NewProvider(apiKey, providerName, model string) LLMProvider {
-	// Resolve API key: explicit arg > env var
-	key := apiKey
-	if key == "" {
-		key = os.Getenv("ANTHROPIC_API_KEY")
-	}
+	return NewProviderWithConfig(apiKey, providerName, model, "")
+}
 
+// NewProviderWithConfig is like NewProvider but also accepts baseURL for
+// openai-compat providers (DeepSeek, Qwen, Moonshot, Azure, etc.).
+func NewProviderWithConfig(apiKey, providerName, model, baseURL string) LLMProvider {
 	switch providerName {
 	case "anthropic":
+		key := firstNonEmpty(apiKey, os.Getenv("ANTHROPIC_API_KEY"))
 		if key == "" {
 			return &NoopProvider{}
 		}
@@ -21,6 +21,16 @@ func NewProvider(apiKey, providerName, model string) LLMProvider {
 			client: newAnthropicClient(key),
 			model:  firstNonEmpty(model, "claude-sonnet-4-6"),
 		}
+	case "openai", "openai-compat":
+		key := firstNonEmpty(apiKey, os.Getenv("OPENAI_API_KEY"))
+		if key == "" {
+			return &NoopProvider{}
+		}
+		return NewOpenAIProvider(OpenAIConfig{
+			APIKey:  key,
+			Model:   firstNonEmpty(model, "gpt-4o-mini"),
+			BaseURL: baseURL,
+		})
 	}
 	return &NoopProvider{}
 }
