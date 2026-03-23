@@ -11,6 +11,8 @@ builds:
     binary: caseforge
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/testmind-hq/caseforge/cmd.Version={{.Version}}
     goos:
       - linux
       - darwin

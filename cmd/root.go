@@ -12,10 +12,14 @@ import (
 
 var cfgFile string
 
+// Version is set at build time via ldflags: -X github.com/testmind-hq/caseforge/cmd.Version=<tag>
+var Version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "caseforge",
-	Short: "API test case generator from OpenAPI specs",
-	Long:  `CaseForge generates structured, traceable test cases from OpenAPI specs.`,
+	Use:     "caseforge",
+	Short:   "API test case generator from OpenAPI specs",
+	Long:    `CaseForge generates structured, traceable test cases from OpenAPI specs.`,
+	Version: Version,
 }
 
 func Execute() {
