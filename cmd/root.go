@@ -12,6 +12,9 @@ import (
 
 var cfgFile string
 
+// Version is set at build time via ldflags: -X github.com/testmind-hq/caseforge/cmd.Version=<tag>
+var Version = "dev"
+
 var rootCmd = &cobra.Command{
 	Use:   "caseforge",
 	Short: "API test case generator from OpenAPI specs",
@@ -27,6 +30,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: .caseforge.yaml)")
+	rootCmd.Version = Version // read after ldflags can overwrite the var
 }
 
 func initConfig() {
