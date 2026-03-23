@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
@@ -48,7 +49,7 @@ func renderK6Group(tc schema.TestCase) string {
 		if i == 0 {
 			resVar = "res"
 		}
-		path := interpolateK6Path(step.Path, capturedVars)
+		path := interpolateK6Path(step.Path)
 		method := strings.ToUpper(step.Method)
 		urlExpr := fmt.Sprintf("`${BASE_URL}%s`", path)
 		var callLines []string
@@ -79,7 +80,7 @@ func renderK6Group(tc schema.TestCase) string {
 	return sb.String()
 }
 
-func interpolateK6Path(path string, _ map[string]bool) string {
+func interpolateK6Path(path string) string {
 	var result strings.Builder
 	i := 0
 	for i < len(path) {
@@ -103,7 +104,7 @@ func buildK6NoBodyCall(method, urlExpr string, headers map[string]string) []stri
 	if headerJS == "" {
 		return []string{fmt.Sprintf("http.%s(%s);", strings.ToLower(method), urlExpr)}
 	}
-	return []string{fmt.Sprintf("http.%s(%s, { headers: %s });", strings.ToLower(method), urlExpr, headerJS)}
+	return []string{fmt.Sprintf("http.%s(%s, %s);", strings.ToLower(method), urlExpr, headerJS)}
 }
 
 func buildK6BodyCall(method, urlExpr string, headers map[string]string, body any) []string {
@@ -118,18 +119,23 @@ func buildK6BodyCall(method, urlExpr string, headers map[string]string, body any
 	if headerJS == "" {
 		return []string{fmt.Sprintf("http.%s(%s, %s);", strings.ToLower(method), urlExpr, bodyJS)}
 	}
-	return []string{fmt.Sprintf("http.%s(%s, %s, { headers: %s });", strings.ToLower(method), urlExpr, bodyJS, headerJS)}
+	return []string{fmt.Sprintf("http.%s(%s, %s, %s);", strings.ToLower(method), urlExpr, bodyJS, headerJS)}
 }
 
 func buildK6Headers(headers map[string]string) string {
 	if len(headers) == 0 {
 		return ""
 	}
-	pairs := make([]string, 0, len(headers))
-	for k, v := range headers {
-		pairs = append(pairs, fmt.Sprintf("'%s': '%s'", k, v))
+	keys := make([]string, 0, len(headers))
+	for k := range headers {
+		keys = append(keys, k)
 	}
-	return "{ " + strings.Join(pairs, ", ") + " }"
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("'%s': '%s'", k, headers[k]))
+	}
+	return "{ headers: { " + strings.Join(parts, ", ") + " } }"
 }
 
 func buildK6Checks(assertions []schema.Assertion, resVar string) []string {
