@@ -4,6 +4,7 @@ package llm
 import (
 	"context"
 	"fmt"
+
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )
@@ -30,7 +31,10 @@ func NewOpenAIProvider(cfg OpenAIConfig) *OpenAIProvider {
 }
 
 func (p *OpenAIProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
-	msgs := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage(req.System)}
+	var msgs []openai.ChatCompletionMessageParamUnion
+	if req.System != "" {
+		msgs = append(msgs, openai.SystemMessage(req.System))
+	}
 	for _, m := range req.Messages {
 		if m.Role == "user" {
 			msgs = append(msgs, openai.UserMessage(m.Content))

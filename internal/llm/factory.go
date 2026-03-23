@@ -22,6 +22,8 @@ func NewProviderWithConfig(apiKey, providerName, model, baseURL string) LLMProvi
 			model:  firstNonEmpty(model, "claude-sonnet-4-6"),
 		}
 	case "openai", "openai-compat":
+		// Both openai and openai-compat use OPENAI_API_KEY. For compat providers
+		// (DeepSeek, Qwen, Moonshot, Azure) set OPENAI_API_KEY to the provider's key.
 		key := firstNonEmpty(apiKey, os.Getenv("OPENAI_API_KEY"))
 		if key == "" {
 			return &NoopProvider{}
