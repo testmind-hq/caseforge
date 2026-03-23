@@ -14,7 +14,7 @@ var runFormat string
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Execute generated test cases using hurl",
+	Short: "Execute generated test cases (hurl or k6)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		varFlags, _ := cmd.Flags().GetStringArray("var")
 		vars := runner.ParseVars(varFlags)
@@ -58,7 +58,7 @@ var runCases string
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().StringVar(&runCases, "cases", "", "Directory containing .hurl files (required)")
+	runCmd.Flags().StringVar(&runCases, "cases", "", "Directory containing generated test files (required)")
 	_ = runCmd.MarkFlagRequired("cases")
 	runCmd.Flags().StringArray("var", nil, "Variables as key=value (repeatable)")
 	runCmd.Flags().StringVar(&runFormat, "format", "hurl", "Test runner format: hurl|k6")
