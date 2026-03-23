@@ -150,3 +150,33 @@ func TestK6RendererRequestBody(t *testing.T) {
 	assert.Contains(t, content, `JSON.stringify(`)
 	assert.Contains(t, content, `email`)
 }
+
+func TestK6RendererHEADMethod(t *testing.T) {
+	tc := schema.TestCase{
+		ID: "TC-head", Title: "head resource", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "HEAD", Path: "/ping",
+			Assertions: []schema.Assertion{{Target: "status_code", Operator: "eq", Expected: 200}},
+		}},
+	}
+	r := NewK6Renderer()
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
+	assert.Contains(t, content, `http.request("HEAD",`)
+}
+
+func TestK6RendererDELETEMethod(t *testing.T) {
+	tc := schema.TestCase{
+		ID: "TC-del", Title: "delete resource", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "DELETE", Path: "/users/1",
+			Assertions: []schema.Assertion{{Target: "status_code", Operator: "eq", Expected: 204}},
+		}},
+	}
+	r := NewK6Renderer()
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
+	assert.Contains(t, content, `http.del(`)
+}
