@@ -105,10 +105,3 @@ func uuidFromString(s string) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// ── Stubs (replaced one-by-one in Tasks 2, 3, 4) ────────────────────────────
-// Each stub is removed ATOMICALLY when its implementation file is created.
-
-type TestRailExporter struct{}
-
-func (e *TestRailExporter) Format() string                              { return "testrail" }
-func (e *TestRailExporter) Export(_ []schema.TestCase, _ string) error { return nil }
