@@ -39,6 +39,8 @@ func PriorityAllure(p string) string {
 		return "blocker"
 	case "P1":
 		return "critical"
+	case "P2":
+		return "normal"
 	case "P3":
 		return "minor"
 	default:
@@ -53,6 +55,8 @@ func PriorityXray(p string) string {
 		return "Highest"
 	case "P1":
 		return "High"
+	case "P2":
+		return "Medium"
 	case "P3":
 		return "Low"
 	default:
@@ -67,6 +71,8 @@ func PriorityTestRail(p string) string {
 		return "Critical"
 	case "P1":
 		return "High"
+	case "P2":
+		return "Medium"
 	case "P3":
 		return "Low"
 	default:
@@ -90,14 +96,13 @@ func AssertionsSummary(assertions []schema.Assertion) string {
 	return b.String()
 }
 
-// toUUID derives a deterministic UUID-shaped string from an arbitrary string.
-func toUUID(id string) string {
-	return uuidFromString(id)
-}
-
 func uuidFromString(s string) string {
 	h := md5.Sum([]byte(s))
-	return fmt.Sprintf("%x-%x-%x-%x-%x", h[0:4], h[4:6], h[6:8], h[8:10], h[10:16])
+	// RFC 4122 UUID v3: set version nibble to 0x3 and variant bits to 0x8x
+	b := h // copy
+	b[6] = (b[6] & 0x0f) | 0x30
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
 // ── Stubs (replaced one-by-one in Tasks 2, 3, 4) ────────────────────────────
