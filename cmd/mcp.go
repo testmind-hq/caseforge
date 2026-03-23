@@ -3,8 +3,8 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"io"
-	"strings"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
@@ -32,11 +32,7 @@ using its own model for LLM inference (no API key required).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		s := caseforgemcp.NewServer()
 		err := s.Run(context.Background(), &mcpsdk.StdioTransport{})
-		if err == nil || err == io.EOF {
-			return nil
-		}
-		// "server is closing: EOF" — normal shutdown when the client closes stdin.
-		if strings.Contains(err.Error(), "EOF") {
+		if err == nil || errors.Is(err, io.EOF) {
 			return nil
 		}
 		return err

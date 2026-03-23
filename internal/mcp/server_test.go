@@ -13,6 +13,6 @@ func TestNewServerReturnsNonNil(t *testing.T) {
 	require.NotNil(t, s)
 }
 
-func TestSamplingProviderIsAvailable(t *testing.T) {
+func TestServerHasGenerateTestCasesTool(t *testing.T) {
 	assert.NotNil(t, NewServer())
 }
