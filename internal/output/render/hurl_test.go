@@ -140,3 +140,43 @@ func TestHurlRendererRendersCaptureBlock(t *testing.T) {
 	require.True(t, assertsIdx >= 0, "[Asserts] block must be present in output")
 	assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
 }
+
+func TestRenderAssertionJSONPath(t *testing.T) {
+	tc := schema.TestCase{
+		Steps: []schema.Step{{
+			Method: "GET", Path: "/users/1",
+			Assertions: []schema.Assertion{
+				{Target: "status_code", Operator: "eq", Expected: 200},
+				{Target: "jsonpath $.is_admin", Operator: "ne", Expected: true},
+				{Target: "jsonpath $.role", Operator: "ne", Expected: nil},
+			},
+		}},
+	}
+	r := NewHurlRenderer("")
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+	files, _ := filepath.Glob(filepath.Join(dir, "*.hurl"))
+	require.Len(t, files, 1)
+	content, _ := os.ReadFile(files[0])
+	assert.Contains(t, string(content), `jsonpath "$.is_admin" != true`)
+	assert.Contains(t, string(content), `jsonpath "$.role" not exists`)
+}
+
+func TestRenderAssertionHeaderTarget(t *testing.T) {
+	tc := schema.TestCase{
+		Steps: []schema.Step{{
+			Method: "OPTIONS", Path: "/users",
+			Assertions: []schema.Assertion{
+				{Target: "status_code", Operator: "eq", Expected: 200},
+				{Target: "header Access-Control-Allow-Origin", Operator: "ne", Expected: "*"},
+			},
+		}},
+	}
+	r := NewHurlRenderer("")
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+	files, _ := filepath.Glob(filepath.Join(dir, "*.hurl"))
+	require.Len(t, files, 1)
+	content, _ := os.ReadFile(files[0])
+	assert.Contains(t, string(content), `header "Access-Control-Allow-Origin" != "*"`)
+}
