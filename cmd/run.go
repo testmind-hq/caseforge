@@ -17,14 +17,14 @@ var runCmd = &cobra.Command{
 		vars := runner.ParseVars(varFlags)
 
 		r := runner.NewHurlRunner()
-		passed, failed, err := r.Run(runCases, vars)
+		result, err := r.Run(runCases, vars)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(6)
 		}
-		total := passed + failed
-		fmt.Fprintf(os.Stderr, "✓ %d/%d tests passed\n", passed, total)
-		if failed > 0 {
+		total := result.Passed + result.Failed
+		fmt.Fprintf(os.Stderr, "✓ %d/%d tests passed\n", result.Passed, total)
+		if result.Failed > 0 {
 			os.Exit(6)
 		}
 		return nil

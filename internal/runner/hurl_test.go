@@ -52,12 +52,12 @@ func TestHurlRunnerNoBinary(t *testing.T) {
 	t.Setenv("PATH", "")
 
 	r := NewHurlRunner()
-	_, _, err := r.Run(t.TempDir(), nil)
+	_, err := r.Run(t.TempDir(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "hurl not found on PATH")
 }
 
-func TestParseHurlReport(t *testing.T) {
+func TestBuildRunResult(t *testing.T) {
 	reportJSON := `{
 		"entries": [
 			{"filename": "TC-abc.hurl", "success": true},
@@ -65,13 +65,19 @@ func TestParseHurlReport(t *testing.T) {
 			{"filename": "TC-ghi.hurl", "success": true}
 		]
 	}`
-	passed, failed := parseHurlReport([]byte(reportJSON))
-	assert.Equal(t, 2, passed)
-	assert.Equal(t, 1, failed)
+	result := buildRunResult([]byte(reportJSON))
+	assert.Equal(t, 2, result.Passed)
+	assert.Equal(t, 1, result.Failed)
+	assert.Len(t, result.Cases, 3)
+	assert.Equal(t, "TC-abc", result.Cases[0].ID)
+	assert.True(t, result.Cases[0].Passed)
+	assert.Equal(t, "TC-def", result.Cases[1].ID)
+	assert.False(t, result.Cases[1].Passed)
 }
 
-func TestParseHurlReportInvalidJSON(t *testing.T) {
-	passed, failed := parseHurlReport([]byte("not json"))
-	assert.Equal(t, 0, passed)
-	assert.Equal(t, 0, failed)
+func TestBuildRunResultInvalidJSON(t *testing.T) {
+	result := buildRunResult([]byte("not json"))
+	assert.Equal(t, 0, result.Passed)
+	assert.Equal(t, 0, result.Failed)
+	assert.Nil(t, result.Cases)
 }
