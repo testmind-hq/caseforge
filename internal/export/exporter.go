@@ -108,11 +108,6 @@ func uuidFromString(s string) string {
 // ── Stubs (replaced one-by-one in Tasks 2, 3, 4) ────────────────────────────
 // Each stub is removed ATOMICALLY when its implementation file is created.
 
-type XrayExporter struct{}
-
-func (e *XrayExporter) Format() string                              { return "xray" }
-func (e *XrayExporter) Export(_ []schema.TestCase, _ string) error { return nil }
-
 type TestRailExporter struct{}
 
 func (e *TestRailExporter) Format() string                              { return "testrail" }
