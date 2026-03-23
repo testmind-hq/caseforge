@@ -29,7 +29,10 @@ func newGeminiProvider(apiKey, model string) (*GeminiProvider, error) {
 func (p *GeminiProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
 	cfg := &genai.GenerateContentConfig{}
 	if req.System != "" {
-		cfg.SystemInstruction = genai.NewContentFromText(req.System, "user")
+		cfg.SystemInstruction = genai.NewContentFromText(req.System, "")
+	}
+	if req.MaxTokens > 0 {
+		cfg.MaxOutputTokens = int32(req.MaxTokens)
 	}
 
 	// All messages except the last become chat history
