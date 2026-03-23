@@ -42,7 +42,6 @@ func (r *K6Renderer) Render(cases []schema.TestCase, outDir string) error {
 
 func renderK6Group(tc schema.TestCase) string {
 	var sb strings.Builder
-	capturedVars := map[string]bool{}
 	sb.WriteString(fmt.Sprintf("  group('%s', function () {\n", tc.ID+": "+tc.Title))
 	for i, step := range tc.Steps {
 		resVar := fmt.Sprintf("res%d", i+1)
@@ -72,7 +71,6 @@ func renderK6Group(tc schema.TestCase) string {
 			if strings.HasPrefix(cap.From, "jsonpath $.") {
 				field := strings.TrimPrefix(cap.From, "jsonpath $.")
 				sb.WriteString(fmt.Sprintf("    const %s = %s.json('%s');\n", cap.Name, resVar, field))
-				capturedVars[cap.Name] = true
 			}
 		}
 	}
@@ -101,17 +99,32 @@ func interpolateK6Path(path string) string {
 
 func buildK6NoBodyCall(method, urlExpr string, headers map[string]string) []string {
 	headerJS := buildK6Headers(headers)
-	if headerJS == "" {
+	switch strings.ToUpper(method) {
+	case "HEAD":
+		if headerJS != "" {
+			return []string{fmt.Sprintf(`http.request("HEAD", %s, null, %s);`, urlExpr, headerJS)}
+		}
+		return []string{fmt.Sprintf(`http.request("HEAD", %s);`, urlExpr)}
+	case "DELETE":
+		if headerJS != "" {
+			return []string{fmt.Sprintf("http.del(%s, null, %s);", urlExpr, headerJS)}
+		}
+		return []string{fmt.Sprintf("http.del(%s);", urlExpr)}
+	default: // GET, OPTIONS, etc.
+		if headerJS != "" {
+			return []string{fmt.Sprintf("http.%s(%s, %s);", strings.ToLower(method), urlExpr, headerJS)}
+		}
 		return []string{fmt.Sprintf("http.%s(%s);", strings.ToLower(method), urlExpr)}
 	}
-	return []string{fmt.Sprintf("http.%s(%s, %s);", strings.ToLower(method), urlExpr, headerJS)}
 }
 
 func buildK6BodyCall(method, urlExpr string, headers map[string]string, body any) []string {
 	bodyJS := "null"
 	if body != nil {
 		b, err := json.Marshal(body)
-		if err == nil {
+		if err != nil {
+			bodyJS = "/* ERROR: body serialization failed: " + err.Error() + " */"
+		} else {
 			bodyJS = "JSON.stringify(" + string(b) + ")"
 		}
 	}
