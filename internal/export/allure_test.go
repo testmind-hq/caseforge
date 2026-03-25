@@ -63,6 +63,11 @@ func TestAllureExporter_ResultFileContent(t *testing.T) {
 
 	assert.Equal(t, "POST /users - valid email", result["name"])
 	assert.Equal(t, "unknown", result["status"])
+	assert.Equal(t, "TC-0001", result["historyId"])
+	assert.Equal(t, "TC-0001 POST /users - valid email", result["fullName"])
+	// uuid must be a hyphenated hex string (RFC 4122 format)
+	uuid, _ := result["uuid"].(string)
+	assert.Regexp(t, `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`, uuid, "uuid must be RFC 4122 format")
 
 	labels := result["labels"].([]any)
 	severityFound := false
