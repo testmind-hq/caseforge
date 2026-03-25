@@ -15,23 +15,27 @@ type TestRailExporter struct{}
 
 func (e *TestRailExporter) Format() string { return "testrail" }
 
-func (e *TestRailExporter) Export(cases []schema.TestCase, outDir string) error {
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
+func (e *TestRailExporter) Export(cases []schema.TestCase, outDir string) (err error) {
+	if err = os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("testrail export: mkdir %s: %w", outDir, err)
 	}
 	f, err := os.Create(filepath.Join(outDir, "testrail-import.csv"))
 	if err != nil {
 		return fmt.Errorf("testrail export: create file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	w := csv.NewWriter(f)
 
-	if err := w.Write([]string{"Title", "Type", "Priority", "Section", "Steps", "Expected Results"}); err != nil {
+	if err = w.Write([]string{"Title", "Type", "Priority", "Section", "Steps", "Expected Results"}); err != nil {
 		return err
 	}
 	for _, tc := range cases {
-		if err := w.Write(testRailRow(tc)); err != nil {
+		if err = w.Write(testRailRow(tc)); err != nil {
 			return err
 		}
 	}
