@@ -4,7 +4,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,6 +18,7 @@ var askCmd = &cobra.Command{
 	Use:   "ask <description>",
 	Short: "Generate test cases from a natural language description",
 	Long:  `Generate test cases from a natural language description using an LLM provider.`,
+	Args:  cobra.MinimumNArgs(1),
 	RunE:  runAsk,
 }
 
@@ -34,9 +34,6 @@ func init() {
 }
 
 func runAsk(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("description is required: caseforge ask <description>")
-	}
 	description := strings.Join(args, " ")
 
 	cfg, err := config.Load()
@@ -83,6 +80,6 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("rendering output: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), askOutput)
+	fmt.Fprintf(cmd.ErrOrStderr(), "✓ Generated %d test cases → %s\n", len(cases), askOutput)
 	return nil
 }

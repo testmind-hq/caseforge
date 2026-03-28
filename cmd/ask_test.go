@@ -32,9 +32,11 @@ func TestAskCommand_HasFlags(t *testing.T) {
 }
 
 func TestAskCommand_RequiresDescription(t *testing.T) {
-	err := runAsk(askCmd, []string{})
+	t.Cleanup(func() { rootCmd.SetArgs(nil) })
+	rootCmd.SetArgs([]string{"ask"})
+	err := rootCmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "description")
+	assert.Contains(t, err.Error(), "arg")
 }
 
 func TestAskCommand_FailsWhenNoProvider(t *testing.T) {
@@ -44,6 +46,21 @@ func TestAskCommand_FailsWhenNoProvider(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	// NoopProvider.IsAvailable() returns false → Generator.Generate returns error.
 	err := runAsk(askCmd, []string{"POST /users - create user"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "AI provider")
+}
+
+func TestAskCommand_Integration_NoProvider(t *testing.T) {
+	// Clear env so no real LLM is configured.
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+
+	outDir := t.TempDir()
+	t.Cleanup(func() { rootCmd.SetArgs(nil) })
+	rootCmd.SetArgs([]string{"ask", "--output", outDir, "POST /users create user"})
+	err := rootCmd.Execute()
+	// With no provider configured, we expect an "AI provider" error.
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AI provider")
 }

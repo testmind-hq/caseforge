@@ -65,6 +65,28 @@ func TestConfigShow_MasksAPIKey_ShortKey(t *testing.T) {
 	assert.Contains(t, out, "short")
 }
 
+func TestConfigShow_MasksAPIKey_ExactlyEightChars(t *testing.T) {
+	t.Cleanup(func() { viper.Reset() })
+	viper.Set("ai.api_key", "12345678") // exactly 8 chars — NOT masked
+	var buf bytes.Buffer
+	configShowCmd.SetOut(&buf)
+	require.NoError(t, runConfigShow(configShowCmd, nil))
+	out := buf.String()
+	assert.Contains(t, out, "12345678")
+	assert.NotContains(t, out, "123456...")
+}
+
+func TestConfigShow_MasksAPIKey_NineChars(t *testing.T) {
+	t.Cleanup(func() { viper.Reset() })
+	viper.Set("ai.api_key", "123456789") // 9 chars — masked
+	var buf bytes.Buffer
+	configShowCmd.SetOut(&buf)
+	require.NoError(t, runConfigShow(configShowCmd, nil))
+	out := buf.String()
+	assert.Contains(t, out, "123456...")
+	assert.NotContains(t, out, "123456789")
+}
+
 func TestConfigShow_EmptyAPIKey(t *testing.T) {
 	t.Cleanup(func() { viper.Reset() })
 	var buf bytes.Buffer
