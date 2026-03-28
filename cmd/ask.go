@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/testmind-hq/caseforge/internal/ask"
@@ -36,7 +37,7 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("description is required: caseforge ask <description>")
 	}
-	description := args[0]
+	description := strings.Join(args, " ")
 
 	cfg, err := config.Load()
 	if err != nil {

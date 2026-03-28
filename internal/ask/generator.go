@@ -142,7 +142,7 @@ func toTestCase(lc llmTestCase, description string) schema.TestCase {
 		Tags:     lc.Tags,
 		Source: schema.CaseSource{
 			Technique: "ask",
-			SpecPath:  description,
+			Rationale: description,
 		},
 		Steps:       steps,
 		GeneratedAt: time.Now(),

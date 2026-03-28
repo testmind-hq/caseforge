@@ -42,7 +42,6 @@ func TestAskCommand_FailsWhenNoProvider(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
-	t.Setenv("DEEPSEEK_API_KEY", "")
 	// NoopProvider.IsAvailable() returns false → Generator.Generate returns error.
 	err := runAsk(askCmd, []string{"POST /users - create user"})
 	require.Error(t, err)

@@ -123,7 +123,8 @@ func TestGenerator_FillsProgrammaticFields(t *testing.T) {
 	assert.Equal(t, "1", tc.Version)
 	assert.True(t, len(tc.ID) > 0 && tc.ID[:3] == "TC-", "ID must start with TC-")
 	assert.Equal(t, "ask", tc.Source.Technique)
-	assert.Equal(t, "POST /users - create user", tc.Source.SpecPath)
+	assert.Equal(t, "POST /users - create user", tc.Source.Rationale)
+	assert.Empty(t, tc.Source.SpecPath)
 	assert.False(t, tc.GeneratedAt.IsZero())
 	assert.NotEmpty(t, tc.Steps[0].ID)
 }
