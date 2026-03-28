@@ -2,6 +2,7 @@ package ask_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,9 +16,13 @@ import (
 type stubProvider struct {
 	text      string
 	available bool
+	err       error
 }
 
 func (s *stubProvider) Complete(_ context.Context, _ *llm.CompletionRequest) (*llm.CompletionResponse, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
 	return &llm.CompletionResponse{Text: s.text}, nil
 }
 func (s *stubProvider) IsAvailable() bool { return s.available }
@@ -90,6 +95,21 @@ func TestGenerator_InvalidJSON_ReturnsError(t *testing.T) {
 	gen := ask.NewGenerator(&stubProvider{text: "{not json", available: true})
 	_, err := gen.Generate(context.Background(), "GET /health")
 	require.Error(t, err)
+}
+
+func TestGenerator_LLMError_ReturnsError(t *testing.T) {
+	gen := ask.NewGenerator(&stubProvider{available: true, err: fmt.Errorf("network timeout")})
+	_, err := gen.Generate(context.Background(), "POST /users")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "LLM completion failed")
+}
+
+func TestGenerator_NoNewlineAfterFence_Passthrough(t *testing.T) {
+	// A fence with no newline after the opening (e.g. just "```") is passed through
+	// unchanged. JSON parsing will then fail as expected.
+	gen := ask.NewGenerator(&stubProvider{text: "```", available: true})
+	_, err := gen.Generate(context.Background(), "GET /health")
+	require.Error(t, err) // fails JSON parsing, not fence stripping
 }
 
 func TestGenerator_FillsProgrammaticFields(t *testing.T) {
