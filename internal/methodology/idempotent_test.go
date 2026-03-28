@@ -9,7 +9,7 @@ import (
 )
 
 func TestIdempotentAppliesForPOST(t *testing.T) {
-	tech := &IdempotentTechnique{}
+	tech := NewIdempotentTechnique()
 	assert.True(t, tech.Applies(&spec.Operation{Method: "POST"}))
 	assert.True(t, tech.Applies(&spec.Operation{Method: "PUT"}))
 	assert.True(t, tech.Applies(&spec.Operation{Method: "DELETE"}))
