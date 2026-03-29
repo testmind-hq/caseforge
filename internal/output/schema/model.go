@@ -22,17 +22,16 @@ type TestCase struct {
 type Step struct {
 	ID         string            `json:"id"`
 	Title      string            `json:"title"`
-	// Phase 1: always "test". "setup"/"teardown" reserved for Phase 2 chain cases.
+	// Type is "test" for single-step cases; "setup"/"test"/"teardown" for chain cases.
 	Type       string            `json:"type"`
 	Method     string            `json:"method"`
 	Path       string            `json:"path"`
 	Headers    map[string]string `json:"headers,omitempty"`
 	// Body is any for flexible serialization. On JSON unmarshal, becomes map[string]interface{}.
-	// Phase 1 does not require round-trip type fidelity.
 	Body       any               `json:"body,omitempty"`
 	Assertions []Assertion       `json:"assertions"`
-	Captures   []Capture         `json:"captures,omitempty"`   // Phase 2 reserved
-	DependsOn  []string          `json:"depends_on,omitempty"` // Phase 2 reserved
+	Captures   []Capture         `json:"captures,omitempty"`   // populated in chain setup steps
+	DependsOn  []string          `json:"depends_on,omitempty"` // populated in chain test/teardown steps
 }
 
 type Assertion struct {
@@ -47,7 +46,7 @@ type CaseSource struct {
 	Rationale string `json:"rationale"`
 }
 
-// Capture is reserved for Phase 2 chain cases. Do not populate in Phase 1.
+// Capture records a value extracted from a step response for use in subsequent steps.
 type Capture struct {
 	Name   string `json:"name"`
 	From   string `json:"from"`
