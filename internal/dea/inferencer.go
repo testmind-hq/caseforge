@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
 // InferRule converts a resolved hypothesis to a DiscoveredRule.
 // Returns nil when no noteworthy rule is produced (e.g. refuted implicit probe).
 // Panics if called on a pending hypothesis.
-func InferRule(h *HypothesisNode, op *spec.Operation) *DiscoveredRule {
+func InferRule(h *HypothesisNode) *DiscoveredRule {
 	if h.Status == StatusPending {
 		panic("InferRule called on pending hypothesis: resolve it first")
+	}
+	if h.Evidence == nil {
+		panic("InferRule called on hypothesis with nil Evidence: run probe first")
 	}
 
 	switch h.Kind {
@@ -180,9 +182,9 @@ func inferEnumViolation(h *HypothesisNode) *DiscoveredRule {
 }
 
 func extractFieldName(fieldPath string) string {
-	parts := strings.Split(fieldPath, ".")
-	if len(parts) == 0 {
-		return fieldPath
+	if fieldPath == "" {
+		return ""
 	}
+	parts := strings.Split(fieldPath, ".")
 	return parts[len(parts)-1]
 }
