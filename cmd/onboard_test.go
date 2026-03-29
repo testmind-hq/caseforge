@@ -26,8 +26,9 @@ func TestOnboardCommand_IsRegistered(t *testing.T) {
 func TestOnboardCommand_HasYesFlag(t *testing.T) {
 	for _, c := range rootCmd.Commands() {
 		if c.Use == "onboard" {
-			assert.NotNil(t, c.Flags().Lookup("yes"))
-			assert.NotNil(t, c.Flags().Lookup("y"))
+			f := c.Flags().Lookup("yes")
+			require.NotNil(t, f, "--yes flag must exist")
+			assert.Equal(t, "y", f.Shorthand, "-y shorthand must exist")
 			return
 		}
 	}
@@ -43,11 +44,12 @@ func TestOnboard_NonInteractive_WritesConfig(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test-key")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
 
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
-	onboardYes = true
-	t.Cleanup(func() { onboardYes = false })
+	require.NoError(t, onboardCmd.Flags().Set("yes", "true"))
+	t.Cleanup(func() { onboardCmd.Flags().Set("yes", "false") })
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
@@ -90,6 +92,7 @@ func TestOnboard_OverwritesOnConfirm(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
 
 	// y=overwrite, then provider=1(anthropic), format=1(hurl), mcp=3(skip), skill=n
 	onboardCmd.SetIn(strings.NewReader("y\n1\n1\n3\nn\n"))
@@ -112,11 +115,12 @@ func TestOnboard_PrintsNextSteps(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
 
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
-	onboardYes = true
-	t.Cleanup(func() { onboardYes = false })
+	require.NoError(t, onboardCmd.Flags().Set("yes", "true"))
+	t.Cleanup(func() { onboardCmd.Flags().Set("yes", "false") })
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
@@ -134,6 +138,7 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
 
 	// provider=5(noop), format=1(hurl), mcp=3(skip), skill=n
 	onboardCmd.SetIn(strings.NewReader("5\n1\n3\nn\n"))
@@ -184,6 +189,20 @@ func TestOnboard_InstallSkill_CopiesFile(t *testing.T) {
 
 	require.NoError(t, copySkillFile(skillSrc, dst))
 
+	data, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "CaseForge Skill")
+}
+
+func TestOnboard_InstallSkill_Idempotent(t *testing.T) {
+	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
+
+	dstDir := t.TempDir()
+	dst := filepath.Join(dstDir, "caseforge.md")
+
+	require.NoError(t, copySkillFile(skillSrc, dst))
+	require.NoError(t, copySkillFile(skillSrc, dst)) // 第二次调用，幂等
 	data, err := os.ReadFile(dst)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "CaseForge Skill")

@@ -15,8 +15,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var onboardYes bool
-
 var onboardCmd = &cobra.Command{
 	Use:   "onboard",
 	Short: "Interactive setup wizard — get started with CaseForge in minutes",
@@ -25,10 +23,7 @@ var onboardCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(onboardCmd)
-	onboardCmd.Flags().BoolVarP(&onboardYes, "yes", "y", false, "Non-interactive: accept detected defaults")
-	// Register "-y" as an alias flag name so Lookup("y") returns non-nil.
-	onboardCmd.Flags().BoolVar(&onboardYes, "y", false, "Alias for --yes")
-	_ = onboardCmd.Flags().MarkHidden("y")
+	onboardCmd.Flags().BoolP("yes", "y", false, "Non-interactive: accept detected defaults")
 }
 
 // providerInfo holds detected provider info.
@@ -51,6 +46,7 @@ func detectProviders() []providerInfo {
 }
 
 func runOnboard(cmd *cobra.Command, _ []string) error {
+	onboardYes, _ := cmd.Flags().GetBool("yes")
 	out := cmd.OutOrStdout()
 	in := bufio.NewReader(cmd.InOrStdin())
 
