@@ -54,6 +54,13 @@ func seedBodyHypotheses(op *spec.Operation) []*HypothesisNode {
 
 func seedFieldConstraintHypotheses(op *spec.Operation, fieldName string, s *spec.Schema, prefix string) []*HypothesisNode {
 	var nodes []*HypothesisNode
+
+	// Enum check applies to all types (string, integer, number, etc.)
+	if len(s.Enum) > 0 {
+		nodes = append(nodes, newHypothesis(op, KindEnumViolation, prefix,
+			fmt.Sprintf("invalid enum value for field '%s' must return 4xx", fieldName)))
+	}
+
 	switch s.Type {
 	case "string":
 		if s.MinLength != nil {
@@ -69,10 +76,6 @@ func seedFieldConstraintHypotheses(op *spec.Operation, fieldName string, s *spec
 		} else {
 			nodes = append(nodes, newHypothesis(op, KindStringImplicitMax, prefix,
 				fmt.Sprintf("very long string for field '%s' may be rejected (undeclared max)", fieldName)))
-		}
-		if len(s.Enum) > 0 {
-			nodes = append(nodes, newHypothesis(op, KindEnumViolation, prefix,
-				fmt.Sprintf("invalid enum value for field '%s' must return 4xx", fieldName)))
 		}
 	case "integer", "number":
 		if s.Minimum != nil {

@@ -246,6 +246,32 @@ func TestSeedHypotheses_AllNodesHavePendingStatus(t *testing.T) {
 	}
 }
 
+func TestSeedHypotheses_NumericEnumField(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/orders",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{
+							"priority": {Type: "integer", Enum: []any{1, 2, 3}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var kinds []HypothesisKind
+	for _, n := range nodes {
+		kinds = append(kinds, n.Kind)
+	}
+	assert.Contains(t, kinds, KindEnumViolation, "numeric enum fields must get KindEnumViolation hypothesis")
+}
+
 func TestSeedHypotheses_AllNodesHaveOperationSet(t *testing.T) {
 	op := &spec.Operation{
 		Method: "POST",
