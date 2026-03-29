@@ -3,7 +3,10 @@ package methodology
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
+	assertpkg "github.com/testmind-hq/caseforge/internal/assert"
 	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
@@ -29,18 +32,58 @@ func (t *IdempotentTechnique) Applies(op *spec.Operation) bool {
 
 func (t *IdempotentTechnique) Generate(op *spec.Operation) ([]schema.TestCase, error) {
 	body := buildValidBody(t.gen, op)
-	tc := buildTestCase(op, body,
-		"send identical request twice — second should not create duplicate",
-		fmt.Sprintf("%s %s", op.Method, op.Path))
-	tc.Priority = "P2"
-	tc.Labels = map[string]string{"type": "idempotency"}
-	tc.Source = schema.CaseSource{
-		Technique: "idempotency",
-		SpecPath:  fmt.Sprintf("%s %s", op.Method, op.Path),
-		Rationale: fmt.Sprintf("%s is a write operation; test that repeat calls are safe", op.Method),
+
+	var bodyAny any
+	if body != nil {
+		bodyAny = body
 	}
-	// Note: true idempotency testing needs a second step (Phase 2 chain support)
-	// Phase 1: generate the single-request case with a comment in the title
+	headers := map[string]string{}
+	if bodyAny != nil {
+		headers["Content-Type"] = "application/json"
+	}
+
+	assertions := assertpkg.BasicAssertions(op)
+
+	steps := []schema.Step{
+		{
+			ID:         "step-setup",
+			Title:      fmt.Sprintf("%s %s — first call", op.Method, op.Path),
+			Type:       "setup",
+			Method:     op.Method,
+			Path:       op.Path,
+			Headers:    headers,
+			Body:       bodyAny,
+			Assertions: assertions,
+		},
+		{
+			ID:         "step-test",
+			Title:      fmt.Sprintf("%s %s — identical second call must be safe", op.Method, op.Path),
+			Type:       "test",
+			Method:     op.Method,
+			Path:       op.Path,
+			Headers:    headers,
+			Body:       bodyAny,
+			Assertions: assertions,
+			DependsOn:  []string{"step-setup"},
+		},
+	}
+
+	tc := schema.TestCase{
+		Schema:   schema.SchemaBaseURL,
+		Version:  "1",
+		ID:       fmt.Sprintf("TC-%s", uuid.New().String()[:8]),
+		Title:    fmt.Sprintf("%s %s - idempotent: second call must be safe", op.Method, op.Path),
+		Kind:     "chain",
+		Priority: "P2",
+		Tags:     op.Tags,
+		Labels:   map[string]string{"type": "idempotency"},
+		Source: schema.CaseSource{
+			Technique: "idempotency",
+			SpecPath:  fmt.Sprintf("%s %s", op.Method, op.Path),
+			Rationale: fmt.Sprintf("%s is a write operation; test that repeat calls are safe", op.Method),
+		},
+		Steps:       steps,
+		GeneratedAt: time.Now(),
+	}
 	return []schema.TestCase{tc}, nil
 }
-
