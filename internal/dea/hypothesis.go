@@ -1,4 +1,3 @@
-// internal/dea/hypothesis.go
 package dea
 
 import "time"
@@ -29,43 +28,45 @@ const (
 // HypothesisNode is one node in the hypothesis tree.
 // Each node is a falsifiable claim about an API operation.
 type HypothesisNode struct {
-	ID          string
-	Kind        HypothesisKind
-	Description string
-
-	// What operation + field this targets
-	Operation string // e.g. "POST /pets"
-	FieldPath string // e.g. "requestBody.name"
-
-	// The probe to run to test this hypothesis
-	Probe Probe
-
-	// Resolved after probe execution
-	Status   HypothesisStatus
-	Evidence *Evidence
-
-	// Child hypotheses (generated after this one resolves)
-	Children []*HypothesisNode
+	ID          string           `json:"id"`
+	Kind        HypothesisKind   `json:"kind"`
+	Description string           `json:"description"`
+	Operation   string           `json:"operation"`
+	FieldPath   string           `json:"field_path"`
+	Probe       Probe            `json:"probe"`
+	Status      HypothesisStatus `json:"status"`
+	Evidence    *Evidence        `json:"evidence,omitempty"`
+	Children    []*HypothesisNode `json:"children,omitempty"`
 }
 
 // Probe is a concrete HTTP request to be executed against the target API.
 type Probe struct {
-	Method      string
-	Path        string
-	Headers     map[string]string
-	Body        any
-	QueryParams map[string]string
-
-	// Expected HTTP status if this hypothesis is TRUE
-	ExpectedStatus int
+	Method         string            `json:"method"`
+	Path           string            `json:"path"`
+	Headers        map[string]string `json:"headers,omitempty"`
+	Body           any               `json:"body,omitempty"`
+	QueryParams    map[string]string `json:"query_params,omitempty"`
+	ExpectedStatus int               `json:"expected_status"`
 }
 
 // Evidence is the observed HTTP response from running a probe.
 type Evidence struct {
-	ActualStatus  int
-	ActualBody    string
-	ActualHeaders map[string]string
-	Duration      time.Duration
+	ActualStatus  int               `json:"actual_status"`
+	ActualBody    string            `json:"actual_body,omitempty"`
+	ActualHeaders map[string]string `json:"actual_headers,omitempty"`
+	Duration      time.Duration     `json:"duration_ms"`
+}
+
+// NewHypothesisNode creates a HypothesisNode with StatusPending as the initial status.
+func NewHypothesisNode(id string, kind HypothesisKind, operation, fieldPath, description string) *HypothesisNode {
+	return &HypothesisNode{
+		ID:          id,
+		Kind:        kind,
+		Operation:   operation,
+		FieldPath:   fieldPath,
+		Description: description,
+		Status:      StatusPending,
+	}
 }
 
 // Resolve marks the hypothesis as confirmed or refuted and stores the evidence.

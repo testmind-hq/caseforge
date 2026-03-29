@@ -7,11 +7,10 @@ import (
 )
 
 func TestHypothesisNodeDefaultStatus(t *testing.T) {
-	h := &HypothesisNode{
-		ID:   "H-001",
-		Kind: KindRequiredField,
-	}
-	assert.Equal(t, HypothesisStatus(""), h.Status)
+	h := NewHypothesisNode("H-001", KindRequiredField, "POST /pets", "requestBody.name", "omitting required field 'name'")
+	assert.Equal(t, StatusPending, h.Status)
+	assert.Equal(t, "H-001", h.ID)
+	assert.Equal(t, KindRequiredField, h.Kind)
 }
 
 func TestHypothesisNodeResolve(t *testing.T) {
@@ -27,4 +26,11 @@ func TestHypothesisNodeRefute(t *testing.T) {
 	ev := &Evidence{ActualStatus: 201}
 	h.Resolve(ev, false)
 	assert.Equal(t, StatusRefuted, h.Status)
+}
+
+func TestHypothesisNodeResolveNilEvidence(t *testing.T) {
+	h := NewHypothesisNode("H-001", KindRequiredField, "POST /pets", "requestBody.name", "test description")
+	h.Resolve(nil, false)
+	assert.Equal(t, StatusRefuted, h.Status)
+	assert.Nil(t, h.Evidence)
 }

@@ -30,9 +30,16 @@ func TestExplorationReportJSON(t *testing.T) {
 	assert.Equal(t, "RULE-001", decoded.Rules[0].ID)
 }
 
-func TestDiscoveredRuleImplicitFlag(t *testing.T) {
-	implicit := DiscoveredRule{Implicit: true, Confidence: ConfidenceHigh}
-	explicit := DiscoveredRule{Implicit: false, Confidence: ConfidenceMedium}
-	assert.True(t, implicit.Implicit)
-	assert.False(t, explicit.Implicit)
+func TestDiscoveredRuleJSONTags(t *testing.T) {
+	rule := DiscoveredRule{
+		ID:         "RULE-001",
+		Implicit:   true,
+		Confidence: ConfidenceHigh,
+		Category:   CategorySpecMismatch,
+	}
+	data, err := json.Marshal(rule)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"implicit":true`)
+	assert.Contains(t, string(data), `"confidence":"high"`)
+	assert.Contains(t, string(data), `"category":"spec_mismatch"`)
 }
