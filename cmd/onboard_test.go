@@ -48,6 +48,7 @@ func TestOnboard_NonInteractive_WritesConfig(t *testing.T) {
 
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
+	t.Cleanup(func() { onboardCmd.SetOut(os.Stdout) })
 	require.NoError(t, onboardCmd.Flags().Set("yes", "true"))
 	t.Cleanup(func() { onboardCmd.Flags().Set("yes", "false") })
 
@@ -66,11 +67,17 @@ func TestOnboard_SkipsExistingConfig(t *testing.T) {
 	require.NoError(t, os.Chdir(dir))
 	t.Cleanup(func() { os.Chdir(orig) })
 
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
+
 	// Write existing config
 	require.NoError(t, os.WriteFile(".caseforge.yaml", []byte("existing: true\n"), 0644))
 
 	// Inject "n" to skip overwrite
 	onboardCmd.SetIn(strings.NewReader("n\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
 
@@ -96,6 +103,7 @@ func TestOnboard_OverwritesOnConfirm(t *testing.T) {
 
 	// y=overwrite, then provider=1(anthropic), format=1(hurl), mcp=3(skip), skill=n
 	onboardCmd.SetIn(strings.NewReader("y\n1\n1\n3\nn\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
 
@@ -119,6 +127,7 @@ func TestOnboard_PrintsNextSteps(t *testing.T) {
 
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
+	t.Cleanup(func() { onboardCmd.SetOut(os.Stdout) })
 	require.NoError(t, onboardCmd.Flags().Set("yes", "true"))
 	t.Cleanup(func() { onboardCmd.Flags().Set("yes", "false") })
 
@@ -142,6 +151,7 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 
 	// provider=5(noop), format=1(hurl), mcp=3(skip), skill=n
 	onboardCmd.SetIn(strings.NewReader("5\n1\n3\nn\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
 

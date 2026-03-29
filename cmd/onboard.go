@@ -105,6 +105,13 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		chosenProvider = providers[choice-1]
 	}
 
+	// Step 3b: base_url for openai-compat
+	baseURL := ""
+	if chosenProvider.name == "openai-compat" && !onboardYes {
+		fmt.Fprint(out, "Enter base_url for openai-compat provider (e.g. https://api.deepseek.com/v1): ")
+		baseURL = strings.TrimSpace(readLine(in))
+	}
+
 	// Step 4: API key if needed
 	apiKey := ""
 	if chosenProvider.name != "noop" && !chosenProvider.available {
@@ -175,7 +182,7 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Step 8: Write .caseforge.yaml
-	if err := writeOnboardConfig(chosenProvider.name, chosenProvider.model, apiKey, chosenFormat); err != nil {
+	if err := writeOnboardConfig(chosenProvider.name, chosenProvider.model, apiKey, baseURL, chosenFormat); err != nil {
 		return fmt.Errorf("writing config: %w", err)
 	}
 	fmt.Fprintln(out, "\n✓ .caseforge.yaml written.")
@@ -185,13 +192,13 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func writeOnboardConfig(provider, model, apiKey, format string) error {
+func writeOnboardConfig(provider, model, apiKey, baseURL, format string) error {
 	cfg := map[string]any{
 		"ai": map[string]any{
 			"provider": provider,
 			"model":    model,
 			"api_key":  apiKey,
-			"base_url": "",
+			"base_url": baseURL,
 		},
 		"output": map[string]any{
 			"default_format": format,
