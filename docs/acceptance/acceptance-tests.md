@@ -24,7 +24,7 @@
 | ID | Scenario | Command | Expected | Status |
 |----|----------|---------|----------|--------|
 | AT-001 | `--version` flag | `caseforge --version` | prints `caseforge version <tag>` | ✅ PASS |
-| AT-002 | All commands registered | `caseforge --help` | lists ask, completion, config, diff, doctor, fake, gen, init, lint, mcp, onboard, pairwise, run | ✅ PASS |
+| AT-002 | All commands registered | `caseforge --help` | lists ask, completion, config, diff, doctor, explore, fake, gen, init, lint, mcp, onboard, pairwise, run | ✅ PASS |
 | AT-003 | `init` creates config | `caseforge init` in empty dir | `.caseforge.yaml` created | ✅ PASS |
 
 ---
@@ -125,6 +125,17 @@
 
 ---
 
+### `explore` — Dynamic Exploration Agent
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-035 | explore command registered | `caseforge --help` | `explore` listed | ✅ PASS |
+| AT-036 | explore --dry-run produces report | `caseforge explore --spec petstore.yaml --dry-run --output ./reports` | dea-report.json written, planned rules listed | ✅ PASS |
+| AT-037 | explore missing --spec returns error | `caseforge explore --target http://x` | error: --spec is required | ✅ PASS |
+| AT-038 | explore missing --target returns error | `caseforge explore --spec petstore.yaml` | error: --target is required (or use --dry-run) | ✅ PASS |
+
+---
+
 ### `onboard` — Setup Wizard
 
 | ID | Scenario | Command | Expected | Status |
@@ -159,9 +170,10 @@
 | completion | 3 | 3 | 0 |
 | config show | 2 | 2 | 0 |
 | ask | 2 | 2 | 0 |
+| explore | 4 | 4 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 3 | 3 | 0 |
-| **Total** | **33** | **33** | **0** |
+| **Total** | **37** | **37** | **0** |
 
 ---
 
