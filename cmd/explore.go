@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/testmind-hq/caseforge/internal/config"
 	"github.com/testmind-hq/caseforge/internal/dea"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
@@ -53,9 +53,6 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--target is required (or use --dry-run to skip HTTP execution)")
 	}
 
-	cfg, _ := config.Load()
-	_ = cfg
-
 	out := cmd.OutOrStdout()
 	fmt.Fprintf(out, "Loading spec: %s\n", specPath)
 	loader := spec.NewLoader()
@@ -74,7 +71,10 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 		fmt.Fprintf(out, "Exploring %s (max %d probes)...\n", targetURL, maxProbes)
 	}
 
-	report, err := explorer.Explore(context.Background(), parsedSpec)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	report, err := explorer.Explore(ctx, parsedSpec)
 	if err != nil {
 		return fmt.Errorf("exploration failed: %w", err)
 	}
