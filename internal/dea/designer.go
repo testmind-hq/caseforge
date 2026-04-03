@@ -15,16 +15,23 @@ import (
 func DesignProbe(h *HypothesisNode, op *spec.Operation, gen *datagen.Generator) Probe {
 	headers := map[string]string{}
 	var bodyAny any
+	var queryParams map[string]string
 
-	fieldName := extractBodyFieldName(h.FieldPath)
+	bodyFieldName := extractBodyFieldName(h.FieldPath)
+	queryFieldName := extractQueryParamName(h.FieldPath)
 
 	if hasJSONBody(op) {
 		body := buildBaseBody(op, gen)
 		headers["Content-Type"] = "application/json"
-		if fieldName != "" {
-			mutateField(body, fieldName, h.Kind, op)
+		if bodyFieldName != "" {
+			mutateField(body, bodyFieldName, h.Kind, op)
 		}
 		bodyAny = body
+	}
+
+	if queryFieldName != "" {
+		queryParams = buildBaseQueryParams(op, gen)
+		mutateQueryParam(queryParams, queryFieldName, h.Kind, op)
 	}
 
 	return Probe{
@@ -32,6 +39,7 @@ func DesignProbe(h *HypothesisNode, op *spec.Operation, gen *datagen.Generator) 
 		Path:           op.Path,
 		Headers:        headers,
 		Body:           bodyAny,
+		QueryParams:    queryParams,
 		ExpectedStatus: expectedStatusFor(h.Kind, op),
 	}
 }
@@ -131,4 +139,51 @@ func fieldSchema(op *spec.Operation, fieldName string) *spec.Schema {
 		return nil
 	}
 	return mt.Schema.Properties[fieldName]
+}
+
+func extractQueryParamName(fieldPath string) string {
+	const prefix = "query."
+	if strings.HasPrefix(fieldPath, prefix) {
+		return strings.TrimPrefix(fieldPath, prefix)
+	}
+	return ""
+}
+
+func buildBaseQueryParams(op *spec.Operation, gen *datagen.Generator) map[string]string {
+	params := map[string]string{}
+	for _, p := range op.Parameters {
+		if p.In != "query" || p.Schema == nil {
+			continue
+		}
+		val := gen.Generate(p.Schema, p.Name)
+		params[p.Name] = fmt.Sprintf("%v", val)
+	}
+	return params
+}
+
+func queryParamSchema(op *spec.Operation, paramName string) *spec.Schema {
+	for _, p := range op.Parameters {
+		if p.Name == paramName && p.In == "query" {
+			return p.Schema
+		}
+	}
+	return nil
+}
+
+func mutateQueryParam(params map[string]string, paramName string, kind HypothesisKind, op *spec.Operation) {
+	s := queryParamSchema(op, paramName)
+	switch kind {
+	case KindNumericMin:
+		if s != nil && s.Minimum != nil {
+			params[paramName] = fmt.Sprintf("%g", *s.Minimum-1)
+		} else {
+			params[paramName] = "-1"
+		}
+	case KindNumericMax:
+		if s != nil && s.Maximum != nil {
+			params[paramName] = fmt.Sprintf("%g", *s.Maximum+1)
+		} else {
+			params[paramName] = "99999"
+		}
+	}
 }

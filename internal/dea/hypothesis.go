@@ -1,6 +1,5 @@
 package dea
 
-import "time"
 
 type HypothesisKind string
 
@@ -54,7 +53,7 @@ type Evidence struct {
 	ActualStatus  int               `json:"actual_status"`
 	ActualBody    string            `json:"actual_body,omitempty"`
 	ActualHeaders map[string]string `json:"actual_headers,omitempty"`
-	Duration      time.Duration     `json:"duration_ms"`
+	DurationMs    int64             `json:"duration_ms"`
 }
 
 // NewHypothesisNode creates a HypothesisNode with StatusPending as the initial status.

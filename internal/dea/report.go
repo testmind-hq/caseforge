@@ -1,10 +1,6 @@
 package dea
 
-import (
-	"time"
-
-	"github.com/testmind-hq/caseforge/internal/output/schema"
-)
+import "time"
 
 type RuleCategory string
 
@@ -51,7 +47,5 @@ type ExplorationReport struct {
 	TargetURL   string           `json:"target_url"`
 	ExploredAt  time.Time        `json:"explored_at"`
 	TotalProbes int              `json:"total_probes"`
-	Rules       []DiscoveredRule `json:"rules"`
-	// TestCases contains schema.TestCase entries for rules with Implicit=true.
-	TestCases []schema.TestCase `json:"test_cases,omitempty"`
+	Rules []DiscoveredRule `json:"rules"`
 }

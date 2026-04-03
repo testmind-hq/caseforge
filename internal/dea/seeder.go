@@ -3,6 +3,7 @@ package dea
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -34,7 +35,14 @@ func seedBodyHypotheses(op *spec.Operation) []*HypothesisNode {
 		requiredSet[r] = true
 	}
 
-	for fieldName, fieldSchema := range s.Properties {
+	fieldNames := make([]string, 0, len(s.Properties))
+	for k := range s.Properties {
+		fieldNames = append(fieldNames, k)
+	}
+	sort.Strings(fieldNames)
+
+	for _, fieldName := range fieldNames {
+		fieldSchema := s.Properties[fieldName]
 		prefix := fmt.Sprintf("requestBody.%s", fieldName)
 
 		if requiredSet[fieldName] {

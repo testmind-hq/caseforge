@@ -30,7 +30,7 @@ func TestRunProbe_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 201, ev.ActualStatus)
 	assert.Contains(t, ev.ActualBody, `"id"`)
-	assert.Greater(t, ev.Duration.Nanoseconds(), int64(0))
+	assert.GreaterOrEqual(t, ev.DurationMs, int64(0))
 }
 
 func TestRunProbe_400Response(t *testing.T) {
