@@ -31,6 +31,18 @@ func NewExplorer(targetURL string, maxProbes int) *Explorer {
 	}
 }
 
+// hypothesisCategory returns the expected RuleCategory for a hypothesis kind in dry-run mode.
+func hypothesisCategory(kind HypothesisKind) RuleCategory {
+	switch kind {
+	case KindOptionalField:
+		return CategoryBehavior
+	case KindNullValue:
+		return CategoryBehavior
+	default:
+		return CategoryFieldConstraint
+	}
+}
+
 // Explore seeds hypotheses for each operation, runs probes, and returns a report.
 func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*ExplorationReport, error) {
 	report := &ExplorationReport{
@@ -41,6 +53,10 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 	probesRun := 0
 
 	for _, op := range s.Operations {
+		// Check context cancellation between operations
+		if ctx.Err() != nil {
+			return report, ctx.Err()
+		}
 		if probesRun >= e.MaxProbes {
 			break
 		}
@@ -48,6 +64,10 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 		hypotheses := SeedHypotheses(op)
 
 		for _, h := range hypotheses {
+			// Check context cancellation between probes
+			if ctx.Err() != nil {
+				return report, ctx.Err()
+			}
 			if probesRun >= e.MaxProbes {
 				break
 			}
@@ -56,16 +76,18 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			h.Probe = probe
 
 			if e.DryRun {
-				// In dry-run mode, record planned hypotheses as low-confidence pending rules
+				// In dry-run mode, record planned hypotheses as low-confidence pending rules.
+				// Category is derived from hypothesis kind (not a blanket CategoryBehavior).
 				rule := &DiscoveredRule{
 					ID:          fmt.Sprintf("PLAN-%s", h.ID),
 					Operation:   h.Operation,
 					FieldPath:   h.FieldPath,
-					Category:    CategoryBehavior,
+					Category:    hypothesisCategory(h.Kind),
 					Description: fmt.Sprintf("[DRY RUN] Planned probe: %s", h.Description),
 					Confidence:  ConfidenceLow,
 				}
 				report.Rules = append(report.Rules, *rule)
+				probesRun++ // count planned probes toward the cap in DryRun
 				continue
 			}
 
@@ -76,12 +98,13 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			}
 			probesRun++
 
-			// Confirm or refute based on whether actual status matches expected
+			// Confirm or refute: check whether actual status falls in the expected range.
 			is4xx := ev.ActualStatus >= 400 && ev.ActualStatus < 500
 			is2xx := ev.ActualStatus >= 200 && ev.ActualStatus < 300
-			expectedIs4xx := probe.ExpectedStatus >= 400
+			expectedIs4xx := probe.ExpectedStatus >= 400 && probe.ExpectedStatus < 500
+			expectedIs2xx := probe.ExpectedStatus >= 200 && probe.ExpectedStatus < 300
 
-			confirmed := (expectedIs4xx && is4xx) || (!expectedIs4xx && is2xx)
+			confirmed := (expectedIs4xx && is4xx) || (expectedIs2xx && is2xx)
 			h.Resolve(ev, confirmed)
 
 			rule := InferRule(h)

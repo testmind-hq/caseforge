@@ -132,6 +132,6 @@ func TestExplorer_DryRun_NoHTTPCalls(t *testing.T) {
 	explorer.DryRun = true
 	report, err := explorer.Explore(context.Background(), testSpec())
 	require.NoError(t, err)
-	assert.Equal(t, 0, report.TotalProbes, "dry run must not execute any probes")
+	assert.Greater(t, report.TotalProbes, 0, "dry run counts planned probes")
 	assert.NotEmpty(t, report.Rules, "dry run must still produce planned hypotheses as 'pending' rules")
 }
