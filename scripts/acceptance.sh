@@ -279,6 +279,19 @@ contains AT-028 "ask noop provider returns error" "unavailable" \
 echo ""
 
 # -------------------------------------------------------
+# AT-035 – AT-038: explore
+# -------------------------------------------------------
+echo "--- explore ---"
+contains AT-035 "explore command registered" "explore" "$BIN --help"
+contains AT-036 "explore dry-run produces report" "dea-report.json" \
+  "mkdir -p '$WORKDIR/explore-out' && '$BIN' explore --spec '$WORKDIR/petstore.yaml' --dry-run --output '$WORKDIR/explore-out' && ls '$WORKDIR/explore-out/dea-report.json'"
+contains AT-037 "explore missing spec returns error" "spec" \
+  "'$BIN' explore --target http://localhost:9999 2>&1 || true"
+contains AT-038 "explore missing target returns error" "target" \
+  "'$BIN' explore --spec '$WORKDIR/petstore.yaml' 2>&1 || true"
+echo ""
+
+# -------------------------------------------------------
 # AT-030 – AT-031: onboard
 # -------------------------------------------------------
 echo "--- onboard ---"
