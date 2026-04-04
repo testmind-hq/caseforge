@@ -83,7 +83,9 @@ func responseSchemaAssertions(op *spec.Operation) []schema.Assertion {
 		fmt.Sscanf(code, "%d", &n)
 		if n >= 200 && n < 300 {
 			if mt, ok := resp.Content["application/json"]; ok {
-				return assertpkg.SchemaAssertions("body", mt.Schema)
+				out := assertpkg.SchemaAssertions("body", mt.Schema)
+				out = append(out, assertpkg.RangeAssertions("body", mt.Schema)...)
+				return out
 			}
 		}
 	}

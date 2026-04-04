@@ -214,8 +214,12 @@ func renderAssertion(a schema.Assertion) string {
 		switch a.Operator {
 		case "lt":
 			return fmt.Sprintf("duration < %v\n", a.Expected)
+		case "lte":
+			return fmt.Sprintf("duration <= %v\n", a.Expected)
 		case "gt":
 			return fmt.Sprintf("duration > %v\n", a.Expected)
+		case "gte":
+			return fmt.Sprintf("duration >= %v\n", a.Expected)
 		}
 	case strings.HasPrefix(a.Target, "jsonpath "):
 		expr := strings.TrimPrefix(a.Target, "jsonpath ")
@@ -229,8 +233,12 @@ func renderAssertion(a schema.Assertion) string {
 			return fmt.Sprintf("jsonpath %q != %s\n", expr, formatHurlValue(a.Expected))
 		case "lt":
 			return fmt.Sprintf("jsonpath %q < %v\n", expr, a.Expected)
+		case "lte":
+			return fmt.Sprintf("jsonpath %q <= %v\n", expr, a.Expected)
 		case "gt":
 			return fmt.Sprintf("jsonpath %q > %v\n", expr, a.Expected)
+		case "gte":
+			return fmt.Sprintf("jsonpath %q >= %v\n", expr, a.Expected)
 		case "exists":
 			return fmt.Sprintf("jsonpath %q exists\n", expr)
 		case "contains":

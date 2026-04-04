@@ -15,6 +15,10 @@ const (
 	OperatorLt = "lt"
 	// OperatorGt checks greater-than (numeric).
 	OperatorGt = "gt"
+	// OperatorGte checks greater-than-or-equal (numeric). Used for schema minimum constraints.
+	OperatorGte = "gte"
+	// OperatorLte checks less-than-or-equal (numeric). Used for schema maximum constraints.
+	OperatorLte = "lte"
 	// OperatorContains checks substring / element containment.
 	OperatorContains = "contains"
 	// OperatorMatches checks regex match.
@@ -60,7 +64,7 @@ type Step struct {
 }
 
 // Assertion is a single check applied to a step's response.
-// Valid operators: eq, ne, lt, gt, contains, matches, exists, is_iso8601, is_uuid.
+// Valid operators: eq, ne, lt, gt, gte, lte, contains, matches, exists, is_iso8601, is_uuid.
 // For exists, is_iso8601, and is_uuid the Expected field is not evaluated by runners.
 type Assertion struct {
 	Target   string `json:"target"`   // "status_code"|"jsonpath $.<field>"|"header <Name>"|"duration_ms"|"body.<field>"
