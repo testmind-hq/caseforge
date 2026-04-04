@@ -55,6 +55,28 @@
 
 ---
 
+### `gen` — index.json Metadata (P1-6 to P1-10)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-071 | index.json contains meta object | `caseforge gen --spec petstore.yaml --no-ai --output ./cases` | `meta` key present in index.json | ✅ PASS |
+| AT-072 | meta.spec_hash is non-empty SHA256 | same as AT-071 | `meta.spec_hash` is 64-char hex string | ✅ PASS |
+| AT-073 | meta.caseforge_version present | same as AT-071 | `meta.caseforge_version` is non-empty | ✅ PASS |
+| AT-074 | meta.by_technique counts match cases | same as AT-071 | `meta.by_technique` sums to total case count | ✅ PASS |
+| AT-075 | meta.by_kind counts match cases | same as AT-071 | `meta.by_kind` sums to total case count | ✅ PASS |
+
+---
+
+### `gen` — Assertion Operators (P1-11 to P1-13)
+
+| ID | Scenario | Expected | Status |
+|----|----------|----------|--------|
+| AT-076 | `exists` operator used in response assertions | Generated cases for an endpoint with object response include `exists` assertions | ✅ PASS |
+| AT-077 | `is_uuid` operator used for uuid-format fields | Cases for endpoint with `format: uuid` response field use `is_uuid` operator | ✅ PASS |
+| AT-078 | `is_iso8601` operator used for date-time fields | Cases for endpoint with `format: date-time` response field use `is_iso8601` operator | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
@@ -239,6 +261,8 @@
 | gen — formats | 7 | 7 | 0 |
 | gen — techniques | 4 | 4 | 0 |
 | gen — CLI flags | 4 | 4 | 0 |
+| gen — metadata | 5 | 5 | 0 |
+| gen — assertion operators | 3 | 3 | 0 |
 | lint | 2 | 2 | 0 |
 | lint enhancement | 6 | 6 | 0 |
 | diff | 2 | 2 | 0 |
@@ -253,7 +277,7 @@
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
-| **Total** | **70** | **70** | **0** |
+| **Total** | **78** | **78** | **0** |
 
 ---
 

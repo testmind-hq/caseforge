@@ -59,7 +59,7 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	}
 
 	w := writer.NewJSONSchemaWriter()
-	if err := w.Write(cases, askOutput); err != nil {
+	if err := w.Write(cases, askOutput, writer.WriteOptions{CaseforgeVersion: Version}); err != nil {
 		return fmt.Errorf("writing output: %w", err)
 	}
 

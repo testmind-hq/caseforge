@@ -115,6 +115,44 @@ paths:
           description: Not found
 YAML
 
+cat > "$WORKDIR/petstore-typed.yaml" << 'YAML'
+openapi: "3.0.0"
+info:
+  title: Petstore Typed
+  version: "1.0"
+paths:
+  /pets:
+    post:
+      operationId: createPet
+      summary: Create a pet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+YAML
+
 cat > "$WORKDIR/petstore-v2.yaml" << 'YAML'
 openapi: "3.0.0"
 info:
@@ -215,6 +253,79 @@ contains "AT-069" "--operations limits to listPets only" "true" \
 # AT-070: --concurrency flag is registered in help
 contains "AT-070" "--concurrency flag registered on gen" "concurrency" \
   "'$BIN' gen --help 2>&1 || true"
+
+echo ""
+
+# -------------------------------------------------------
+# AT-071 – AT-075: gen index.json metadata (P1-6 to P1-10)
+# -------------------------------------------------------
+echo "--- gen: index.json metadata ---"
+
+# Generate base output once for meta tests
+"$BIN" gen --spec "$WORKDIR/petstore.yaml" --no-ai --output "$WORKDIR/cases-meta" > /dev/null 2>&1 || true
+
+contains "AT-071" "index.json contains meta object" "meta" \
+  "python3 -c \"import json; idx=json.load(open('$WORKDIR/cases-meta/index.json')); print('meta' if 'meta' in idx else 'missing')\""
+
+contains "AT-072" "meta.spec_hash is 64-char hex" "64" \
+  "python3 -c \"import json; idx=json.load(open('$WORKDIR/cases-meta/index.json')); h=idx.get('meta',{}).get('spec_hash',''); print(len(h))\""
+
+contains "AT-073" "meta.caseforge_version is non-empty" "dev" \
+  "python3 -c \"import json; idx=json.load(open('$WORKDIR/cases-meta/index.json')); print(idx.get('meta',{}).get('caseforge_version','missing'))\""
+
+contains "AT-074" "meta.by_technique sums to total case count" "true" \
+  "python3 -c \"
+import json
+idx=json.load(open('$WORKDIR/cases-meta/index.json'))
+total=len(idx.get('test_cases',[]))
+by_tech=idx.get('meta',{}).get('by_technique',{})
+s=sum(by_tech.values())
+print('true' if s==total else f'fail: sum={s} total={total}')
+\""
+
+contains "AT-075" "meta.by_kind sums to total case count" "true" \
+  "python3 -c \"
+import json
+idx=json.load(open('$WORKDIR/cases-meta/index.json'))
+total=len(idx.get('test_cases',[]))
+by_kind=idx.get('meta',{}).get('by_kind',{})
+s=sum(by_kind.values())
+print('true' if s==total else f'fail: sum={s} total={total}')
+\""
+
+echo ""
+
+# -------------------------------------------------------
+# AT-076 – AT-078: assertion operators (P1-11 to P1-13)
+# -------------------------------------------------------
+echo "--- gen: assertion operators ---"
+
+# Generate cases from typed petstore with uuid/date-time response fields
+"$BIN" gen --spec "$WORKDIR/petstore-typed.yaml" --no-ai --output "$WORKDIR/cases-typed" > /dev/null 2>&1 || true
+
+contains "AT-076" "exists operator in response assertions" "exists" \
+  "python3 -c \"
+import json
+idx=json.load(open('$WORKDIR/cases-typed/index.json'))
+ops=[a.get('operator','') for tc in idx.get('test_cases',[]) for s in tc.get('steps',[]) for a in s.get('assertions',[])]
+print(' '.join(ops))
+\""
+
+contains "AT-077" "is_uuid operator for uuid-format field" "is_uuid" \
+  "python3 -c \"
+import json
+idx=json.load(open('$WORKDIR/cases-typed/index.json'))
+ops=[a.get('operator','') for tc in idx.get('test_cases',[]) for s in tc.get('steps',[]) for a in s.get('assertions',[])]
+print(' '.join(ops))
+\""
+
+contains "AT-078" "is_iso8601 operator for date-time field" "is_iso8601" \
+  "python3 -c \"
+import json
+idx=json.load(open('$WORKDIR/cases-typed/index.json'))
+ops=[a.get('operator','') for tc in idx.get('test_cases',[]) for s in tc.get('steps',[]) for a in s.get('assertions',[])]
+print(' '.join(ops))
+\""
 
 echo ""
 
