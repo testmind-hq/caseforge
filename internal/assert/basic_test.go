@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	specpkg "github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -49,4 +50,52 @@ func TestSchemaAssertionsForObjectResponse(t *testing.T) {
 	}
 	assert.True(t, targets["body.id"])
 	assert.True(t, targets["body.name"])
+}
+
+func TestSchemaAssertions_UUIDFieldUsesIsUUID(t *testing.T) {
+	s := &specpkg.Schema{
+		Type: "object",
+		Properties: map[string]*specpkg.Schema{
+			"id": {Type: "string", Format: "uuid"},
+		},
+	}
+	assertions := SchemaAssertions("body", s)
+	require.Len(t, assertions, 1)
+	assert.Equal(t, "body.id", assertions[0].Target)
+	assert.Equal(t, "is_uuid", assertions[0].Operator)
+}
+
+func TestSchemaAssertions_DateTimeFieldUsesIsISO8601(t *testing.T) {
+	for _, format := range []string{"date-time", "date", "time"} {
+		s := &specpkg.Schema{
+			Type: "object",
+			Properties: map[string]*specpkg.Schema{
+				"ts": {Type: "string", Format: format},
+			},
+		}
+		assertions := SchemaAssertions("body", s)
+		require.Len(t, assertions, 1, "format=%s", format)
+		assert.Equal(t, "is_iso8601", assertions[0].Operator, "format=%s", format)
+	}
+}
+
+func TestSchemaAssertions_PlainStringFieldUsesExists(t *testing.T) {
+	s := &specpkg.Schema{
+		Type: "object",
+		Properties: map[string]*specpkg.Schema{
+			"name": {Type: "string"},
+		},
+	}
+	assertions := SchemaAssertions("body", s)
+	require.Len(t, assertions, 1)
+	assert.Equal(t, "exists", assertions[0].Operator)
+}
+
+func TestSchemaAssertions_NilSchema(t *testing.T) {
+	assert.Empty(t, SchemaAssertions("body", nil))
+}
+
+func TestSchemaAssertions_NonObjectSchema(t *testing.T) {
+	s := &specpkg.Schema{Type: "array"}
+	assert.Empty(t, SchemaAssertions("body", s))
 }

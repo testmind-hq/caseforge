@@ -169,8 +169,12 @@ func runGen(cmd *cobra.Command, args []string) error {
 	}
 
 	// Write index.json
+	specHash, _ := writer.HashFile(genSpec)
 	w := writer.NewJSONSchemaWriter()
-	if err := w.Write(cases, genOutput); err != nil {
+	if err := w.Write(cases, genOutput, writer.WriteOptions{
+		SpecHash:         specHash,
+		CaseforgeVersion: Version,
+	}); err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Failed to write output: %v\n", err)
 		os.Exit(5)
 	}

@@ -132,7 +132,7 @@ func makeGenerateHandler(ctx context.Context, req *mcpsdk.CallToolRequest) (*mcp
 
 	// Write index.json
 	w := writer.NewJSONSchemaWriter()
-	if err := w.Write(cases, outDir); err != nil {
+	if err := w.Write(cases, outDir, writer.WriteOptions{}); err != nil {
 		r := &mcpsdk.CallToolResult{}
 		r.SetError(fmt.Errorf("writing index: %w", err))
 		return r, nil
