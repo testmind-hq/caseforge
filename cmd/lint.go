@@ -43,7 +43,7 @@ func runLint(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
-	issues := lint.RunAll(parsedSpec)
+	issues := lint.RunAll(parsedSpec, nil)
 	score := lint.Score(issues)
 
 	errCount := 0
