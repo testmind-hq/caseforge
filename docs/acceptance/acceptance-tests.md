@@ -137,6 +137,19 @@
 
 ---
 
+### Phase 2 CLI commands — watch / stats / ci
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-099 | `stats` command registered | `caseforge --help` | `stats` listed | ✅ PASS |
+| AT-100 | `stats` reads index.json and prints summary | `caseforge stats --cases <dir>` with valid index.json | Output contains total count and `方法论` | ✅ PASS |
+| AT-101 | `stats --format json` outputs valid JSON | `caseforge stats --cases <dir> --format json` | Valid JSON with `total` field | ✅ PASS |
+| AT-102 | `watch` command registered | `caseforge --help` | `watch` listed | ✅ PASS |
+| AT-103 | `ci` command and `ci init` subcommand registered | `caseforge ci --help` | `init` listed | ✅ PASS |
+| AT-104 | `ci init --platform github-actions` generates workflow | `caseforge ci init --platform github-actions --output <file>` | File contains `caseforge lint` and `caseforge gen` | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
