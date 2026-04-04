@@ -80,7 +80,7 @@ func runLint(cmd *cobra.Command, args []string) error {
 	parsedSpec, err := loader.Load(lintSpec)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Failed to parse spec: %v\n", err)
-		os.Exit(2)
+		os.Exit(ExitSpecParseError)
 	}
 
 	issues := lint.RunAll(parsedSpec, skip)
@@ -137,7 +137,7 @@ func runLint(cmd *cobra.Command, args []string) error {
 		shouldFail = true
 	}
 	if shouldFail {
-		os.Exit(1)
+		os.Exit(ExitLintError)
 	}
 	return nil
 }
