@@ -34,7 +34,7 @@ func init() {
 	rbtIndexCmd.Flags().String("strategy", "llm", "Indexing strategy: llm|embed|hybrid")
 	rbtIndexCmd.Flags().Bool("overwrite", false, "Overwrite existing map file")
 	rbtIndexCmd.Flags().Int("depth", 0, "Call graph traversal depth (0 = dynamic, stop at route node)")
-	rbtIndexCmd.Flags().String("algo", "rta", "Go call graph algorithm: rta or pta (default rta)")
+	rbtIndexCmd.Flags().String("algo", "rta", "Go call graph algorithm: rta or vta (default rta)")
 	_ = rbtIndexCmd.MarkFlagRequired("spec")
 }
 
@@ -47,8 +47,8 @@ func runRBTIndex(cmd *cobra.Command, _ []string) error {
 	depth, _ := cmd.Flags().GetInt("depth")
 	algo, _ := cmd.Flags().GetString("algo")
 
-	if algo != "rta" && algo != "pta" {
-		return fmt.Errorf("invalid --algo value %q: must be \"rta\" or \"pta\"", algo)
+	if algo != "rta" && algo != "vta" {
+		return fmt.Errorf("invalid --algo value %q: must be \"rta\" or \"vta\"", algo)
 	}
 
 	out := cmd.OutOrStdout()

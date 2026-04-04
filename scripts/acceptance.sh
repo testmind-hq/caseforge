@@ -370,7 +370,7 @@ contains "AT-064" "--algo flag registered on rbt index" "algo" \
 contains "AT-065" "rbt index hybrid no-Go-module runs clean" "Map file written" \
   "mkdir -p '$WORKDIR/at065-out' && '$BIN' rbt index --spec '$WORKDIR/petstore.yaml' --strategy hybrid --src /tmp --out '$WORKDIR/at065-out/map.yaml' --overwrite 2>&1 || true"
 
-contains "AT-066" "--algo accepts pta value" "pta" \
+contains "AT-066" "--algo accepts vta value" "vta" \
   "'$BIN' rbt index --help 2>&1 || true"
 echo ""
 
