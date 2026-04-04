@@ -46,6 +46,9 @@ func convertDoc(doc *openapi3.T) *ParsedSpec {
 				ps.Schemas[name] = convertSchema(ref.Value)
 			}
 		}
+		for name := range doc.Components.SecuritySchemes {
+			ps.SecuritySchemes = append(ps.SecuritySchemes, name)
+		}
 	}
 
 	return ps
@@ -158,5 +161,6 @@ func convertSchema(s *openapi3.Schema) *Schema {
 			cs.Properties[name] = convertSchema(prop.Value)
 		}
 	}
+	cs.Example = s.Example
 	return cs
 }

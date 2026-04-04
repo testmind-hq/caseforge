@@ -40,4 +40,5 @@ type Schema struct {
 	Required    []string
 	Nullable    bool
 	Ref         string // original $ref path if applicable
+	Example     any
 }
