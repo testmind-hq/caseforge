@@ -990,6 +990,42 @@ run "AT-098" "k6 output has no unrendered assertion comments" \
 echo ""
 
 # -------------------------------------------------------
+# Phase 2 CLI — watch / stats / ci (AT-099–AT-104)
+# -------------------------------------------------------
+echo "--- phase 2 cli commands ---"
+
+# AT-099: stats command is registered
+contains "AT-099" "stats command registered" "stats" \
+  "$BIN --help"
+
+# AT-100: stats reads index.json and prints terminal summary
+STATSDIR=$(mktemp -d)
+cat > "$STATSDIR/index.json" <<'INDEXEOF'
+{"$schema":"https://caseforge.dev/schema/v1/index.json","version":"1","generated_at":"2026-04-01T00:00:00Z","meta":{"by_technique":{"equivalence_partitioning":5},"by_priority":{"P0":2,"P1":3}},"test_cases":[]}
+INDEXEOF
+contains "AT-100" "stats reads index.json and prints summary" "Technique distribution:" \
+  "$BIN stats --cases '$STATSDIR'"
+
+# AT-101: stats --format json outputs valid JSON
+run "AT-101" "stats --format json outputs valid JSON" \
+  "$BIN stats --cases '$STATSDIR' --format json | python3 -m json.tool > /dev/null"
+
+# AT-102: watch command is registered
+contains "AT-102" "watch command registered" "watch" \
+  "$BIN --help"
+
+# AT-103: ci command and ci init subcommand registered
+contains "AT-103" "ci init subcommand registered" "init" \
+  "$BIN ci --help"
+
+# AT-104: ci init generates GitHub Actions workflow
+CIDIR=$(mktemp -d)
+run "AT-104" "ci init --platform github-actions generates workflow" \
+  "$BIN ci init --platform github-actions --output '$CIDIR/workflow.yml' && grep -q 'caseforge lint' '$CIDIR/workflow.yml' && grep -q 'caseforge gen' '$CIDIR/workflow.yml'"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))
