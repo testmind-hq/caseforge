@@ -2,7 +2,6 @@
 package datagen
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -74,6 +73,34 @@ func TestApplyCrossFieldConstraints_NonTemporalFieldUnchanged(t *testing.T) {
 	result := ApplyCrossFieldConstraints(body, s)
 	assert.Equal(t, "Alice", result["name"])
 	assert.Equal(t, int64(30), result["age"])
+}
+
+// TestApplyCrossFieldConstraints_NonDateSuffixUnchanged guards against the false-positive
+// where bare "time"/"date" suffixes (without underscore) match words like "runtime" or
+// "candidate". Those fields must not be overwritten by the temporal ordering logic.
+func TestApplyCrossFieldConstraints_NonDateSuffixUnchanged(t *testing.T) {
+	s := &spec.Schema{
+		Properties: map[string]*spec.Schema{
+			"runtime":   {Type: "integer"}, // ends in "time" — must NOT be treated as temporal
+			"candidate": {Type: "string"},  // ends in "date" — must NOT be treated as temporal
+			"created_at": {Type: "string", Format: "date-time"},
+			"updated_at": {Type: "string", Format: "date-time"},
+		},
+	}
+	body := map[string]any{
+		"runtime":    int64(5000),
+		"candidate":  "John Smith",
+		"created_at": "2025-06-01T10:00:00Z",
+		"updated_at": "2025-01-01T10:00:00Z",
+	}
+	result := ApplyCrossFieldConstraints(body, s)
+	// Non-temporal fields must be unchanged.
+	assert.Equal(t, int64(5000), result["runtime"], "runtime should not be overwritten")
+	assert.Equal(t, "John Smith", result["candidate"], "candidate should not be overwritten")
+	// Temporal fields must still be ordered.
+	createdStr, _ := result["created_at"].(string)
+	updatedStr, _ := result["updated_at"].(string)
+	assert.True(t, createdStr < updatedStr, "created_at should be before updated_at")
 }
 
 // --- range ordering ---
@@ -155,9 +182,8 @@ func TestGenerateByFieldName_NameWithFileDescription(t *testing.T) {
 	val := g.Generate(&spec.Schema{Type: "string", Description: "The filename to upload"}, "name")
 	s, ok := val.(string)
 	assert.True(t, ok)
-	// With "file" in description, should contain a dot (extension) or slash
-	assert.True(t, strings.Contains(s, ".") || strings.Contains(s, "/") || len(s) > 0,
-		"filename-context name should have reasonable content, got: %s", s)
+	// With "file" in description, result should be a filename with an extension.
+	assert.Contains(t, s, ".", "filename-context name should produce a filename with extension, got: %s", s)
 }
 
 func TestGenerateByFieldName_NameWithProductDescription(t *testing.T) {

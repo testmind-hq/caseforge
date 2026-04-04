@@ -25,8 +25,8 @@ func generateByFieldName(fieldName, description string) (any, bool) {
 			return generateFilename(), true
 		}
 		if descContainsAny(descLower, "product", "item", "service", "category", "tag") {
-			return strings.ToUpper(gofakeit.Word()[:1]) + gofakeit.Word()[1:] + " " +
-				strings.ToUpper(gofakeit.Word()[:1]) + gofakeit.Word()[1:], true
+			w1, w2 := gofakeit.Word(), gofakeit.Word()
+			return strings.ToUpper(w1[:1]) + w1[1:] + " " + strings.ToUpper(w2[:1]) + w2[1:], true
 		}
 		return gofakeit.Name(), true // default: person name
 

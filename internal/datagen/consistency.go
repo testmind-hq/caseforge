@@ -43,12 +43,14 @@ func temporalRankOf(fieldName string, fieldSchema *spec.Schema) int {
 	if fieldSchema == nil {
 		return -1
 	}
-	// Must be a date/date-time schema OR have a date-like suffix in its name.
+	// Must be a date/date-time schema OR have a clearly date-like suffix in its name.
+	// Only underscore-prefixed suffixes are accepted to avoid false positives on
+	// words like "runtime", "uptime", "candidate", "mandate".
 	isDateType := fieldSchema.Format == "date-time" || fieldSchema.Format == "date"
 	lower := strings.ToLower(fieldName)
-	hasDateSuffix := strings.HasSuffix(lower, "_at") || strings.HasSuffix(lower, "_date") ||
-		strings.HasSuffix(lower, "_time") || strings.HasSuffix(lower, "date") ||
-		strings.HasSuffix(lower, "time")
+	hasDateSuffix := strings.HasSuffix(lower, "_at") ||
+		strings.HasSuffix(lower, "_date") ||
+		strings.HasSuffix(lower, "_time")
 	if !isDateType && !hasDateSuffix {
 		return -1
 	}
@@ -94,8 +96,13 @@ func enforceTemporalOrder(body map[string]any, s *spec.Schema) {
 	})
 
 	// Assign monotonically increasing times spaced 24 h apart.
+	// Only overwrite string values — skip if the generator produced a non-string
+	// (e.g., schema has Format:"date-time" but Type:"integer", unusual but safe to skip).
 	base := time.Now().UTC().Truncate(24 * time.Hour).Add(-time.Duration(len(fields)) * 24 * time.Hour)
 	for i, f := range fields {
+		if _, ok := body[f.key].(string); !ok {
+			continue
+		}
 		t := base.Add(time.Duration(i+1) * 24 * time.Hour)
 		if f.isDate {
 			body[f.key] = t.Format("2006-01-02")
@@ -118,17 +125,14 @@ func enforceRangeOrder(body map[string]any) {
 
 	for lowerName, origKey := range lowerToKey {
 		var peerLower string
-		isMin := false
 
 		switch {
 		case strings.HasPrefix(lowerName, "min_"):
 			peerLower = "max_" + lowerName[4:]
-			isMin = true
 		case strings.HasSuffix(lowerName, "_min"):
 			peerLower = lowerName[:len(lowerName)-4] + "_max"
-			isMin = true
 		default:
-			continue // not a min field; max fields will be handled via their min counterpart
+			continue // not a min field; max fields are handled via their min counterpart
 		}
 
 		peerKey, ok := lowerToKey[peerLower]
@@ -142,9 +146,7 @@ func enforceRangeOrder(body map[string]any) {
 			continue
 		}
 		if *minVal > *maxVal {
-			if isMin {
-				body[origKey], body[peerKey] = body[peerKey], body[origKey]
-			}
+			body[origKey], body[peerKey] = body[peerKey], body[origKey]
 		}
 	}
 }
