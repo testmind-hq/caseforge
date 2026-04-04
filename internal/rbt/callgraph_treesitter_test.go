@@ -48,7 +48,7 @@ func TestTreeSitterCallGraphBuilder_ExtractFuncs_Go(t *testing.T) {
 
 func TestTreeSitterCallGraphBuilder_UnsupportedExt_ReturnsEmpty(t *testing.T) {
 	builder := NewTreeSitterCallGraphBuilder()
-	defs, calls, err := builder.ExtractFuncs("/some/file.rb")
+	defs, calls, err := builder.ExtractFuncs("/some/file.php")
 	require.NoError(t, err)
 	assert.Empty(t, defs)
 	assert.Empty(t, calls)

@@ -138,7 +138,7 @@ func callGraphDefQueryForLang(lang string) string {
  (method_declaration name: (field_identifier) @def)]`
 	case "python":
 		return `(function_definition name: (identifier) @def)`
-	case "typescript", "javascript":
+	case "typescript", "javascript", "tsx":
 		return `[(function_declaration name: (identifier) @def)
  (method_definition name: (property_identifier) @def)]`
 	case "java":
@@ -161,7 +161,7 @@ func callGraphCallQueryForLang(lang string) string {
 		return `(call function: [
  (identifier) @callee
  (attribute attribute: (identifier) @callee)])`
-	case "typescript", "javascript":
+	case "typescript", "javascript", "tsx":
 		return `(call_expression function: [
  (identifier) @callee
  (member_expression property: (property_identifier) @callee)])`
