@@ -56,3 +56,28 @@ type RiskReport struct {
 	RiskScore      float64   // uncovered/affected, 0.0–1.0
 	GeneratedAt    time.Time
 }
+
+// CallNode identifies a function within a source file.
+type CallNode struct {
+	File     string // absolute path
+	FuncName string // short function/method name (no package prefix)
+	Line     int
+}
+
+// CallEdge records that CallerFunc (in CallerFile) calls a function named CalleeName.
+type CallEdge struct {
+	CallerFile string
+	CallerFunc string
+	CalleeName string // name only; resolved to CallNode during graph build
+}
+
+// CallGraph is an inverted call graph: Edges[key] lists every caller of that key.
+// Key format: "<abs-path>::<FuncName>" — use CallNodeKey to construct.
+type CallGraph struct {
+	Edges map[string][]CallNode
+}
+
+// CallNodeKey constructs the lookup key for a CallNode.
+func CallNodeKey(file, funcName string) string {
+	return file + "::" + funcName
+}
