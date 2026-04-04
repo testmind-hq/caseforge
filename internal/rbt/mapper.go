@@ -4,9 +4,6 @@ package rbt
 import "context"
 
 // SourceParser extracts route mappings from source files.
-// TODO(v2): add BuildCallGraph(srcDir string) (map[string][]string, error) to enable
-// service-layer tracing — mapping changed helper/service files upward to the route
-// handlers that call them. V1 only maps files that directly register routes.
 type SourceParser interface {
 	ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error)
 }

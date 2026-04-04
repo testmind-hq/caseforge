@@ -878,22 +878,22 @@ contains "AT-088" "example_extraction produces P1 (valid) and P2 (invalid) cases
 echo ""
 
 # -------------------------------------------------------
-# AT-087 – AT-088: caseforge diff --gen-cases (3.3)
+# AT-089 – AT-090: caseforge diff --gen-cases (3.3)
 # -------------------------------------------------------
 echo "--- diff --gen-cases ---"
 
 GENCASESDIR=$(mktemp -d)
 
-# AT-087: --gen-cases flag registered
-contains "AT-087" "diff --gen-cases flag registered" "gen-cases" \
+# AT-089: --gen-cases flag registered
+contains "AT-089" "diff --gen-cases flag registered" "gen-cases" \
   "'$BIN' diff --help"
 
-# AT-088: breaking changes → generates index.json with test cases
+# AT-090: breaking changes → generates index.json with test cases
 "$BIN" diff \
   --old "$WORKDIR/petstore.yaml" \
   --new "$WORKDIR/petstore-v2.yaml" \
   --gen-cases "$GENCASESDIR" 2>/dev/null || true
-contains "AT-088" "diff --gen-cases writes index.json for breaking operations" "test_cases" \
+contains "AT-090" "diff --gen-cases writes index.json for breaking operations" "test_cases" \
   "cat '$GENCASESDIR/index.json'"
 
 echo ""
