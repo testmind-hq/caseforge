@@ -197,8 +197,11 @@ func renderCapture(c schema.Capture) string {
 func renderAssertion(a schema.Assertion) string {
 	switch {
 	case a.Target == "duration_ms":
-		if a.Operator == "lt" {
+		switch a.Operator {
+		case "lt":
 			return fmt.Sprintf("duration < %v\n", a.Expected)
+		case "gt":
+			return fmt.Sprintf("duration > %v\n", a.Expected)
 		}
 	case strings.HasPrefix(a.Target, "jsonpath "):
 		expr := strings.TrimPrefix(a.Target, "jsonpath ")
@@ -210,10 +213,20 @@ func renderAssertion(a schema.Assertion) string {
 				return fmt.Sprintf("jsonpath %q not exists\n", expr)
 			}
 			return fmt.Sprintf("jsonpath %q != %s\n", expr, formatHurlValue(a.Expected))
+		case "lt":
+			return fmt.Sprintf("jsonpath %q < %v\n", expr, a.Expected)
+		case "gt":
+			return fmt.Sprintf("jsonpath %q > %v\n", expr, a.Expected)
 		case "exists":
 			return fmt.Sprintf("jsonpath %q exists\n", expr)
 		case "contains":
 			return fmt.Sprintf("jsonpath %q contains %s\n", expr, formatHurlValue(a.Expected))
+		case "matches":
+			return fmt.Sprintf("jsonpath %q matches %s\n", expr, formatHurlValue(a.Expected))
+		case "is_iso8601":
+			return fmt.Sprintf("jsonpath %q isDate\n", expr)
+		case "is_uuid":
+			return fmt.Sprintf("jsonpath %q matches /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i\n", expr)
 		}
 	case strings.HasPrefix(a.Target, "header "):
 		headerName := strings.TrimPrefix(a.Target, "header ")
@@ -225,6 +238,12 @@ func renderAssertion(a schema.Assertion) string {
 				return fmt.Sprintf("header %q not exists\n", headerName)
 			}
 			return fmt.Sprintf("header %q != %s\n", headerName, formatHurlValue(a.Expected))
+		case "exists":
+			return fmt.Sprintf("header %q exists\n", headerName)
+		case "contains":
+			return fmt.Sprintf("header %q contains %s\n", headerName, formatHurlValue(a.Expected))
+		case "matches":
+			return fmt.Sprintf("header %q matches %s\n", headerName, formatHurlValue(a.Expected))
 		}
 	case strings.HasPrefix(a.Target, "body."):
 		// Legacy target format — delegate to jsonpath
@@ -232,10 +251,25 @@ func renderAssertion(a schema.Assertion) string {
 		switch a.Operator {
 		case "eq":
 			return fmt.Sprintf("jsonpath \"$.%s\" == %s\n", field, formatHurlValue(a.Expected))
+		case "ne":
+			if a.Expected == nil {
+				return fmt.Sprintf("jsonpath \"$.%s\" not exists\n", field)
+			}
+			return fmt.Sprintf("jsonpath \"$.%s\" != %s\n", field, formatHurlValue(a.Expected))
+		case "lt":
+			return fmt.Sprintf("jsonpath \"$.%s\" < %v\n", field, a.Expected)
+		case "gt":
+			return fmt.Sprintf("jsonpath \"$.%s\" > %v\n", field, a.Expected)
 		case "exists":
 			return fmt.Sprintf("jsonpath \"$.%s\" exists\n", field)
 		case "contains":
 			return fmt.Sprintf("jsonpath \"$.%s\" contains %s\n", field, formatHurlValue(a.Expected))
+		case "matches":
+			return fmt.Sprintf("jsonpath \"$.%s\" matches %s\n", field, formatHurlValue(a.Expected))
+		case "is_iso8601":
+			return fmt.Sprintf("jsonpath \"$.%s\" isDate\n", field)
+		case "is_uuid":
+			return fmt.Sprintf("jsonpath \"$.%s\" matches /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i\n", field)
 		}
 	}
 	return fmt.Sprintf("# unrendered assertion: %s %s %v\n", a.Target, a.Operator, a.Expected)

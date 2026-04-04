@@ -180,3 +180,59 @@ func TestK6RendererDELETEMethod(t *testing.T) {
 	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
 	assert.Contains(t, content, `http.del(`)
 }
+
+func TestK6AssertionLine_NewOperators(t *testing.T) {
+	cases := []struct {
+		name     string
+		a        schema.Assertion
+		contains string
+	}{
+		{
+			name:     "jsonpath lt",
+			a:        schema.Assertion{Target: "jsonpath $.age", Operator: "lt", Expected: 100},
+			contains: `r.json('age') < 100`,
+		},
+		{
+			name:     "jsonpath gt",
+			a:        schema.Assertion{Target: "jsonpath $.score", Operator: "gt", Expected: 0},
+			contains: `r.json('score') > 0`,
+		},
+		{
+			name:     "jsonpath matches",
+			a:        schema.Assertion{Target: "jsonpath $.email", Operator: "matches", Expected: `^.+@.+$`},
+			contains: `new RegExp`,
+		},
+		{
+			name:     "jsonpath is_iso8601",
+			a:        schema.Assertion{Target: "jsonpath $.created_at", Operator: "is_iso8601", Expected: nil},
+			contains: `Date.parse`,
+		},
+		{
+			name:     "jsonpath is_uuid",
+			a:        schema.Assertion{Target: "jsonpath $.id", Operator: "is_uuid", Expected: nil},
+			contains: `/^[0-9a-f]`,
+		},
+		{
+			name:     "duration gt",
+			a:        schema.Assertion{Target: "duration_ms", Operator: "gt", Expected: 50},
+			contains: `r.timings.duration > 50`,
+		},
+		{
+			name:     "header contains",
+			a:        schema.Assertion{Target: "header Content-Type", Operator: "contains", Expected: "json"},
+			contains: `includes`,
+		},
+		{
+			name:     "header matches",
+			a:        schema.Assertion{Target: "header Content-Type", Operator: "matches", Expected: `application/.*`},
+			contains: `new RegExp`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := k6AssertionLine(tc.a)
+			assert.Contains(t, got, tc.contains, "k6AssertionLine output")
+			assert.NotContains(t, got, "// unrendered:", "must not fall through to unrendered")
+		})
+	}
+}

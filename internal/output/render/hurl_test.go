@@ -330,3 +330,64 @@ func TestRenderAssertionHeaderTarget(t *testing.T) {
 	content, _ := os.ReadFile(files[0])
 	assert.Contains(t, string(content), `header "Access-Control-Allow-Origin" != "*"`)
 }
+
+func TestRenderAssertion_NewOperators_Hurl(t *testing.T) {
+	cases := []struct {
+		name     string
+		a        schema.Assertion
+		contains string
+	}{
+		{
+			name:     "jsonpath lt",
+			a:        schema.Assertion{Target: "jsonpath $.age", Operator: "lt", Expected: 100},
+			contains: `jsonpath "$.age" < 100`,
+		},
+		{
+			name:     "jsonpath gt",
+			a:        schema.Assertion{Target: "jsonpath $.score", Operator: "gt", Expected: 0},
+			contains: `jsonpath "$.score" > 0`,
+		},
+		{
+			name:     "jsonpath matches",
+			a:        schema.Assertion{Target: "jsonpath $.email", Operator: "matches", Expected: `^.+@.+\..+$`},
+			contains: `jsonpath "$.email" matches`,
+		},
+		{
+			name:     "jsonpath is_iso8601",
+			a:        schema.Assertion{Target: "jsonpath $.created_at", Operator: "is_iso8601", Expected: nil},
+			contains: `jsonpath "$.created_at" isDate`,
+		},
+		{
+			name:     "jsonpath is_uuid",
+			a:        schema.Assertion{Target: "jsonpath $.id", Operator: "is_uuid", Expected: nil},
+			contains: `jsonpath "$.id" matches /^[0-9a-f]`,
+		},
+		{
+			name:     "duration gt",
+			a:        schema.Assertion{Target: "duration_ms", Operator: "gt", Expected: 0},
+			contains: `duration > 0`,
+		},
+		{
+			name:     "header exists",
+			a:        schema.Assertion{Target: "header Content-Type", Operator: "exists", Expected: nil},
+			contains: `header "Content-Type" exists`,
+		},
+		{
+			name:     "header contains",
+			a:        schema.Assertion{Target: "header Content-Type", Operator: "contains", Expected: "json"},
+			contains: `header "Content-Type" contains "json"`,
+		},
+		{
+			name:     "header matches",
+			a:        schema.Assertion{Target: "header Content-Type", Operator: "matches", Expected: `application/.*`},
+			contains: `header "Content-Type" matches`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := renderAssertion(tc.a)
+			assert.Contains(t, got, tc.contains, "renderAssertion output")
+			assert.NotContains(t, got, "# unrendered assertion", "must not fall through to unrendered")
+		})
+	}
+}

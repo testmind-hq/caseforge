@@ -152,3 +152,63 @@ func TestPostmanHeaderEqTestScript(t *testing.T) {
 	assert.Contains(t, content, `pm.response.headers.get(\"Content-Type\")).to.eql`)
 	assert.Contains(t, content, `pm.response.headers.get(\"X-Custom\")).to.not.eql`)
 }
+
+func TestPostmanNewOperators(t *testing.T) {
+	cases := []struct {
+		name     string
+		a        schema.Assertion
+		contains string
+	}{
+		{
+			name:     "jsonpath lt",
+			a:        schema.Assertion{Target: "jsonpath $.age", Operator: "lt", Expected: 100},
+			contains: ".to.be.below(",
+		},
+		{
+			name:     "jsonpath gt",
+			a:        schema.Assertion{Target: "jsonpath $.score", Operator: "gt", Expected: 0},
+			contains: ".to.be.above(",
+		},
+		{
+			name:     "jsonpath exists",
+			a:        schema.Assertion{Target: "jsonpath $.id", Operator: "exists", Expected: nil},
+			contains: ".to.exist",
+		},
+		{
+			name:     "jsonpath matches",
+			a:        schema.Assertion{Target: "jsonpath $.email", Operator: "matches", Expected: `^.+@.+$`},
+			contains: "to.match(new RegExp(",
+		},
+		{
+			name:     "jsonpath is_iso8601",
+			a:        schema.Assertion{Target: "jsonpath $.created_at", Operator: "is_iso8601", Expected: nil},
+			contains: "Date.parse(",
+		},
+		{
+			name:     "jsonpath is_uuid",
+			a:        schema.Assertion{Target: "jsonpath $.id", Operator: "is_uuid", Expected: nil},
+			contains: `/^[0-9a-f]`,
+		},
+		{
+			name:     "header contains",
+			a:        schema.Assertion{Target: "header Content-Type", Operator: "contains", Expected: "json"},
+			contains: ".to.include(",
+		},
+		{
+			name:     "header exists",
+			a:        schema.Assertion{Target: "header X-Request-ID", Operator: "exists", Expected: nil},
+			contains: ".to.exist",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			step := schema.Step{
+				Method:     "GET",
+				Path:       "/test",
+				Assertions: []schema.Assertion{tc.a},
+			}
+			got := buildTestScript(step)
+			assert.Contains(t, got, tc.contains, "buildTestScript output for operator %q", tc.a.Operator)
+		})
+	}
+}

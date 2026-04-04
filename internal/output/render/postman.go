@@ -139,6 +139,10 @@ func buildTestScript(step schema.Step) string {
 	var lines []string
 
 	for _, a := range step.Assertions {
+		// Normalise legacy "body.field" → "jsonpath $.field" so all operators are handled uniformly.
+		if strings.HasPrefix(a.Target, "body.") {
+			a.Target = "jsonpath $." + strings.TrimPrefix(a.Target, "body.")
+		}
 		switch {
 		case a.Target == "status_code":
 			code := 200
@@ -180,11 +184,53 @@ func buildTestScript(step schema.Step) string {
 						"});",
 					)
 				}
+			case "lt":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" lt "+fmt.Sprint(a.Expected)),
+					"    var jsonData = pm.response.json();",
+					fmt.Sprintf("    pm.expect(jsonData.%s).to.be.below(%s);", fieldPath, valJS),
+					"});",
+				)
+			case "gt":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" gt "+fmt.Sprint(a.Expected)),
+					"    var jsonData = pm.response.json();",
+					fmt.Sprintf("    pm.expect(jsonData.%s).to.be.above(%s);", fieldPath, valJS),
+					"});",
+				)
 			case "contains":
 				lines = append(lines,
 					fmt.Sprintf("pm.test(%q, function () {", a.Target+" contains "+fmt.Sprint(a.Expected)),
 					"    var jsonData = pm.response.json();",
 					fmt.Sprintf("    pm.expect(String(jsonData.%s)).to.include(%s);", fieldPath, valJS),
+					"});",
+				)
+			case "exists":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" exists"),
+					"    var jsonData = pm.response.json();",
+					fmt.Sprintf("    pm.expect(jsonData.%s).to.exist;", fieldPath),
+					"});",
+				)
+			case "matches":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" matches "+fmt.Sprint(a.Expected)),
+					"    var jsonData = pm.response.json();",
+					fmt.Sprintf("    pm.expect(String(jsonData.%s)).to.match(new RegExp(%s));", fieldPath, valJS),
+					"});",
+				)
+			case "is_iso8601":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" is_iso8601"),
+					"    var jsonData = pm.response.json();",
+					fmt.Sprintf("    pm.expect(isNaN(Date.parse(jsonData.%s))).to.be.false;", fieldPath),
+					"});",
+				)
+			case "is_uuid":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" is_uuid"),
+					"    var jsonData = pm.response.json();",
+					fmt.Sprintf("    pm.expect(jsonData.%s).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);", fieldPath),
 					"});",
 				)
 			}
@@ -202,6 +248,18 @@ func buildTestScript(step schema.Step) string {
 				lines = append(lines,
 					fmt.Sprintf("pm.test(%q, function () {", a.Target+" ne "+fmt.Sprint(a.Expected)),
 					fmt.Sprintf("    pm.expect(pm.response.headers.get(%q)).to.not.eql(%s);", headerName, valJS),
+					"});",
+				)
+			case "contains":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" contains "+fmt.Sprint(a.Expected)),
+					fmt.Sprintf("    pm.expect(pm.response.headers.get(%q)).to.include(%s);", headerName, valJS),
+					"});",
+				)
+			case "exists":
+				lines = append(lines,
+					fmt.Sprintf("pm.test(%q, function () {", a.Target+" exists"),
+					fmt.Sprintf("    pm.expect(pm.response.headers.get(%q)).to.exist;", headerName),
 					"});",
 				)
 			}

@@ -125,6 +125,18 @@
 
 ---
 
+<!-- AT-091–AT-092 reserved for future features -->
+
+### Assertion Operator Rendering (1.3 completeness)
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-096 | `gen` produces index.json with assertions | `caseforge gen --no-ai` on numeric+uuid+datetime spec | `assertions` key present in index.json | ✅ PASS |
+| AT-097 | Hurl output has no unrendered assertions | `caseforge gen --no-ai --format hurl` | No `# unrendered assertion` comment in any `.hurl` file | ✅ PASS |
+| AT-098 | k6 output has no unrendered assertions | `caseforge gen --no-ai --format k6` | No `// unrendered:` comment in k6 output | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
