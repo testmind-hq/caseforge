@@ -35,7 +35,7 @@ type Indexer struct {
 	               // Note: V3 (runGoCallGraphPhase) checks depth before terminal, so
 	               // maxDepth=N covers N-1 hops; V2 (runCallGraphPhase) checks terminal
 	               // first, so maxDepth=N covers N hops.
-	Algo      string // Go call graph algorithm: "rta" (default) | "pta"
+	Algo      string // Go call graph algorithm: "rta" (default) | "vta"
 }
 
 // RunRegex uses the regex parser to extract routes and writes caseforge-map.yaml.
