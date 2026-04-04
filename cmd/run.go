@@ -54,6 +54,9 @@ func runRun(cmd *cobra.Command, _ []string) error {
 
 	vars := runner.ParseVars(varFlags)
 	if target != "" {
+		if _, alreadySet := vars["BASE_URL"]; alreadySet {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: --target overrides BASE_URL set via --var\n")
+		}
 		vars["BASE_URL"] = target
 	}
 
@@ -90,7 +93,7 @@ func runRun(cmd *cobra.Command, _ []string) error {
 	}
 
 	if outputDir != "" {
-		if err := writeRunReport(outputDir, target, result); err != nil {
+		if err := writeRunReport(outputDir, target, runCases, runFormat, result); err != nil {
 			return fmt.Errorf("write report: %w", err)
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n", filepath.Join(outputDir, "run-report.json"))
@@ -114,7 +117,7 @@ type runReport struct {
 	GeneratedAt string            `json:"generated_at"`
 }
 
-func writeRunReport(outputDir, target string, result runner.RunResult) error {
+func writeRunReport(outputDir, target, casesDir, format string, result runner.RunResult) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return err
 	}
@@ -125,8 +128,8 @@ func writeRunReport(outputDir, target string, result runner.RunResult) error {
 	}
 	report := runReport{
 		Target:      target,
-		CasesDir:    runCases,
-		Format:      runFormat,
+		CasesDir:    casesDir,
+		Format:      format,
 		Passed:      result.Passed,
 		Failed:      result.Failed,
 		Total:       total,
