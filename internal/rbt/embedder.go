@@ -84,14 +84,17 @@ type chunkScore struct {
 	Score float64
 }
 
-// TopKChunks returns the k most similar chunks to the query embedding.
-func TopKChunks(query []float32, chunks []IndexChunk, k int) []IndexChunk {
+// topKAboveThreshold returns up to k chunks whose cosine similarity to query
+// is at least minScore. Chunks with empty embeddings are always skipped.
+func topKAboveThreshold(query []float32, chunks []IndexChunk, k int, minScore float64) []IndexChunk {
 	scored := make([]chunkScore, 0, len(chunks))
 	for _, c := range chunks {
 		if len(c.Embedding) == 0 {
 			continue
 		}
-		scored = append(scored, chunkScore{c, cosineSimilarity(query, c.Embedding)})
+		if s := cosineSimilarity(query, c.Embedding); s >= minScore {
+			scored = append(scored, chunkScore{c, s})
+		}
 	}
 	sort.Slice(scored, func(i, j int) bool {
 		return scored[i].Score > scored[j].Score
@@ -104,4 +107,10 @@ func TopKChunks(query []float32, chunks []IndexChunk, k int) []IndexChunk {
 		out[i] = scored[i].IndexChunk
 	}
 	return out
+}
+
+// TopKChunks returns the k most similar chunks to the query embedding.
+// It is equivalent to topKAboveThreshold with minScore=-1.0 (no threshold).
+func TopKChunks(query []float32, chunks []IndexChunk, k int) []IndexChunk {
+	return topKAboveThreshold(query, chunks, k, -1.0)
 }

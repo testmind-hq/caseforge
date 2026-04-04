@@ -725,6 +725,48 @@ contains "AT-081" "rbt --generate writes index.json to cases dir" "index.json" \
 echo ""
 
 # -------------------------------------------------------
+# AT-082: rbt index --strategy embed (2.3 Embed Phase)
+# -------------------------------------------------------
+echo "--- rbt index: embed phase ---"
+
+# AT-082: When OPENAI_API_KEY is absent, --strategy embed falls back to regex
+# and still writes a valid map file (graceful degradation).
+EMBEDDIR=$(mktemp -d)
+cat > "$EMBEDDIR/openapi.yaml" << 'SPECEOF'
+openapi: "3.0.0"
+info:
+  title: Embed Test API
+  version: "1.0.0"
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List all pets
+      responses:
+        "200":
+          description: OK
+SPECEOF
+cat > "$EMBEDDIR/handler.go" << 'GOEOF'
+package handler
+
+func Register(r interface{}) {}
+GOEOF
+
+(
+  unset OPENAI_API_KEY
+  "$BIN" rbt index \
+    --spec "$EMBEDDIR/openapi.yaml" \
+    --src "$EMBEDDIR" \
+    --out "$EMBEDDIR/caseforge-map.yaml" \
+    --strategy embed 2>/dev/null || true
+) 2>/dev/null || true
+
+contains "AT-082" "rbt index --strategy embed writes map file (regex fallback)" "mappings:" \
+  "cat '$EMBEDDIR/caseforge-map.yaml'"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))

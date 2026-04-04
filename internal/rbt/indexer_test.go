@@ -146,3 +146,192 @@ func TestRunGoCallGraphPhase_NoGoMod_ReturnsEmpty(t *testing.T) {
 	assert.Empty(t, mappings)
 	assert.Empty(t, claimed)
 }
+
+// minimalSpec is a valid OpenAPI 3.0 YAML with a single GET /pets operation.
+const minimalSpec = `openapi: "3.0.0"
+info:
+  title: Test API
+  version: "1.0.0"
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List all pets
+      responses:
+        "200":
+          description: OK
+`
+
+// callCountingEmbedder counts how many Embed calls are made.
+type callCountingEmbedder struct {
+	calls int
+	dim   int
+}
+
+func (c *callCountingEmbedder) Embed(text string) ([]float32, error) {
+	c.calls++
+	v := make([]float32, c.dim)
+	for i := range v {
+		v[i] = float32(c.calls%5+1) / 5.0
+	}
+	return v, nil
+}
+
+func TestRunEmbedPhase_NoopEmbedder_FallsBackToRegex(t *testing.T) {
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "handler.go")
+	require.NoError(t, os.WriteFile(srcFile, []byte(`package handler
+
+func Register(r *gin.Engine) {
+    r.POST("/users", CreateUser)
+}
+`), 0644))
+
+	specFile := filepath.Join(dir, "openapi.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(minimalSpec), 0644))
+
+	idx := &Indexer{
+		SrcDir:   dir,
+		SpecPath: specFile,
+		Store:    NewIndexStore(filepath.Join(dir, ".caseforge-index")),
+		Embedder: &NoopEmbedder{},
+	}
+
+	files := []ChangedFile{{Path: srcFile}}
+	mappings, err := idx.runEmbedPhase(files)
+	require.NoError(t, err)
+	// NoopEmbedder triggers regex fallback; regex finds POST /users.
+	require.NotEmpty(t, mappings)
+	assert.Equal(t, "regex", mappings[0].Via)
+}
+
+func TestRunEmbedPhase_NoSpecPath_FallsBackToRegex(t *testing.T) {
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "handler.go")
+	require.NoError(t, os.WriteFile(srcFile, []byte(`package handler
+
+func Register(r *gin.Engine) {
+    r.GET("/items", listItems)
+}
+`), 0644))
+
+	idx := &Indexer{
+		SrcDir:   dir,
+		SpecPath: "", // no spec
+		Store:    NewIndexStore(filepath.Join(dir, ".caseforge-index")),
+		Embedder: &fakeEmbedder{dim: 4},
+	}
+
+	files := []ChangedFile{{Path: srcFile}}
+	mappings, err := idx.runEmbedPhase(files)
+	require.NoError(t, err)
+	// No spec ops → no embed mappings → falls back to regex.
+	for _, m := range mappings {
+		assert.Equal(t, "regex", m.Via, "expected regex fallback")
+	}
+}
+
+func TestRunEmbedPhase_WithSpec_ReturnsEmbedMappings(t *testing.T) {
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "handler.go")
+	require.NoError(t, os.WriteFile(srcFile, []byte("package handler\n\nfunc listPets() {}\n"), 0644))
+
+	specFile := filepath.Join(dir, "openapi.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(minimalSpec), 0644))
+
+	idx := &Indexer{
+		SrcDir:   dir,
+		SpecPath: specFile,
+		Store:    NewIndexStore(filepath.Join(dir, ".caseforge-index")),
+		Embedder: &fakeEmbedder{dim: 4},
+	}
+
+	files := []ChangedFile{{Path: srcFile}}
+	mappings, err := idx.runEmbedPhase(files)
+	require.NoError(t, err)
+	require.NotEmpty(t, mappings)
+	assert.Equal(t, "embed", mappings[0].Via)
+	assert.Equal(t, "GET", mappings[0].Method)
+	assert.Equal(t, "/pets", mappings[0].RoutePath)
+	assert.Equal(t, srcFile, mappings[0].SourceFile)
+}
+
+func TestRunEmbedPhase_SavesSpecOpsAndChunksToIndex(t *testing.T) {
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "svc.go")
+	require.NoError(t, os.WriteFile(srcFile, []byte("package svc\n\nfunc List() {}\n"), 0644))
+
+	specFile := filepath.Join(dir, "openapi.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(minimalSpec), 0644))
+
+	storeDir := filepath.Join(dir, ".caseforge-index")
+	idx := &Indexer{
+		SrcDir:   dir,
+		SpecPath: specFile,
+		Store:    NewIndexStore(storeDir),
+		Embedder: &fakeEmbedder{dim: 4},
+	}
+
+	files := []ChangedFile{{Path: srcFile}}
+	_, err := idx.runEmbedPhase(files)
+	require.NoError(t, err)
+
+	// Load index and verify chunks and spec ops were persisted.
+	localIdx, err := idx.Store.Load()
+	require.NoError(t, err)
+	require.NotNil(t, localIdx)
+	assert.NotEmpty(t, localIdx.Chunks, "file chunks should be saved")
+	assert.NotEmpty(t, localIdx.SpecOps, "spec ops should be saved")
+	assert.Equal(t, "GET /pets", localIdx.SpecOps[0].Operation)
+}
+
+func TestRunEmbedPhase_IncrementalSkipsUnchangedFile(t *testing.T) {
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "handler.go")
+	require.NoError(t, os.WriteFile(srcFile, []byte("package handler\n\nfunc Handle() {}\n"), 0644))
+
+	specFile := filepath.Join(dir, "openapi.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(minimalSpec), 0644))
+
+	counter := &callCountingEmbedder{dim: 4}
+	idx := &Indexer{
+		SrcDir:   dir,
+		SpecPath: specFile,
+		Store:    NewIndexStore(filepath.Join(dir, ".caseforge-index")),
+		Embedder: counter,
+	}
+	files := []ChangedFile{{Path: srcFile}}
+
+	// First run: embeds file chunk + spec op.
+	_, err := idx.runEmbedPhase(files)
+	require.NoError(t, err)
+	callsAfterFirst := counter.calls
+
+	// Second run with same file: file unchanged, spec op cached → no new embed calls.
+	_, err = idx.runEmbedPhase(files)
+	require.NoError(t, err)
+	assert.Equal(t, callsAfterFirst, counter.calls, "second run should not re-embed unchanged file or spec op")
+}
+
+func TestIsSpecOpStale_MissingFromIndex_ReturnsTrue(t *testing.T) {
+	idx := &LocalIndex{}
+	assert.True(t, isSpecOpStale(idx, "GET /pets"))
+}
+
+func TestIsSpecOpStale_PresentWithEmbedding_ReturnsFalse(t *testing.T) {
+	idx := &LocalIndex{
+		SpecOps: []IndexSpecOp{{Operation: "GET /pets", Embedding: []float32{0.1, 0.2}}},
+	}
+	assert.False(t, isSpecOpStale(idx, "GET /pets"))
+}
+
+func TestIsSpecOpStale_PresentWithEmptyEmbedding_ReturnsTrue(t *testing.T) {
+	idx := &LocalIndex{
+		SpecOps: []IndexSpecOp{{Operation: "GET /pets", Embedding: nil}},
+	}
+	assert.True(t, isSpecOpStale(idx, "GET /pets"))
+}
+
+func TestIsSpecOpStale_NilIndex_ReturnsTrue(t *testing.T) {
+	assert.True(t, isSpecOpStale(nil, "GET /pets"))
+}
