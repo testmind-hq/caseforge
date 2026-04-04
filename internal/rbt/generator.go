@@ -2,27 +2,33 @@
 package rbt
 
 import (
-	"fmt"
-	"io"
+	"strings"
+
+	specpkg "github.com/testmind-hq/caseforge/internal/spec"
 )
 
-// GenerateForHighRisk generates test cases for all HIGH-risk operations.
-// This is a stub for V1 — full methodology pipeline integration in a future iteration.
-func GenerateForHighRisk(w io.Writer, report RiskReport, casesDir string) error {
-	var highRisk []OperationCoverage
-	for _, op := range report.Operations {
-		if op.Risk == RiskHigh {
-			highRisk = append(highRisk, op)
+// HighRiskOperations returns the spec operations that are assessed as RiskHigh
+// in report, preserving the order they appear in parsedSpec.Operations.
+// Returns nil when no operations have RiskHigh.
+func HighRiskOperations(report RiskReport, parsedSpec *specpkg.ParsedSpec) []*specpkg.Operation {
+	highRiskKeys := make(map[string]bool, len(report.Operations))
+	for _, oc := range report.Operations {
+		if oc.Risk == RiskHigh {
+			key := strings.ToUpper(oc.Method) + " " + oc.Path
+			highRiskKeys[key] = true
 		}
 	}
-	if len(highRisk) == 0 {
-		fmt.Fprintln(w, "No HIGH-risk operations to generate tests for.")
+	if len(highRiskKeys) == 0 {
 		return nil
 	}
-	for _, op := range highRisk {
-		fmt.Fprintf(w, "⚠  --generate not yet implemented for %s %s\n", op.Method, op.Path)
+	var ops []*specpkg.Operation
+	for _, op := range parsedSpec.Operations {
+		key := strings.ToUpper(op.Method) + " " + op.Path
+		if highRiskKeys[key] {
+			ops = append(ops, op)
+		}
 	}
-	return nil
+	return ops
 }
 
 // MatchesOperation checks whether a RouteMapping's method+path matches a spec operation.

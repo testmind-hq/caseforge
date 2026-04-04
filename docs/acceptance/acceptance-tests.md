@@ -77,6 +77,16 @@
 
 ---
 
+### `rbt --generate` — High-Risk Auto-Generation (2.2)
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-079 | `--generate` flag registered | `caseforge rbt --help` | `--generate` listed in help | ✅ PASS |
+| AT-080 | `--generate --dry-run` prints "ignored" info message | `caseforge rbt --spec petstore.yaml --dry-run --generate` | output contains "ignored with" | ✅ PASS |
+| AT-081 | `--generate` writes index.json for real high-risk op | git repo with changed handler.go mapped via caseforge-map.yaml, run `rbt --generate --no-ai` | `index.json` created in cases dir | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
