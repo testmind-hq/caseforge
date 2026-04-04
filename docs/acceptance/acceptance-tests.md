@@ -44,6 +44,17 @@
 
 ---
 
+### `gen` — CLI Flags (P1-1 to P1-4)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-067 | gen --technique filters output | `caseforge gen --spec petstore.yaml --no-ai --technique equivalence_partitioning --output ./cases` | only `equivalence_partitioning` cases in index.json | ✅ PASS |
+| AT-068 | gen --priority filters output | `caseforge gen --spec petstore.yaml --no-ai --priority P1 --output ./cases` | index.json contains only P0/P1 cases | ✅ PASS |
+| AT-069 | gen --operations filters spec | `caseforge gen --spec petstore.yaml --no-ai --operations listPets --output ./cases` | only cases for listPets operationId | ✅ PASS |
+| AT-070 | gen --concurrency flag accepted | `caseforge gen --help` | `--concurrency` listed | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
@@ -227,6 +238,7 @@
 | Core / CLI | 3 | 3 | 0 |
 | gen — formats | 7 | 7 | 0 |
 | gen — techniques | 4 | 4 | 0 |
+| gen — CLI flags | 4 | 4 | 0 |
 | lint | 2 | 2 | 0 |
 | lint enhancement | 6 | 6 | 0 |
 | diff | 2 | 2 | 0 |
@@ -241,7 +253,7 @@
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
-| **Total** | **66** | **66** | **0** |
+| **Total** | **70** | **70** | **0** |
 
 ---
 

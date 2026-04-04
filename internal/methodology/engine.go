@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/testmind-hq/caseforge/internal/event"
@@ -32,10 +33,17 @@ type Engine struct {
 	specTechniques []SpecTechnique
 	llm            llm.LLMProvider
 	sink           event.Sink
+	concurrency    int // 0 or 1 = serial; >1 = parallel worker pool
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
 	return &Engine{techniques: techniques, llm: provider}
+}
+
+// SetConcurrency sets the number of operations processed concurrently.
+// Values ≤1 (including 0) run serially. Values >1 enable a worker pool.
+func (e *Engine) SetConcurrency(n int) {
+	e.concurrency = n
 }
 
 // AddSpecTechnique registers a spec-level technique with the engine.
@@ -56,28 +64,15 @@ func (e *Engine) emit(ev event.Event) {
 
 // Generate annotates all operations with LLM semantic info, then
 // dispatches each operation to applicable techniques.
+// When concurrency > 1, operations are processed in parallel via a worker pool.
 func (e *Engine) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 	// Step 1: Enrich all operations with LLM semantic annotations
 	e.annotateOperations(s.Operations)
 
 	// Step 2: For each operation, apply all applicable techniques
-	var allCases []schema.TestCase
-	for _, op := range s.Operations {
-		for _, tech := range e.techniques {
-			if !tech.Applies(op) {
-				continue
-			}
-			cases, err := tech.Generate(op)
-			if err != nil {
-				return nil, fmt.Errorf("technique %s on %s %s: %w",
-					tech.Name(), op.Method, op.Path, err)
-			}
-			for range cases {
-				e.emit(event.Event{Type: event.EventCaseGenerated})
-			}
-			allCases = append(allCases, cases...)
-		}
-		e.emit(event.Event{Type: event.EventOperationDone, Payload: op.Path})
+	allCases, err := e.generateOperations(s.Operations)
+	if err != nil {
+		return nil, err
 	}
 
 	// Step 3: Apply spec-level techniques (cross-operation, e.g. chain cases)
@@ -89,6 +84,76 @@ func (e *Engine) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 		allCases = append(allCases, cases...)
 	}
 	return allCases, nil
+}
+
+// generateOperations runs all per-operation techniques, using a worker pool
+// when concurrency > 1. Results are returned in the same order as ops.
+func (e *Engine) generateOperations(ops []*spec.Operation) ([]schema.TestCase, error) {
+	n := e.concurrency
+	if n <= 1 {
+		// Serial path — unchanged behaviour.
+		var allCases []schema.TestCase
+		for _, op := range ops {
+			cases, err := e.generateOne(op)
+			if err != nil {
+				return nil, err
+			}
+			allCases = append(allCases, cases...)
+		}
+		return allCases, nil
+	}
+
+	// Parallel path: each goroutine writes to its own slot (no mutex needed on
+	// results slice). event.Bus.Emit is thread-safe so e.emit() is safe here.
+	type opResult struct {
+		cases []schema.TestCase
+		err   error
+	}
+	results := make([]opResult, len(ops))
+	sem := make(chan struct{}, n)
+	var wg sync.WaitGroup
+
+	for i, op := range ops {
+		wg.Add(1)
+		go func(idx int, op *spec.Operation) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			cases, err := e.generateOne(op)
+			results[idx] = opResult{cases: cases, err: err}
+		}(i, op)
+	}
+	wg.Wait()
+
+	var allCases []schema.TestCase
+	for _, r := range results {
+		if r.err != nil {
+			return nil, r.err
+		}
+		allCases = append(allCases, r.cases...)
+	}
+	return allCases, nil
+}
+
+// generateOne runs all per-operation techniques for a single operation.
+func (e *Engine) generateOne(op *spec.Operation) ([]schema.TestCase, error) {
+	var cases []schema.TestCase
+	for _, tech := range e.techniques {
+		if !tech.Applies(op) {
+			continue
+		}
+		c, err := tech.Generate(op)
+		if err != nil {
+			return nil, fmt.Errorf("technique %s on %s %s: %w",
+				tech.Name(), op.Method, op.Path, err)
+		}
+		for range c {
+			e.emit(event.Event{Type: event.EventCaseGenerated})
+		}
+		cases = append(cases, c...)
+	}
+	e.emit(event.Event{Type: event.EventOperationDone, Payload: op.Path})
+	return cases, nil
 }
 
 func (e *Engine) annotateOperations(ops []*spec.Operation) {

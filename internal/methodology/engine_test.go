@@ -169,6 +169,56 @@ func TestEngineEmitsEventsToSink(t *testing.T) {
 	assert.Contains(t, types, event.EventCaseGenerated)
 }
 
+func TestEngineConcurrentProducesSameResults(t *testing.T) {
+	// Build a spec with several operations so the worker pool is exercised.
+	noop := &llm.NoopProvider{}
+	ps := &spec.ParsedSpec{
+		Operations: []*spec.Operation{
+			{OperationID: "op1", Method: "POST", Path: "/a",
+				RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{Type: "object",
+						Properties: map[string]*spec.Schema{"x": {Type: "string"}}}},
+				}},
+				Responses: map[string]*spec.Response{"201": {}}},
+			{OperationID: "op2", Method: "GET", Path: "/b",
+				Responses: map[string]*spec.Response{"200": {}}},
+			{OperationID: "op3", Method: "PUT", Path: "/c",
+				RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{Type: "object",
+						Properties: map[string]*spec.Schema{"y": {Type: "integer"}}}},
+				}},
+				Responses: map[string]*spec.Response{"200": {}}},
+		},
+	}
+
+	newEngine := func(concurrency int) *Engine {
+		e := NewEngine(noop, NewEquivalenceTechnique(), NewBoundaryTechnique())
+		e.SetConcurrency(concurrency)
+		return e
+	}
+
+	serialCases, err := newEngine(1).Generate(ps)
+	require.NoError(t, err)
+
+	parallelCases, err := newEngine(3).Generate(ps)
+	require.NoError(t, err)
+
+	// IDs are random UUIDs so we compare by (title, technique, path) fingerprint.
+	type fingerprint struct{ title, technique, path string }
+	toSet := func(cases []schema.TestCase) map[fingerprint]int {
+		m := make(map[fingerprint]int)
+		for _, c := range cases {
+			fp := fingerprint{c.Title, c.Source.Technique, c.Source.SpecPath}
+			m[fp]++
+		}
+		return m
+	}
+
+	serialSet := toSet(serialCases)
+	parallelSet := toSet(parallelCases)
+	assert.Equal(t, serialSet, parallelSet, "concurrent and serial must produce equivalent cases")
+}
+
 // mockSpecTechnique is a test double for SpecTechnique.
 type mockSpecTechnique struct {
 	onGenerate func(*spec.ParsedSpec) ([]schema.TestCase, error)
