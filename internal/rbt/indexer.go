@@ -30,6 +30,7 @@ type Indexer struct {
 	Overwrite bool
 	Store     *IndexStore
 	Embedder  Embedder
+	Depth     int // 0 = dynamic BFS (stop at route node); >0 = fixed depth cap
 }
 
 // RunRegex uses the regex parser to extract routes and writes caseforge-map.yaml.
@@ -49,7 +50,7 @@ func (idx *Indexer) RunRegex() error {
 	return idx.writeMapFile(mappings, "regex")
 }
 
-// RunHybrid uses tree-sitter + embeddings + LLM confirmation.
+// RunHybrid uses tree-sitter + call-graph + embeddings + LLM confirmation.
 func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 	if err := idx.checkOverwrite(); err != nil {
 		return err
@@ -59,69 +60,134 @@ func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 		return err
 	}
 
-	ts := NewTreeSitterParser()
-	var mappings []RouteMapping
-	if ts.IsAvailable() {
-		mappings, err = ts.ExtractRoutes(idx.SrcDir, files)
-		if err != nil {
-			return err
-		}
-	}
+	// Phase 1: tree-sitter direct route detection.
+	mappings, routeFileMappings := idx.runTreeSitterPhase(files)
+	unclaimed := subtractFiles(files, mappings)
 
-	claimed := make(map[string]bool)
-	for _, m := range mappings {
-		claimed[m.SourceFile] = true
-	}
-	var unclaimed []ChangedFile
-	for _, f := range files {
-		if !claimed[f.Path] {
-			unclaimed = append(unclaimed, f)
-		}
-	}
+	// Phase 2: call-graph traversal for service/DAO/utils files.
+	cgMappings, cgClaimed := idx.runCallGraphPhase(files, unclaimed, routeFileMappings, llmParser)
+	mappings = append(mappings, cgMappings...)
+	unclaimed = subtractChangedFiles(unclaimed, cgClaimed)
 
-	if len(unclaimed) > 0 {
-		if idx.Embedder != nil {
-			if _, isNoop := idx.Embedder.(*NoopEmbedder); isNoop {
-				regexMappings, _ := NewRegexParser().ExtractRoutes(idx.SrcDir, unclaimed)
-				mappings = append(mappings, regexMappings...)
-			} else {
-				embedMappings, err := idx.runEmbedPhase(unclaimed)
-				if err == nil {
-					mappings = append(mappings, embedMappings...)
-				}
-			}
-		}
+	// Phase 3: embedding-based matching for remaining unclaimed files.
+	embedMappings, err := idx.runEmbedPhase(unclaimed)
+	if err == nil {
+		mappings = append(mappings, embedMappings...)
 	}
 
 	return idx.writeMapFile(mappings, "hybrid")
 }
 
+// runTreeSitterPhase extracts route mappings using the tree-sitter parser.
+// Returns mappings and a map of file → []RouteMapping for route-registering files.
+func (idx *Indexer) runTreeSitterPhase(files []ChangedFile) ([]RouteMapping, map[string][]RouteMapping) {
+	routeFileMappings := make(map[string][]RouteMapping)
+	ts := NewTreeSitterParser()
+	if !ts.IsAvailable() {
+		return nil, routeFileMappings
+	}
+	mappings, err := ts.ExtractRoutes(idx.SrcDir, files)
+	if err != nil {
+		return nil, routeFileMappings
+	}
+	for _, rm := range mappings {
+		routeFileMappings[rm.SourceFile] = append(routeFileMappings[rm.SourceFile], rm)
+	}
+	return mappings, routeFileMappings
+}
+
+// runCallGraphPhase builds a call graph from all source files and traces
+// unclaimed files upward to route-registering files.
+// Returns the found route mappings and the list of unclaimed files that were resolved.
+func (idx *Indexer) runCallGraphPhase(
+	allFiles []ChangedFile,
+	unclaimed []ChangedFile,
+	routeFileMappings map[string][]RouteMapping,
+	llmParser *LLMParser,
+) ([]RouteMapping, []ChangedFile) {
+	tsBuilder := NewTreeSitterCallGraphBuilder()
+	llmBuilder := NewLLMCallGraphBuilder(llmParser)
+	builder := &fallbackCallGraphBuilder{primary: tsBuilder, fallback: llmBuilder}
+	return idx.runCallGraphPhaseWithBuilder(allFiles, unclaimed, routeFileMappings, builder)
+}
+
+// runCallGraphPhaseWithBuilder is the testable core of runCallGraphPhase.
+// Returns the found route mappings and the list of unclaimed files that were
+// resolved (i.e., whose call chains reached a route-registering file).
+func (idx *Indexer) runCallGraphPhaseWithBuilder(
+	allFiles []ChangedFile,
+	unclaimed []ChangedFile,
+	routeFileMappings map[string][]RouteMapping,
+	builder CallGraphBuilder,
+) ([]RouteMapping, []ChangedFile) {
+	if len(unclaimed) == 0 {
+		return nil, nil
+	}
+
+	// BuildCallGraph returns defsByFile so we avoid a second ExtractFuncs pass.
+	cg, defsByFile := BuildCallGraph(allFiles, builder)
+
+	// Populate RouteNodes for spec compliance and future consumers.
+	for filePath := range routeFileMappings {
+		cg.RouteNodes = append(cg.RouteNodes, defsByFile[filePath]...)
+	}
+
+	// Collect start nodes from the already-extracted defs (no second call needed).
+	var startNodes []CallNode
+	for _, f := range unclaimed {
+		startNodes = append(startNodes, defsByFile[f.Path]...)
+	}
+	if len(startNodes) == 0 {
+		return nil, nil
+	}
+
+	// Choose via/confidence based on whether the LLM fallback was activated.
+	via, confidence := "callgraph", 0.8
+	if fb, ok := builder.(*fallbackCallGraphBuilder); ok && fb.hasUsedLLM {
+		via, confidence = "callgraph-llm", 0.65
+	}
+
+	mappings, coveredFilesMap := TraceToRoutes(cg, startNodes, routeFileMappings, idx.Depth, via, confidence)
+
+	// Build the list of claimed unclaimed files for the caller to subtract.
+	var claimed []ChangedFile
+	for _, f := range unclaimed {
+		if coveredFilesMap[f.Path] {
+			claimed = append(claimed, f)
+		}
+	}
+	return mappings, claimed
+}
+
 func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
-	localIdx, err := idx.Store.Load()
-	if err != nil || localIdx == nil {
-		localIdx = &LocalIndex{}
+	// Skip embedding I/O when using the no-op embedder (no API key configured).
+	if _, isNoop := idx.Embedder.(*NoopEmbedder); !isNoop {
+		localIdx, err := idx.Store.Load()
+		if err != nil || localIdx == nil {
+			localIdx = &LocalIndex{}
+		}
+		for _, f := range files {
+			data, err := os.ReadFile(f.Path)
+			if err != nil {
+				continue
+			}
+			hash := fmt.Sprintf("%x", sha256.Sum256(data))
+			if !isChunkStale(localIdx, f.Path, hash) {
+				continue
+			}
+			emb, err := idx.Embedder.Embed(string(data))
+			if err != nil {
+				continue
+			}
+			localIdx.Chunks = append(localIdx.Chunks, IndexChunk{
+				File:      f.Path,
+				Fn:        filepath.Base(f.Path),
+				Hash:      hash,
+				Embedding: emb,
+			})
+		}
+		_ = idx.Store.Save(localIdx)
 	}
-	for _, f := range files {
-		data, err := os.ReadFile(f.Path)
-		if err != nil {
-			continue
-		}
-		hash := fmt.Sprintf("%x", sha256.Sum256(data))
-		if !isChunkStale(localIdx, f.Path, hash) {
-			continue
-		}
-		emb, err := idx.Embedder.Embed(string(data))
-		if err != nil {
-			continue
-		}
-		localIdx.Chunks = append(localIdx.Chunks, IndexChunk{
-			File:      f.Path,
-			Fn:        filepath.Base(f.Path),
-			Hash:      hash,
-			Embedding: emb,
-		})
-	}
-	_ = idx.Store.Save(localIdx)
 	// V1 stub: embeddings are stored for incremental re-embedding, but cosine similarity
 	// → RouteMapping conversion (TopKChunks + LLM confirmation) is not yet implemented.
 	// Fall back to regex for any unclaimed files to produce a useful map file.
