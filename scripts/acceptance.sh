@@ -325,11 +325,11 @@ run "AT-040" "lint --output writes lint-report.json" \
 
 # AT-041: --skip-rules suppresses rule
 run "AT-041" "lint --skip-rules suppresses rule" \
-  "out=\$($BIN lint --spec $WORKDIR/petstore.yaml --skip-rules L014 --format json 2>/dev/null); echo \"\$out\" | python3 -c \"import sys,json; d=json.load(sys.stdin); ids=[i.get('RuleID','') for i in d.get('issues',[])]; assert 'L014' not in ids, 'L014 found but should be skipped'\""
+  "out=\$($BIN lint --spec $WORKDIR/petstore.yaml --skip-rules L014 --format json 2>/dev/null); echo \"\$out\" | python3 -c \"import sys,json; d=json.load(sys.stdin); ids=[i.get('rule_id','') for i in d.get('issues',[])]; assert 'L014' not in ids, 'L014 found but should be skipped'\""
 
 # AT-042: .caseforgelint.yaml skip_rules respected
 run "AT-042" ".caseforgelint.yaml skip_rules respected" \
-  "echo 'skip_rules: [L014]' > $WORKDIR/.caseforgelint.yaml; out=\$(cd $WORKDIR && $BIN lint --spec $WORKDIR/petstore.yaml --format json 2>/dev/null); echo \"\$out\" | python3 -c \"import sys,json; d=json.load(sys.stdin); ids=[i.get('RuleID','') for i in d.get('issues',[])]; assert 'L014' not in ids, 'L014 found but should be skipped by file config'\"; rm -f $WORKDIR/.caseforgelint.yaml"
+  "echo 'skip_rules: [L014]' > $WORKDIR/.caseforgelint.yaml; out=\$(cd $WORKDIR && $BIN lint --spec $WORKDIR/petstore.yaml --format json 2>/dev/null); echo \"\$out\" | python3 -c \"import sys,json; d=json.load(sys.stdin); ids=[i.get('rule_id','') for i in d.get('issues',[])]; assert 'L014' not in ids, 'L014 found but should be skipped by file config'\"; rm -f $WORKDIR/.caseforgelint.yaml"
 
 # Fixture: spec with duplicate operationId for AT-043
 cat > "$WORKDIR/dup-opid.yaml" << 'YAML'
