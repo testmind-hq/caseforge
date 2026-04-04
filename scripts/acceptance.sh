@@ -767,6 +767,64 @@ contains "AT-082" "rbt index --strategy embed writes map file (regex fallback)" 
 echo ""
 
 # -------------------------------------------------------
+# AT-083 – AT-086: caseforge export (3.2)
+# -------------------------------------------------------
+echo "--- export command ---"
+
+# Build shared fixture: write index.json with one test case
+EXPORTDIR=$(mktemp -d)
+mkdir -p "$EXPORTDIR/cases"
+cat > "$EXPORTDIR/cases/index.json" << 'IDXEOF'
+{
+  "$schema": "https://caseforge.dev/schema/v1/index.json",
+  "version": "1",
+  "generated_at": "2026-04-04T00:00:00Z",
+  "meta": {},
+  "test_cases": [
+    {
+      "id": "TC-0001",
+      "title": "GET /pets - list all pets",
+      "kind": "single",
+      "priority": "P1",
+      "tags": ["pets"],
+      "source": {"technique": "equivalence_partitioning", "spec_path": "GET /pets"},
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "send request",
+          "type": "test",
+          "method": "GET",
+          "path": "/pets",
+          "assertions": [{"target": "status_code", "operator": "eq", "expected": 200}]
+        }
+      ]
+    }
+  ]
+}
+IDXEOF
+
+# AT-083: export command registered
+contains "AT-083" "export command registered" "export" \
+  "'$BIN' --help"
+
+# AT-084: allure format creates result file
+"$BIN" export --cases "$EXPORTDIR/cases" --format allure --output "$EXPORTDIR/out" || true
+contains "AT-084" "export --format allure creates result file" "result.json" \
+  "ls '$EXPORTDIR/out/allure/'"
+
+# AT-085: xray format creates xray-import.json
+"$BIN" export --cases "$EXPORTDIR/cases" --format xray --output "$EXPORTDIR/out" || true
+contains "AT-085" "export --format xray creates xray-import.json" "xray-import.json" \
+  "ls '$EXPORTDIR/out/xray/'"
+
+# AT-086: testrail format creates testrail-import.csv
+"$BIN" export --cases "$EXPORTDIR/cases" --format testrail --output "$EXPORTDIR/out" || true
+contains "AT-086" "export --format testrail creates testrail-import.csv" "testrail-import.csv" \
+  "ls '$EXPORTDIR/out/testrail/'"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))

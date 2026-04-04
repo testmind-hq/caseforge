@@ -91,6 +91,15 @@
 |----|----------|-----------------|----------|--------|
 | AT-082 | `rbt index --strategy embed` writes map file (regex fallback without API key) | `caseforge rbt index --spec openapi.yaml --src /tmp/src --strategy embed` with no `OPENAI_API_KEY` | map file written with `mappings:` | ✅ PASS |
 
+### `caseforge export` — Platform Adapters (3.2)
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-083 | `export` command registered | `caseforge --help` | `export` listed | ✅ PASS |
+| AT-084 | `--format allure` creates Allure result file | `caseforge export --cases ./cases --format allure --output /tmp/out` | `*-result.json` in `/tmp/out/allure/` | ✅ PASS |
+| AT-085 | `--format xray` creates xray-import.json | `caseforge export --cases ./cases --format xray --output /tmp/out` | `xray-import.json` in `/tmp/out/xray/` | ✅ PASS |
+| AT-086 | `--format testrail` creates testrail-import.csv | `caseforge export --cases ./cases --format testrail --output /tmp/out` | `testrail-import.csv` in `/tmp/out/testrail/` | ✅ PASS |
+
 ---
 
 ### `gen` — Technique Coverage
