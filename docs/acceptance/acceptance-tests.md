@@ -108,8 +108,8 @@
 
 | ID | Scenario | Command / Setup | Expected | Status |
 |----|----------|-----------------|----------|--------|
-| AT-087 | `--gen-cases` flag registered | `caseforge diff --help` | `--gen-cases` listed | ✅ PASS |
-| AT-088 | breaking changes → `index.json` written | `caseforge diff --old v1.yaml --new v2.yaml --gen-cases /tmp/gen` | `index.json` with `test_cases` array in gen dir | ✅ PASS |
+| AT-089 | `--gen-cases` flag registered | `caseforge diff --help` | `--gen-cases` listed | ✅ PASS |
+| AT-090 | breaking changes → `index.json` written | `caseforge diff --old v1.yaml --new v2.yaml --gen-cases /tmp/gen` | `index.json` with `test_cases` array in gen dir | ✅ PASS |
 
 ---
 
