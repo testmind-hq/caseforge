@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	specpkg "github.com/testmind-hq/caseforge/internal/spec"
 	"gopkg.in/yaml.v3"
 )
 
@@ -182,40 +183,123 @@ func (idx *Indexer) runCallGraphPhaseWithBuilder(
 	return mappings, claimed
 }
 
+// runEmbedPhase embeds unclaimed source files and spec operations, then uses
+// cosine similarity (TopKChunks) to produce RouteMapping entries. Falls back
+// to the regex parser when the embedder is noop (no API key) or when no
+// mappings could be derived from the index.
 func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
-	// Skip embedding I/O when using the no-op embedder (no API key configured).
-	if _, isNoop := idx.Embedder.(*NoopEmbedder); !isNoop {
-		localIdx, err := idx.Store.Load()
-		if err != nil || localIdx == nil {
-			localIdx = &LocalIndex{}
+	// Noop embedder: no API key configured — skip embedding, fall back to regex.
+	if _, isNoop := idx.Embedder.(*NoopEmbedder); isNoop {
+		regexMappings, _ := NewRegexParser().ExtractRoutes(context.Background(), idx.SrcDir, files)
+		return regexMappings, nil
+	}
+
+	// Load or create LocalIndex.
+	localIdx, err := idx.Store.Load()
+	if err != nil || localIdx == nil {
+		localIdx = &LocalIndex{}
+	}
+
+	// Phase 1: embed file chunks (incremental — skip unchanged files).
+	for _, f := range files {
+		data, err := os.ReadFile(f.Path)
+		if err != nil {
+			continue
 		}
-		for _, f := range files {
-			data, err := os.ReadFile(f.Path)
-			if err != nil {
-				continue
+		hash := fmt.Sprintf("%x", sha256.Sum256(data))
+		if !isChunkStale(localIdx, f.Path, hash) {
+			continue // already cached
+		}
+		emb, err := idx.Embedder.Embed(string(data))
+		if err != nil {
+			continue
+		}
+		// Replace existing entry for this file or append a new one.
+		replaced := false
+		for i, c := range localIdx.Chunks {
+			if c.File == f.Path {
+				localIdx.Chunks[i] = IndexChunk{File: f.Path, Fn: filepath.Base(f.Path), Hash: hash, Embedding: emb}
+				replaced = true
+				break
 			}
-			hash := fmt.Sprintf("%x", sha256.Sum256(data))
-			if !isChunkStale(localIdx, f.Path, hash) {
-				continue
-			}
-			emb, err := idx.Embedder.Embed(string(data))
-			if err != nil {
-				continue
-			}
+		}
+		if !replaced {
 			localIdx.Chunks = append(localIdx.Chunks, IndexChunk{
-				File:      f.Path,
-				Fn:        filepath.Base(f.Path),
-				Hash:      hash,
-				Embedding: emb,
+				File: f.Path, Fn: filepath.Base(f.Path), Hash: hash, Embedding: emb,
 			})
 		}
-		_ = idx.Store.Save(localIdx)
 	}
-	// V1 stub: embeddings are stored for incremental re-embedding, but cosine similarity
-	// → RouteMapping conversion (TopKChunks + LLM confirmation) is not yet implemented.
-	// Fall back to regex for any unclaimed files to produce a useful map file.
-	regexMappings, _ := NewRegexParser().ExtractRoutes(context.Background(), idx.SrcDir, files)
-	return regexMappings, nil
+
+	// Phase 2: embed spec operations (incremental — skip already-cached ops).
+	if idx.SpecPath != "" {
+		if parsed, loadErr := specpkg.NewLoader().Load(idx.SpecPath); loadErr == nil {
+			for _, op := range parsed.Operations {
+				opKey := strings.ToUpper(op.Method) + " " + op.Path
+				if !isSpecOpStale(localIdx, opKey) {
+					continue // already cached
+				}
+				text := fmt.Sprintf("%s %s — %s", strings.ToUpper(op.Method), op.Path, op.Summary)
+				emb, embErr := idx.Embedder.Embed(text)
+				if embErr != nil {
+					continue
+				}
+				replaced := false
+				for i, s := range localIdx.SpecOps {
+					if s.Operation == opKey {
+						localIdx.SpecOps[i] = IndexSpecOp{Operation: opKey, Description: op.Summary, Embedding: emb}
+						replaced = true
+						break
+					}
+				}
+				if !replaced {
+					localIdx.SpecOps = append(localIdx.SpecOps, IndexSpecOp{
+						Operation: opKey, Description: op.Summary, Embedding: emb,
+					})
+				}
+			}
+		}
+	}
+
+	// Persist updated index for future incremental runs.
+	_ = idx.Store.Save(localIdx)
+
+	// Phase 3: cosine-similarity matching — for each spec op find the top-k
+	// most similar source file chunks and emit a RouteMapping per match.
+	const topK = 3
+	seen := make(map[string]bool) // deduplicate (sourceFile, operation) pairs
+	var mappings []RouteMapping
+	for _, op := range localIdx.SpecOps {
+		if len(op.Embedding) == 0 {
+			continue
+		}
+		parts := strings.SplitN(op.Operation, " ", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		method, routePath := parts[0], parts[1]
+		for _, chunk := range TopKChunks(op.Embedding, localIdx.Chunks, topK) {
+			dedupKey := chunk.File + "|" + op.Operation
+			if seen[dedupKey] {
+				continue
+			}
+			seen[dedupKey] = true
+			mappings = append(mappings, RouteMapping{
+				SourceFile: chunk.File,
+				Method:     method,
+				RoutePath:  routePath,
+				Via:        "embed",
+				Confidence: 0.65,
+			})
+		}
+	}
+
+	if len(mappings) == 0 {
+		// No spec ops loaded or no chunks available — fall back to regex.
+		regexMappings, _ := NewRegexParser().ExtractRoutes(context.Background(), idx.SrcDir, files)
+		return regexMappings, nil
+	}
+
+	return mappings, nil
 }
 
 func (idx *Indexer) checkOverwrite() error {
@@ -295,6 +379,19 @@ func isChunkStale(idx *LocalIndex, file, newHash string) bool {
 	for _, c := range idx.Chunks {
 		if c.File == file {
 			return c.Hash != newHash
+		}
+	}
+	return true
+}
+
+// isSpecOpStale returns true if opKey is not yet cached in idx or has an empty embedding.
+func isSpecOpStale(idx *LocalIndex, opKey string) bool {
+	if idx == nil {
+		return true
+	}
+	for _, s := range idx.SpecOps {
+		if s.Operation == opKey {
+			return len(s.Embedding) == 0
 		}
 	}
 	return true
