@@ -47,6 +47,10 @@ func runRBTIndex(cmd *cobra.Command, _ []string) error {
 	depth, _ := cmd.Flags().GetInt("depth")
 	algo, _ := cmd.Flags().GetString("algo")
 
+	if algo != "rta" && algo != "pta" {
+		return fmt.Errorf("invalid --algo value %q: must be \"rta\" or \"pta\"", algo)
+	}
+
 	out := cmd.OutOrStdout()
 
 	if strategy == "llm" {

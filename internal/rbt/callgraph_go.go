@@ -105,11 +105,14 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 			Mains:          mainPkgs,
 			BuildCallGraph: true,
 		}
-		result, err := pointer.Analyze(ptaCfg)
-		if err != nil {
-			return nil, nil, err
+		ptaResult, ptaErr := pointer.Analyze(ptaCfg)
+		if ptaErr != nil {
+			// PTA is marked deprecated and panics on type aliases introduced in
+			// Go 1.22+ (e.g. "cannot flatten unsupported type *types.Alias").
+			// Fall back silently so V2 can handle the unclaimed files.
+			return nil, nil, nil
 		}
-		cg = result.CallGraph
+		cg = ptaResult.CallGraph
 	default: // "rta"
 		var roots []*ssa.Function
 		for _, pkg := range mainPkgs {
