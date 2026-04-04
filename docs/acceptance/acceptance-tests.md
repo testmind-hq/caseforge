@@ -162,6 +162,16 @@
 
 ---
 
+### `rbt` — Call Graph V3 (Go type-aware)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-064 | --algo flag registered on rbt index | `caseforge rbt index --help` | `--algo` listed | ✅ PASS |
+| AT-065 | rbt index hybrid runs without error (no Go module) | `caseforge rbt index --spec petstore.yaml --strategy hybrid --src /tmp` | exit 0, map file written | ✅ PASS |
+| AT-066 | --algo pta flag accepted | `caseforge rbt index --help` | `pta` mentioned in --algo description | ✅ PASS |
+
+---
+
 ### `dedupe` — Duplicate Test Case Detection
 
 | ID | Scenario | Command | Expected | Status |
@@ -227,11 +237,11 @@
 | config show | 2 | 2 | 0 |
 | ask | 2 | 2 | 0 |
 | explore | 4 | 4 | 0 |
-| rbt | 12 | 12 | 0 |
+| rbt | 15 | 15 | 0 |
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
-| **Total** | **63** | **63** | **0** |
+| **Total** | **66** | **66** | **0** |
 
 ---
 

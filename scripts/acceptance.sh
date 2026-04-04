@@ -360,6 +360,21 @@ contains "AT-063" "--depth flag default is 0 on rbt index" "depth int" \
 echo ""
 
 # -------------------------------------------------------
+# AT-064 – AT-066: rbt callgraph V3 (Go type-aware)
+# -------------------------------------------------------
+echo "--- rbt callgraph v3 ---"
+
+contains "AT-064" "--algo flag registered on rbt index" "algo" \
+  "'$BIN' rbt index --help 2>&1 || true"
+
+contains "AT-065" "rbt index hybrid no-Go-module runs clean" "Map file written" \
+  "mkdir -p '$WORKDIR/at065-out' && '$BIN' rbt index --spec '$WORKDIR/petstore.yaml' --strategy hybrid --src /tmp --out '$WORKDIR/at065-out/map.yaml' --overwrite 2>&1 || true"
+
+contains "AT-066" "--algo accepts pta value" "pta" \
+  "'$BIN' rbt index --help 2>&1 || true"
+echo ""
+
+# -------------------------------------------------------
 # AT-047 – AT-051: dedupe
 # -------------------------------------------------------
 echo "--- dedupe ---"
