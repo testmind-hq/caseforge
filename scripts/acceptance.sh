@@ -679,6 +679,52 @@ exits_with "AT-072" "gen exits 4 when LLM unavailable without --no-ai" 4 \
 echo ""
 
 # -------------------------------------------------------
+# AT-079 – AT-081: rbt --generate (2.2)
+# -------------------------------------------------------
+echo "--- rbt: --generate high-risk auto-gen ---"
+
+# AT-079: flag registered
+contains "AT-079" "rbt --generate flag registered" "generate" \
+  "$BIN rbt --help"
+
+# AT-080: --generate + --dry-run → prints "ignored with --dry-run" info message
+contains "AT-080" "rbt --generate --dry-run prints ignored message" "ignored with" \
+  "$BIN rbt --spec '$WORKDIR/petstore.yaml' --dry-run --generate 2>&1"
+
+# AT-081: --generate with a real git diff + map file → index.json created in cases dir
+GENDIR="$WORKDIR/rbt-gen-test"
+mkdir -p "$GENDIR/cases-rbt" "$GENDIR/reports"
+(
+  cd "$GENDIR"
+  git init -q
+  git config user.email "t@t.com"
+  git config user.name "T"
+  echo "package main" > handler.go
+  cat > caseforge-map.yaml << 'MAPYAML'
+mappings:
+  - source: handler.go
+    operations:
+      - "GET /pets"
+MAPYAML
+  git add . && git commit -q -m "v1"
+  echo "package main // updated" > handler.go
+  git add . && git commit -q -m "v2"
+  "$BIN" rbt \
+    --spec "$WORKDIR/petstore.yaml" \
+    --src "$GENDIR" \
+    --base HEAD~1 --head HEAD \
+    --map "$GENDIR/caseforge-map.yaml" \
+    --generate --no-ai \
+    --cases "$GENDIR/cases-rbt" \
+    --output "$GENDIR/reports" 2>/dev/null || true
+) 2>/dev/null || true
+
+contains "AT-081" "rbt --generate writes index.json to cases dir" "index.json" \
+  "ls '$GENDIR/cases-rbt/'"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))

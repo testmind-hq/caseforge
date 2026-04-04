@@ -3,11 +3,17 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/testmind-hq/caseforge/internal/config"
+	"github.com/testmind-hq/caseforge/internal/llm"
+	"github.com/testmind-hq/caseforge/internal/methodology"
+	"github.com/testmind-hq/caseforge/internal/output/render"
+	"github.com/testmind-hq/caseforge/internal/output/writer"
 	"github.com/testmind-hq/caseforge/internal/rbt"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
@@ -22,7 +28,8 @@ report. Operations with no tests covering changed code are flagged as high risk.
 Examples:
   caseforge rbt --spec openapi.yaml
   caseforge rbt --spec openapi.yaml --base HEAD~3 --head HEAD --format json
-  caseforge rbt --spec openapi.yaml --dry-run --output ./reports`,
+  caseforge rbt --spec openapi.yaml --dry-run --output ./reports
+  caseforge rbt --spec openapi.yaml --generate --gen-format hurl`,
 	RunE: runRBT,
 }
 
@@ -34,6 +41,8 @@ func init() {
 	rbtCmd.Flags().String("base", "HEAD~1", "Base git ref for diff")
 	rbtCmd.Flags().String("head", "HEAD", "Head git ref for diff")
 	rbtCmd.Flags().Bool("generate", false, "Generate test cases for high-risk uncovered operations")
+	rbtCmd.Flags().Bool("no-ai", false, "Disable LLM for generated test cases; use algorithm-only mode")
+	rbtCmd.Flags().String("gen-format", "hurl", "Format for generated test cases: hurl|postman|k6|markdown|csv")
 	rbtCmd.Flags().String("output", "./reports", "Output directory for rbt-report.json")
 	rbtCmd.Flags().String("format", "terminal", "Output format: terminal or json")
 	rbtCmd.Flags().String("fail-on", "high", "Exit non-zero if any operation has risk >= level (none|low|medium|high)")
@@ -148,10 +157,15 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 		fmt.Fprintln(out, "Report written to:", reportPath)
 	}
 
-	// --generate: auto-generate tests for HIGH-risk operations
-	if generate && !dryRun {
-		if err := rbt.GenerateForHighRisk(out, report, casesDir); err != nil {
-			return err
+	// --generate: auto-generate tests for HIGH-risk operations.
+	// Skipped in dry-run mode because all operations are RiskNone there.
+	if generate {
+		if dryRun {
+			fmt.Fprintln(out, "--generate is ignored with --dry-run (no HIGH-risk operations in dry-run mode)")
+		} else {
+			if err := runGenerate(cmd, out, errOut, specPath, parsedSpec, report, casesDir); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -160,5 +174,97 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 		os.Exit(1)
 	}
 
+	return nil
+}
+
+// runGenerate generates test cases for all HIGH-risk operations in the report.
+// It runs the same methodology pipeline as `caseforge gen`, restricted to the
+// high-risk operations identified by the assessor.
+// specPath is the spec file path used to compute the spec hash for index.json.
+// errOut is used for the success message so stdout stays clean when --format=json.
+func runGenerate(cmd *cobra.Command, w, errOut io.Writer, specPath string, parsedSpec *spec.ParsedSpec, report rbt.RiskReport, casesDir string) error {
+	highRiskOps := rbt.HighRiskOperations(report, parsedSpec)
+	if len(highRiskOps) == 0 {
+		fmt.Fprintln(w, "No HIGH-risk operations to generate tests for.")
+		return nil
+	}
+
+	genFormat, _ := cmd.Flags().GetString("gen-format")
+	noAI, _ := cmd.Flags().GetBool("no-ai")
+
+	// Load config for LLM provider settings.
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("loading config for --generate: %w", err)
+	}
+	if noAI {
+		cfg.AI.Provider = "noop"
+	}
+
+	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
+	if !provider.IsAvailable() {
+		// Fall back to noop so generation still works without an LLM key.
+		provider = llm.NewProviderWithConfig("", "noop", "", "")
+	}
+
+	// Build a filtered spec containing only the high-risk operations.
+	filteredSpec := &spec.ParsedSpec{
+		Title:           parsedSpec.Title,
+		Version:         parsedSpec.Version,
+		Operations:      highRiskOps,
+		Schemas:         parsedSpec.Schemas,
+		SecuritySchemes: parsedSpec.SecuritySchemes,
+		GlobalSecurity:  parsedSpec.GlobalSecurity,
+	}
+
+	// Run the standard methodology engine on the filtered spec.
+	engine := methodology.NewEngine(provider,
+		methodology.NewEquivalenceTechnique(),
+		methodology.NewBoundaryTechnique(),
+		methodology.NewDecisionTechnique(),
+		methodology.NewStateTechnique(),
+		methodology.NewIdempotentTechnique(),
+		methodology.NewPairwiseTechnique(),
+		methodology.NewSecurityTechnique(),
+	)
+	engine.AddSpecTechnique(methodology.NewChainTechnique())
+	engine.AddSpecTechnique(methodology.NewSecuritySpecTechnique())
+
+	cases, err := engine.Generate(filteredSpec)
+	if err != nil {
+		return fmt.Errorf("generating test cases: %w", err)
+	}
+
+	// Write index.json to casesDir; include spec hash for provenance.
+	specHash, _ := writer.HashFile(specPath)
+	caseWriter := writer.NewJSONSchemaWriter()
+	if err := caseWriter.Write(cases, casesDir, writer.WriteOptions{
+		SpecHash:         specHash,
+		CaseforgeVersion: Version,
+	}); err != nil {
+		return fmt.Errorf("writing generated cases: %w", err)
+	}
+
+	// Render to the requested format.
+	var renderer render.Renderer
+	switch genFormat {
+	case "markdown":
+		renderer = render.NewMarkdownRenderer()
+	case "csv":
+		renderer = render.NewCSVRenderer()
+	case "postman":
+		renderer = render.NewPostmanRenderer()
+	case "k6":
+		renderer = render.NewK6Renderer()
+	default: // "hurl" and unrecognised values
+		renderer = render.NewHurlRenderer("")
+	}
+	if err := renderer.Render(cases, casesDir); err != nil {
+		return fmt.Errorf("rendering generated cases: %w", err)
+	}
+
+	// Write to errOut (stderr) so stdout stays clean when --format=json.
+	fmt.Fprintf(errOut, "✓ Generated %d test cases for %d HIGH-risk operation(s) → %s\n",
+		len(cases), len(highRiskOps), casesDir)
 	return nil
 }
