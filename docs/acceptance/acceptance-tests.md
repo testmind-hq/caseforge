@@ -113,6 +113,8 @@
 
 ---
 
+<!-- AT-089–AT-092 reserved for future features -->
+
 ### `caseforge suite` — TestSuite Orchestration (3.6)
 
 | ID | Scenario | Command / Setup | Expected | Status |

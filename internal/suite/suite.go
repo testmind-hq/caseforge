@@ -26,7 +26,7 @@ func (e ValidationError) Error() string {
 //   - No duplicate CaseIDs within the suite
 //   - All depends_on references exist within the suite's own case list
 //   - The dependency graph is acyclic (Kahn's topological sort)
-//   - If knownCases is non-nil, all CaseIDs must exist in that slice
+//   - If knownCases is non-empty, all CaseIDs must exist in that slice
 func Validate(s *schema.TestSuite, knownCases []schema.TestCase) []ValidationError {
 	var errs []ValidationError
 
@@ -157,9 +157,11 @@ func LoadSuiteFile(path string) (*schema.TestSuite, error) {
 }
 
 // WriteSuiteFile serializes a TestSuite and writes it to path.
+// The caller's struct is not modified.
 func WriteSuiteFile(s *schema.TestSuite, path string) error {
-	s.Schema = schema.SuiteSchemaURL
-	data, err := json.MarshalIndent(s, "", "  ")
+	copy := *s
+	copy.Schema = schema.SuiteSchemaURL
+	data, err := json.MarshalIndent(&copy, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling suite: %w", err)
 	}

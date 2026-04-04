@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -135,10 +134,6 @@ func runSuiteValidate(cmd *cobra.Command, _ []string) error {
 	for _, e := range errs {
 		fmt.Fprintf(out, "  ✗ %s\n", e)
 	}
-
-	// Pretty-print JSON representation for context.
-	data, _ := json.MarshalIndent(s, "", "  ")
-	_ = data // already wrote errors above
 
 	return fmt.Errorf("suite validation failed: %d error(s)", len(errs))
 }
