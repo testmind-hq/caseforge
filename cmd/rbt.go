@@ -53,6 +53,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 	failOn, _ := cmd.Flags().GetString("fail-on")
 	mapFile, _ := cmd.Flags().GetString("map")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	generate, _ := cmd.Flags().GetBool("generate")
 
 	if specPath == "" {
 		return fmt.Errorf("--spec is required")
@@ -132,8 +133,17 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Always write report JSON
-	if _, err := rbt.WriteReportJSON(outputDir, report); err != nil {
+	reportPath, err := rbt.WriteReportJSON(outputDir, report)
+	if err != nil {
 		return fmt.Errorf("write report: %w", err)
+	}
+	fmt.Fprintln(out, "Report written to:", reportPath)
+
+	// --generate: auto-generate tests for HIGH-risk operations
+	if generate && !dryRun {
+		if err := rbt.GenerateForHighRisk(out, report, casesDir); err != nil {
+			return err
+		}
 	}
 
 	// Exit non-zero for high-risk (only in non-dry-run path)

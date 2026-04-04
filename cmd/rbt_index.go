@@ -15,7 +15,7 @@ var rbtIndexCmd = &cobra.Command{
 generate caseforge-map.yaml, eliminating the need for manual maintenance.
 
 Strategies:
-  llm    — Use regex-based extraction (small projects, no extra deps)
+  llm    — Analyze source with regex (full LLM inference is planned for v2)
   embed  — Use embeddings + cosine similarity (large projects, needs OPENAI_API_KEY)
   hybrid — Embed narrows candidates, LLM confirms (recommended for accuracy)
 
@@ -44,6 +44,11 @@ func runRBTIndex(cmd *cobra.Command, _ []string) error {
 	overwrite, _ := cmd.Flags().GetBool("overwrite")
 
 	out := cmd.OutOrStdout()
+
+	if strategy == "llm" {
+		fmt.Fprintln(out, "Note: LLM-based inference is planned for v2; using regex extraction.")
+	}
+
 	fmt.Fprintf(out, "Indexing %s (strategy: %s)...\n", srcDir, strategy)
 
 	indexer := &rbt.Indexer{

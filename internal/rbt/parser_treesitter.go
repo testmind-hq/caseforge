@@ -3,7 +3,6 @@ package rbt
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -183,11 +182,3 @@ func routeQueryForLang(lang string) string {
 	}
 }
 
-// writeJSON is a helper used in tests.
-func writeJSON(path string, v any) error {
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0644)
-}

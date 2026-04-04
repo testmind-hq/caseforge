@@ -2,7 +2,6 @@
 package rbt
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"fmt"
 	"io/fs"
@@ -108,7 +107,7 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 			continue
 		}
 		hash := fmt.Sprintf("%x", sha256.Sum256(data))
-		if !idx.Store.IsChunkStale(f.Path, hash) {
+		if !isChunkStale(localIdx, f.Path, hash) {
 			continue
 		}
 		emb, err := idx.Embedder.Embed(string(data))
@@ -123,7 +122,11 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 		})
 	}
 	_ = idx.Store.Save(localIdx)
-	return nil, nil
+	// V1 stub: embeddings are stored for incremental re-embedding, but cosine similarity
+	// → RouteMapping conversion (TopKChunks + LLM confirmation) is not yet implemented.
+	// Fall back to regex for any unclaimed files to produce a useful map file.
+	regexMappings, _ := NewRegexParser().ExtractRoutes(".", files)
+	return regexMappings, nil
 }
 
 func (idx *Indexer) checkOverwrite() error {
@@ -195,26 +198,15 @@ func findSourceFiles(dir string) ([]ChangedFile, error) {
 	return files, err
 }
 
-// fileHash computes SHA256 hash of a file's content.
-func fileHash(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
+// isChunkStale returns true if the given file's hash differs from what's in idx.
+func isChunkStale(idx *LocalIndex, file, newHash string) bool {
+	if idx == nil {
+		return true
 	}
-	return fmt.Sprintf("%x", sha256.Sum256(data)), nil
-}
-
-// chunkFile splits a file into logical chunks (whole file for V1).
-func chunkFile(path string) ([]string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+	for _, c := range idx.Chunks {
+		if c.File == file {
+			return c.Hash != newHash
+		}
 	}
-	lines := bufio.NewScanner(strings.NewReader(string(data)))
-	var all strings.Builder
-	for lines.Scan() {
-		all.WriteString(lines.Text())
-		all.WriteByte('\n')
-	}
-	return []string{all.String()}, nil
+	return true
 }
