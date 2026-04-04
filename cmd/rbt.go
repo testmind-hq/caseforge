@@ -101,8 +101,10 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 			rbt.NewTreeSitterParser(),
 			rbt.NewRegexParser(),
 			// LLM provider is nil in V1 — LLMParser gracefully returns empty when no
-		// provider is configured. Wire a real provider here in V2 for LLM inference.
-		rbt.NewLLMParser(nil, ""),
+			// provider is configured. Wire a real provider here in V2 for LLM inference.
+			// parsedSpec.Operations is passed so the prompt uses a structured candidate
+			// list (R-2) once a real provider is wired.
+			rbt.NewLLMParser(nil, parsedSpec.Operations),
 		}
 
 		// Map changed files to route mappings

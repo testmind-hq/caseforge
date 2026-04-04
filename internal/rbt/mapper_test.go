@@ -171,7 +171,7 @@ func TestLLMParser_ParsesJSONResponse(t *testing.T) {
 
 	resp := `[{"method":"POST","path":"/users","confidence":0.9}]`
 	provider := &fakeLLMProvider{response: resp}
-	parser := NewLLMParser(provider, "openapi: 3.0.0\n")
+	parser := NewLLMParser(provider, nil)
 	files := []ChangedFile{{Path: srcPath}}
 	mappings, err := parser.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
@@ -183,7 +183,7 @@ func TestLLMParser_ParsesJSONResponse(t *testing.T) {
 }
 
 func TestLLMParser_UnavailableProvider_ReturnsEmpty(t *testing.T) {
-	parser := NewLLMParser(nil, "")
+	parser := NewLLMParser(nil, nil)
 	files := []ChangedFile{{Path: "service/user.go"}}
 	mappings, err := parser.ExtractRoutes(context.Background(), ".", files)
 	require.NoError(t, err)
