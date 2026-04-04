@@ -142,6 +142,8 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewStateTechnique(),
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
+		methodology.NewClassificationTreeTechnique(),
+		methodology.NewOrthogonalArrayTechnique(),
 		methodology.NewSecurityTechnique(),
 		methodology.NewExampleTechnique(),
 	}

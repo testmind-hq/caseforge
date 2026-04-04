@@ -1042,6 +1042,14 @@ run "AT-107" "assertion email format maps to matches operator" \
 run "AT-108" "RangeAssertions generates gte/lte operators" \
   "(cd $REPO_ROOT && go test ./internal/assert/... -run TestRangeAssertions -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
 
+# AT-109: classification_tree technique ECT coverage and applies logic
+run "AT-109" "classification_tree technique generates ECT test cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run TestClassificationTree -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-110: orthogonal_array technique generates L4/L8/L27 balanced arrays
+run "AT-110" "orthogonal_array technique generates balanced OA test cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestOrthogonalArray|TestSelectOA|TestExtractOA|TestLevelTo' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
