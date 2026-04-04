@@ -1,5 +1,11 @@
 # CaseForge — Claude Code Instructions
 
+## Git Rules
+
+**Never commit `docs/superpowers/`** — this directory is in `.gitignore` and contains internal planning/spec files (writing-plans, brainstorming skill outputs) that must not appear in git history. Do not use `git add docs/superpowers/` or any explicit path under it. If a skill instructs you to commit a file in this directory, skip that step.
+
+---
+
 ## Acceptance Tests
 
 Every development session must run the acceptance suite before committing and after completing any feature or fix:
