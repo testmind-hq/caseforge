@@ -3,6 +3,7 @@ package rbt
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"regexp"
 	"strings"
@@ -21,7 +22,7 @@ type RegexParser struct{}
 
 func NewRegexParser() *RegexParser { return &RegexParser{} }
 
-func (p *RegexParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+func (p *RegexParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	var mappings []RouteMapping
 	for _, f := range files {
 		routes, err := extractRoutesFromFile(f.Path)

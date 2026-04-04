@@ -2,6 +2,7 @@
 package rbt
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io/fs"
@@ -43,7 +44,7 @@ func (idx *Indexer) RunRegex() error {
 		return err
 	}
 	parser := NewRegexParser()
-	mappings, err := parser.ExtractRoutes(idx.SrcDir, files)
+	mappings, err := parser.ExtractRoutes(context.Background(), idx.SrcDir, files)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func (idx *Indexer) runTreeSitterPhase(files []ChangedFile) ([]RouteMapping, map
 	if !ts.IsAvailable() {
 		return nil, routeFileMappings
 	}
-	mappings, err := ts.ExtractRoutes(idx.SrcDir, files)
+	mappings, err := ts.ExtractRoutes(context.Background(), idx.SrcDir, files)
 	if err != nil {
 		return nil, routeFileMappings
 	}
@@ -191,7 +192,7 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 	// V1 stub: embeddings are stored for incremental re-embedding, but cosine similarity
 	// → RouteMapping conversion (TopKChunks + LLM confirmation) is not yet implemented.
 	// Fall back to regex for any unclaimed files to produce a useful map file.
-	regexMappings, _ := NewRegexParser().ExtractRoutes(idx.SrcDir, files)
+	regexMappings, _ := NewRegexParser().ExtractRoutes(context.Background(), idx.SrcDir, files)
 	return regexMappings, nil
 }
 

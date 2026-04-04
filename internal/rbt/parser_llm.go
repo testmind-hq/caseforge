@@ -27,13 +27,13 @@ func NewLLMParser(provider llm.LLMProvider, specYAML string) *LLMParser {
 	return &LLMParser{provider: provider, specYAML: specYAML}
 }
 
-func (p *LLMParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+func (p *LLMParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	if p.provider == nil || !p.provider.IsAvailable() {
 		return nil, nil
 	}
 
 	var mappings []RouteMapping
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	for _, f := range files {
@@ -41,7 +41,7 @@ func (p *LLMParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMa
 		if err != nil {
 			continue
 		}
-		routes, err := p.inferRoutes(ctx, f.Path, string(content))
+		routes, err := p.inferRoutes(callCtx, f.Path, string(content))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warn: LLM route inference failed for %s: %v\n", f.Path, err)
 			continue
