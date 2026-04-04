@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-isatty"
@@ -13,6 +14,7 @@ import (
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/methodology"
 	"github.com/testmind-hq/caseforge/internal/output/render"
+	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/output/writer"
 	"github.com/testmind-hq/caseforge/internal/spec"
 	"github.com/testmind-hq/caseforge/internal/tui"
@@ -25,10 +27,14 @@ var genCmd = &cobra.Command{
 }
 
 var (
-	genSpec   string
-	genOutput string
-	genNoAI   bool
-	genFormat string
+	genSpec        string
+	genOutput      string
+	genNoAI        bool
+	genFormat      string
+	genTechnique   string
+	genPriority    string
+	genOperations  string
+	genConcurrency int
 )
 
 func init() {
@@ -37,8 +43,15 @@ func init() {
 	genCmd.Flags().StringVar(&genOutput, "output", "./cases", "Output directory")
 	genCmd.Flags().BoolVar(&genNoAI, "no-ai", false, "Disable LLM, use pure algorithm mode")
 	genCmd.Flags().StringVar(&genFormat, "format", "hurl", "Output format: hurl|markdown|csv|postman|k6")
+	genCmd.Flags().StringVar(&genTechnique, "technique", "", "Only run the named technique(s), comma-separated (e.g. equivalence_partitioning,boundary_value)")
+	genCmd.Flags().StringVar(&genPriority, "priority", "", "Filter output by minimum priority: P0|P1|P2|P3 (P0 = highest)")
+	genCmd.Flags().StringVar(&genOperations, "operations", "", "Comma-separated operationIds to process (default: all)")
+	genCmd.Flags().IntVar(&genConcurrency, "concurrency", 1, "Number of operations processed concurrently (default 1)")
 	_ = genCmd.MarkFlagRequired("spec")
 }
+
+// priorityRank maps P0..P3 to a numeric rank where lower = higher priority.
+var priorityRank = map[string]int{"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 
 func runGen(cmd *cobra.Command, args []string) error {
 	cfg, err := config.Load()
@@ -54,6 +67,19 @@ func runGen(cmd *cobra.Command, args []string) error {
 		cfg.Output.DefaultFormat = genFormat
 	}
 
+	// Validate --priority
+	if genPriority != "" {
+		if _, ok := priorityRank[strings.ToUpper(genPriority)]; !ok {
+			return fmt.Errorf("invalid --priority %q: must be P0, P1, P2, or P3", genPriority)
+		}
+		genPriority = strings.ToUpper(genPriority)
+	}
+
+	// Validate --concurrency
+	if genConcurrency < 1 {
+		return fmt.Errorf("invalid --concurrency %d: must be ≥ 1", genConcurrency)
+	}
+
 	// Resolve LLM provider
 	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
 	if cfg.AI.Provider != "noop" && !provider.IsAvailable() {
@@ -67,6 +93,22 @@ func runGen(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Failed to parse spec: %v\n", err)
 		os.Exit(2)
+	}
+
+	// --operations: filter parsedSpec to only requested operationIds
+	if genOperations != "" {
+		allowed := splitTrimmed(genOperations)
+		allowedSet := make(map[string]bool, len(allowed))
+		for _, id := range allowed {
+			allowedSet[id] = true
+		}
+		var filtered []*spec.Operation
+		for _, op := range parsedSpec.Operations {
+			if allowedSet[op.OperationID] {
+				filtered = append(filtered, op)
+			}
+		}
+		parsedSpec.Operations = filtered
 	}
 
 	// Set up event bus
@@ -87,8 +129,8 @@ func runGen(cmd *cobra.Command, args []string) error {
 		tuiDone = doneCh
 	}
 
-	// Generate test cases
-	engine := methodology.NewEngine(provider,
+	// --technique: select which per-operation techniques to register
+	allTechniques := []methodology.Technique{
 		methodology.NewEquivalenceTechnique(),
 		methodology.NewBoundaryTechnique(),
 		methodology.NewDecisionTechnique(),
@@ -96,13 +138,28 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
 		methodology.NewSecurityTechnique(),
-	)
-	engine.AddSpecTechnique(methodology.NewChainTechnique())
-	engine.AddSpecTechnique(methodology.NewSecuritySpecTechnique())
+	}
+	allSpecTechniques := []methodology.SpecTechnique{
+		methodology.NewChainTechnique(),
+		methodology.NewSecuritySpecTechnique(),
+	}
+	selectedTechniques, selectedSpec := filterTechniques(allTechniques, allSpecTechniques, genTechnique)
+
+	// Generate test cases
+	engine := methodology.NewEngine(provider, selectedTechniques...)
+	for _, st := range selectedSpec {
+		engine.AddSpecTechnique(st)
+	}
 	engine.SetSink(bus)
+	engine.SetConcurrency(genConcurrency)
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)
+	}
+
+	// --priority: keep cases whose priority ≥ the requested threshold
+	if genPriority != "" {
+		cases = filterByPriority(cases, genPriority)
 	}
 
 	// Write index.json
@@ -139,4 +196,60 @@ func runGen(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
 	return nil
+}
+
+// filterTechniques returns the subsets of per-operation and spec techniques
+// that match the comma-separated names in the filter string. An empty filter
+// returns all techniques unchanged.
+func filterTechniques(
+	ops []methodology.Technique,
+	specs []methodology.SpecTechnique,
+	filter string,
+) ([]methodology.Technique, []methodology.SpecTechnique) {
+	if filter == "" {
+		return ops, specs
+	}
+	names := make(map[string]bool)
+	for _, n := range splitTrimmed(filter) {
+		names[n] = true
+	}
+	var filteredOps []methodology.Technique
+	for _, t := range ops {
+		if names[t.Name()] {
+			filteredOps = append(filteredOps, t)
+		}
+	}
+	var filteredSpec []methodology.SpecTechnique
+	for _, t := range specs {
+		if names[t.Name()] {
+			filteredSpec = append(filteredSpec, t)
+		}
+	}
+	return filteredOps, filteredSpec
+}
+
+// filterByPriority keeps cases whose priority is >= minPriority (closer to P0).
+// Cases with an unrecognised or empty priority field are excluded.
+func filterByPriority(cases []schema.TestCase, minPriority string) []schema.TestCase {
+	threshold := priorityRank[minPriority]
+	var out []schema.TestCase
+	for _, c := range cases {
+		rank, ok := priorityRank[c.Priority]
+		if ok && rank <= threshold {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// splitTrimmed splits s on commas and trims whitespace from each token.
+func splitTrimmed(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }

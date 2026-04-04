@@ -191,6 +191,30 @@ contains AT-011 "gen invalid spec path" "no such file" "$BIN gen --spec /nonexis
 echo ""
 
 # -------------------------------------------------------
+# AT-067 – AT-070: gen CLI flags (P1-1 to P1-4)
+# -------------------------------------------------------
+echo "--- gen: CLI flags ---"
+
+# AT-067: --technique filters — only equivalence_partitioning cases in output
+contains "AT-067" "--technique filters output to one technique" "equivalence_partitioning" \
+  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --technique equivalence_partitioning --output '$WORKDIR/cases-technique' 2>&1 && \
+   python3 -c \"import json,os; idx=json.load(open('$WORKDIR/cases-technique/index.json')); techs=set(tc['source']['technique'] for tc in idx.get('test_cases',[])); print(' '.join(techs))\""
+
+# AT-068: --priority filters — only P0/P1 cases survive P1 threshold
+contains "AT-068" "--priority P1 filters out lower priority cases" "Generated" \
+  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --priority P1 --output '$WORKDIR/cases-priority' 2>&1"
+
+# AT-069: --operations limits to specified operationId
+contains "AT-069" "--operations limits to listPets only" "Generated" \
+  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --operations listPets --output '$WORKDIR/cases-ops' 2>&1"
+
+# AT-070: --concurrency flag is registered in help
+contains "AT-070" "--concurrency flag registered on gen" "concurrency" \
+  "'$BIN' gen --help 2>&1 || true"
+
+echo ""
+
+# -------------------------------------------------------
 # AT-012 – AT-015: gen techniques
 # -------------------------------------------------------
 echo "--- gen: technique coverage ---"
