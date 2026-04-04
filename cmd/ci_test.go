@@ -106,15 +106,31 @@ func TestCIInit_Shell(t *testing.T) {
 }
 
 func TestCIInit_DefaultOutputPaths(t *testing.T) {
-	platforms := map[string]string{
-		"github-actions": ".github/workflows/api-test.yml",
-		"gitlab-ci":      ".gitlab-ci.yml",
-		"jenkins":        "Jenkinsfile",
-		"shell":          "scripts/api-test.sh",
+	tests := []struct {
+		platform     string
+		expectedFile string
+	}{
+		{"github-actions", ".github/workflows/api-test.yml"},
+		{"gitlab-ci", ".gitlab-ci.yml"},
+		{"jenkins", "Jenkinsfile"},
+		{"shell", "scripts/api-test.sh"},
 	}
-	for platform, expectedPath := range platforms {
-		assert.Equal(t, expectedPath, ciDefaultPath[platform],
-			"platform %s default path mismatch", platform)
+	for _, tt := range tests {
+		t.Run(tt.platform, func(t *testing.T) {
+			dir := t.TempDir()
+			orig, err := os.Getwd()
+			require.NoError(t, err)
+			require.NoError(t, os.Chdir(dir))
+			defer func() { _ = os.Chdir(orig) }()
+
+			// Reset --output so ci.go uses the platform default path.
+			require.NoError(t, ciInitCmd.Flags().Set("output", ""))
+			rootCmd.SetArgs([]string{"ci", "init", "--platform", tt.platform})
+			require.NoError(t, rootCmd.Execute())
+
+			_, statErr := os.Stat(tt.expectedFile)
+			assert.NoError(t, statErr, "expected file %s to exist for platform %s", tt.expectedFile, tt.platform)
+		})
 	}
 }
 

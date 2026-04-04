@@ -58,7 +58,7 @@ func TestStats_TerminalOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	output := out.String()
-	assert.Contains(t, output, "总用例数")
+	assert.Contains(t, output, "Total cases:")
 	assert.Contains(t, output, "equivalence_partitioning")
 	assert.Contains(t, output, "P0")
 }
@@ -107,6 +107,6 @@ func TestStats_TerminalHasTechniqueBar(t *testing.T) {
 
 	output := out.String()
 	// Should show bar characters for non-zero technique counts
-	assert.True(t, strings.Contains(output, "█") || strings.Contains(output, "方法论"),
+	assert.True(t, strings.Contains(output, "█") || strings.Contains(output, "Technique distribution:"),
 		"terminal output should contain technique distribution")
 }

@@ -24,6 +24,12 @@ var watchCmd = &cobra.Command{
 	Long: `Watch monitors an OpenAPI spec file for changes and automatically
 regenerates test cases whenever the spec is updated.
 
+The watcher monitors the spec file's parent directory and filters events to
+the target file, so it survives editor rename-on-save patterns (vim, Prettier).
+
+Note: watch always runs all techniques. Use 'caseforge gen' for fine-grained
+technique control; 'watch' is optimised for fast feedback during spec editing.
+
 Press Ctrl-C to stop watching.
 
 Examples:
@@ -72,7 +78,7 @@ func runWatch(cmd *cobra.Command, _ []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "✓ 监听 %s...\n\n", absSpec)
+	fmt.Fprintf(out, "Watching %s — press Ctrl-C to stop.\n\n", absSpec)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -80,8 +86,12 @@ func runWatch(cmd *cobra.Command, _ []string) error {
 	}
 	defer watcher.Close()
 
-	if err := watcher.Add(absSpec); err != nil {
-		return fmt.Errorf("watching %s: %w", absSpec, err)
+	// Watch the parent directory so rename-on-save (vim, Prettier) keeps working.
+	// The file inode changes on rename; watching the dir survives it.
+	watchDir := filepath.Dir(absSpec)
+	specBase := filepath.Base(absSpec)
+	if err := watcher.Add(watchDir); err != nil {
+		return fmt.Errorf("watching directory %s: %w", watchDir, err)
 	}
 
 	// Debounce: skip duplicate events within 200ms
@@ -93,7 +103,11 @@ func runWatch(cmd *cobra.Command, _ []string) error {
 			if !ok {
 				return nil
 			}
-			if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
+			// Filter to target file only
+			if filepath.Base(event.Name) != specBase {
+				continue
+			}
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename) == 0 {
 				continue
 			}
 			if time.Since(lastEvent) < 200*time.Millisecond {
@@ -101,16 +115,15 @@ func runWatch(cmd *cobra.Command, _ []string) error {
 			}
 			lastEvent = time.Now()
 
-			ts := time.Now().Format("15:04:05")
-			fmt.Fprintf(out, "[%s] 检测到变更：%s\n", ts, filepath.Base(absSpec))
+			ts := lastEvent.Format("15:04:05")
+			fmt.Fprintf(out, "[%s] Change detected: %s\n", ts, specBase)
 
 			count, genErr := watchRegenerate(cfg, absSpec, outputDir)
 			if genErr != nil {
-				fmt.Fprintf(out, "[%s] ✗ 生成失败：%v\n\n", ts, genErr)
+				fmt.Fprintf(out, "[%s] ✗ Generation failed: %v\n\n", ts, genErr)
 				continue
 			}
-			fmt.Fprintf(out, "[%s] ✓ 更新了 %d 个用例 → %s\n\n",
-				time.Now().Format("15:04:05"), count, outputDir)
+			fmt.Fprintf(out, "[%s] ✓ Updated %d case(s) → %s\n\n", ts, count, outputDir)
 
 		case watchErr, ok := <-watcher.Errors:
 			if !ok {
@@ -151,7 +164,11 @@ func watchRegenerate(cfg *config.Config, specPath, outputDir string) (int, error
 	}
 
 	// Write index.json
-	specHash, _ := writer.HashFile(specPath)
+	specHash, hashErr := writer.HashFile(specPath)
+	if hashErr != nil {
+		// Non-fatal: degrade gracefully with empty hash rather than aborting the watch loop
+		fmt.Fprintf(os.Stderr, "warn: could not hash spec file: %v\n", hashErr)
+	}
 	w := writer.NewJSONSchemaWriter()
 	if err := w.Write(cases, outputDir, writer.WriteOptions{
 		SpecHash:         specHash,

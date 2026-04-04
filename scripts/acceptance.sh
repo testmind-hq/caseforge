@@ -1003,7 +1003,7 @@ STATSDIR=$(mktemp -d)
 cat > "$STATSDIR/index.json" <<'INDEXEOF'
 {"$schema":"https://caseforge.dev/schema/v1/index.json","version":"1","generated_at":"2026-04-01T00:00:00Z","meta":{"by_technique":{"equivalence_partitioning":5},"by_priority":{"P0":2,"P1":3}},"test_cases":[]}
 INDEXEOF
-contains "AT-100" "stats reads index.json and prints summary" "方法论" \
+contains "AT-100" "stats reads index.json and prints summary" "Technique distribution:" \
   "$BIN stats --cases '$STATSDIR'"
 
 # AT-101: stats --format json outputs valid JSON

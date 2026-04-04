@@ -57,7 +57,7 @@ func runStats(cmd *cobra.Command, _ []string) error {
 			ByPriority  map[string]int `json:"by_priority,omitempty"`
 			ByKind      map[string]int `json:"by_kind,omitempty"`
 		}
-		out := statsJSON{
+		payload := statsJSON{
 			CasesDir:    casesDir,
 			Total:       len(index.TestCases),
 			GeneratedAt: index.GeneratedAt,
@@ -65,7 +65,10 @@ func runStats(cmd *cobra.Command, _ []string) error {
 			ByPriority:  index.Meta.ByPriority,
 			ByKind:      index.Meta.ByKind,
 		}
-		data, _ := json.MarshalIndent(out, "", "  ")
+		data, marshalErr := json.MarshalIndent(payload, "", "  ")
+		if marshalErr != nil {
+			return fmt.Errorf("marshaling stats: %w", marshalErr)
+		}
 		fmt.Fprintln(cmd.OutOrStdout(), string(data))
 		return nil
 	}
@@ -75,19 +78,19 @@ func runStats(cmd *cobra.Command, _ []string) error {
 	total := len(index.TestCases)
 	sep := strings.Repeat("─", 44)
 
-	fmt.Fprintf(out, "\n本项目用例统计（%s）\n", casesDir)
+	fmt.Fprintf(out, "\nTest case stats (%s)\n", casesDir)
 	fmt.Fprintln(out, sep)
-	fmt.Fprintf(out, "总用例数：    %d\n", total)
-	fmt.Fprintf(out, "最近生成：    %s\n", index.GeneratedAt.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(out, "Total cases:    %d\n", total)
+	fmt.Fprintf(out, "Generated at:   %s\n", index.GeneratedAt.Format("2006-01-02 15:04:05"))
 
 	if index.Meta.CaseforgeVersion != "" {
-		fmt.Fprintf(out, "生成版本：    %s\n", index.Meta.CaseforgeVersion)
+		fmt.Fprintf(out, "Version:        %s\n", index.Meta.CaseforgeVersion)
 	}
 
 	if len(index.Meta.ByTechnique) > 0 {
-		fmt.Fprintln(out, "\n方法论分布：")
+		fmt.Fprintln(out, "\nTechnique distribution:")
 		keys := sortedKeys(index.Meta.ByTechnique)
-		// Use actual total; fall back to sum of technique counts when index is empty
+		// Use actual total; fall back to sum of technique counts when test_cases is empty
 		denominator := total
 		if denominator == 0 {
 			for _, n := range index.Meta.ByTechnique {
@@ -105,12 +108,12 @@ func runStats(cmd *cobra.Command, _ []string) error {
 				barLen = 0
 			}
 			bar := strings.Repeat("█", barLen)
-			fmt.Fprintf(out, "  %-20s %4d  %-16s %.0f%%\n", k, n, bar, pct)
+			fmt.Fprintf(out, "  %-28s %4d  %-16s %.0f%%\n", k, n, bar, pct)
 		}
 	}
 
 	if len(index.Meta.ByPriority) > 0 {
-		fmt.Fprintln(out, "\n优先级分布：")
+		fmt.Fprintln(out, "\nPriority distribution:")
 		for _, p := range []string{"P0", "P1", "P2", "P3"} {
 			if n, ok := index.Meta.ByPriority[p]; ok {
 				fmt.Fprintf(out, "  %s  %d\n", p, n)
@@ -119,7 +122,7 @@ func runStats(cmd *cobra.Command, _ []string) error {
 	}
 
 	if len(index.Meta.ByKind) > 0 {
-		fmt.Fprintln(out, "\n用例类型：")
+		fmt.Fprintln(out, "\nCase kinds:")
 		keys := sortedKeys(index.Meta.ByKind)
 		for _, k := range keys {
 			fmt.Fprintf(out, "  %-12s %d\n", k, index.Meta.ByKind[k])
@@ -135,9 +138,12 @@ func sortedKeys(m map[string]int) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
+	// Primary: descending count. Secondary: alphabetical for determinism on ties.
 	sort.Slice(keys, func(i, j int) bool {
-		return m[keys[i]] > m[keys[j]] // descending by count
+		if m[keys[i]] != m[keys[j]] {
+			return m[keys[i]] > m[keys[j]]
+		}
+		return keys[i] < keys[j]
 	})
 	return keys
 }
-

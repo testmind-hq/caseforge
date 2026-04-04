@@ -37,12 +37,14 @@ func init() {
 	ciInitCmd.Flags().String("platform", "github-actions", "Target platform: github-actions|gitlab-ci|jenkins|shell")
 	ciInitCmd.Flags().String("spec", "openapi.yaml", "Path to OpenAPI spec used in the generated workflow")
 	ciInitCmd.Flags().String("output", "", "Output file path (default: platform-specific standard path)")
+	ciInitCmd.Flags().Bool("force", false, "Overwrite existing file without prompting")
 }
 
 func runCIInit(cmd *cobra.Command, _ []string) error {
 	platform, _ := cmd.Flags().GetString("platform")
 	specPath, _ := cmd.Flags().GetString("spec")
 	outputPath, _ := cmd.Flags().GetString("output")
+	force, _ := cmd.Flags().GetBool("force")
 
 	gen, ok := ciGenerators[platform]
 	if !ok {
@@ -55,6 +57,11 @@ func runCIInit(cmd *cobra.Command, _ []string) error {
 		outputPath = ciDefaultPath[platform]
 	}
 
+	// Guard against silent overwrite of an existing file
+	if _, statErr := os.Stat(outputPath); statErr == nil && !force {
+		return fmt.Errorf("%s already exists — use --force to overwrite", outputPath)
+	}
+
 	// Create parent directories
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
@@ -64,7 +71,7 @@ func runCIInit(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ 生成 CI 配置 → %s\n", outputPath)
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ Generated CI config → %s\n", outputPath)
 	return nil
 }
 
