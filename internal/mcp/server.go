@@ -11,6 +11,8 @@ func NewServer() *mcpsdk.Server {
 	s := mcpsdk.NewServer(&mcpsdk.Implementation{Name: "caseforge", Version: "1.0.0"}, nil)
 
 	s.AddTool(generateTestCasesTool(), makeGenerateHandler)
+	s.AddTool(lintSpecTool(), makeLintHandler)
+	s.AddTool(askTestCasesTool(), makeAskHandler)
 
 	return s
 }

@@ -148,6 +148,15 @@
 | AT-103 | `ci` command and `ci init` subcommand registered | `caseforge ci --help` | `init` listed | ✅ PASS |
 | AT-104 | `ci init --platform github-actions` generates workflow | `caseforge ci init --platform github-actions --output <file>` | File contains `caseforge lint` and `caseforge gen` | ✅ PASS |
 
+### MCP tools & assertion enhancements
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-105 | MCP server has `lint_spec` tool | `caseforge mcp --help` | `lint_spec` in output | ✅ PASS |
+| AT-106 | MCP server has `lint_spec` and `ask_test_cases` tools registered | `go test ./internal/mcp/... -run TestServerHas` | All tool registration tests pass | ✅ PASS |
+| AT-107 | Email format field maps to `matches` assertion | `go test ./internal/assert/... -run TestSchemaAssertions_EmailFormatUsesMatches` | PASS | ✅ PASS |
+| AT-108 | Schema `minimum`/`maximum` constraints generate `gte`/`lte` assertions | `go test ./internal/assert/... -run TestRangeAssertions` | PASS | ✅ PASS |
+
 ---
 
 ### `gen` — Technique Coverage

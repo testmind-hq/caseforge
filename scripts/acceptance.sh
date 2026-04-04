@@ -13,6 +13,7 @@ WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
 
 BIN="$(go env GOPATH)/bin/caseforge"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Build fresh binary
 echo "Building caseforge..."
 go build -o "$BIN" . 2>&1
@@ -1022,6 +1023,24 @@ contains "AT-103" "ci init subcommand registered" "init" \
 CIDIR=$(mktemp -d)
 run "AT-104" "ci init --platform github-actions generates workflow" \
   "$BIN ci init --platform github-actions --output '$CIDIR/workflow.yml' && grep -q 'caseforge lint' '$CIDIR/workflow.yml' && grep -q 'caseforge gen' '$CIDIR/workflow.yml'"
+
+echo "--- mcp tools & assertion enhancements ---"
+
+# AT-105: MCP server has lint_spec tool (verified via unit test)
+run "AT-105" "mcp server has lint_spec tool" \
+  "(cd $REPO_ROOT && go test ./internal/mcp/... -run TestServerHasLintSpecTool -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-106: MCP server has ask_test_cases tool (verified via unit test)
+run "AT-106" "mcp server has ask_test_cases tool" \
+  "(cd $REPO_ROOT && go test ./internal/mcp/... -run TestServerHasAskTestCasesTool -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-107: assert schema.go handles email format → matches operator
+run "AT-107" "assertion email format maps to matches operator" \
+  "(cd $REPO_ROOT && go test ./internal/assert/... -run TestSchemaAssertions_EmailFormatUsesMatches -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-108: RangeAssertions generates gte/lte from schema min/max
+run "AT-108" "RangeAssertions generates gte/lte operators" \
+  "(cd $REPO_ROOT && go test ./internal/assert/... -run TestRangeAssertions -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
 
 echo ""
 

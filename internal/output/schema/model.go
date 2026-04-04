@@ -15,6 +15,10 @@ const (
 	OperatorLt = "lt"
 	// OperatorGt checks greater-than (numeric).
 	OperatorGt = "gt"
+	// OperatorGte checks greater-than-or-equal (numeric). Used for schema minimum constraints.
+	OperatorGte = "gte"
+	// OperatorLte checks less-than-or-equal (numeric). Used for schema maximum constraints.
+	OperatorLte = "lte"
 	// OperatorContains checks substring / element containment.
 	OperatorContains = "contains"
 	// OperatorMatches checks regex match.
