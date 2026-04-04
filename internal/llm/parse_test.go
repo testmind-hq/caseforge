@@ -68,6 +68,11 @@ func TestExtractJSON(t *testing.T) {
 			input: "just plain text",
 			want:  "just plain text",
 		},
+		{
+			name:  "string value with close bracket — returns truncated (known limitation)",
+			input: `{"msg":"a } b","ok":true}`,
+			want:  `{"msg":"a }`,  // truncated at the } inside the string
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

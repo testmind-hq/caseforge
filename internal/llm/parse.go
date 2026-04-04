@@ -11,6 +11,11 @@ import "strings"
 //
 // Extraction uses bracket-count tracking, so nested structures are handled correctly.
 // Returns the input unchanged if no JSON structure is found.
+//
+// Note: the bracket scanner does not parse string literals, so a JSON string
+// value containing a raw close-bracket (e.g. {"msg":"use } here"}) will cause
+// truncated extraction. This is acceptable for the structured LLM responses
+// (route lists, annotations) this function is designed for.
 func ExtractJSON(text string) string {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -29,15 +34,15 @@ func ExtractJSON(text string) string {
 
 	// Step 2: find the first JSON token character
 	start := -1
-	var open, close rune
+	var open, closeBracket rune
 	for i, r := range text {
 		if r == '[' || r == '{' {
 			start = i
 			open = r
 			if r == '[' {
-				close = ']'
+				closeBracket = ']'
 			} else {
-				close = '}'
+				closeBracket = '}'
 			}
 			break
 		}
@@ -52,7 +57,7 @@ func ExtractJSON(text string) string {
 		switch r {
 		case open:
 			depth++
-		case close:
+		case closeBracket:
 			depth--
 			if depth == 0 {
 				return text[start : start+i+1]
