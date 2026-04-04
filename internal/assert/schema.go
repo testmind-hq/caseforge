@@ -14,7 +14,8 @@ import (
 //   - format "uuid"                    → is_uuid
 //   - format "date-time"/"date"/"time" → is_iso8601
 //   - format "email"                   → matches (RFC 5322 simplified pattern)
-//   - format "uri"/"url"/"uri-reference" → matches (http/https URL pattern)
+//   - format "uri"/"url"              → matches (http/https URL pattern)
+//   - format "uri-reference"          → exists (relative refs allowed)
 //   - format "ipv4"                    → matches (dotted-decimal IPv4)
 //   - format "ipv6"                    → matches (hex-colon IPv6)
 //   - otherwise                        → exists
@@ -75,8 +76,11 @@ func assertionForSchema(s *specpkg.Schema, target string) schema.Assertion {
 		return schema.Assertion{Target: target, Operator: schema.OperatorIsISO8601}
 	case "email":
 		return schema.Assertion{Target: target, Operator: schema.OperatorMatches, Expected: `^.+@.+\..+$`}
-	case "uri", "url", "uri-reference":
+	case "uri", "url":
 		return schema.Assertion{Target: target, Operator: schema.OperatorMatches, Expected: `^https?://.+`}
+	case "uri-reference":
+		// uri-reference allows relative refs (e.g. /path/to/resource), so we only check existence.
+		return schema.Assertion{Target: target, Operator: schema.OperatorExists}
 	case "ipv4":
 		return schema.Assertion{Target: target, Operator: schema.OperatorMatches, Expected: `^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`}
 	case "ipv6":

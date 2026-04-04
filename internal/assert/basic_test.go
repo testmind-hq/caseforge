@@ -114,7 +114,7 @@ func TestSchemaAssertions_EmailFormatUsesMatches(t *testing.T) {
 }
 
 func TestSchemaAssertions_URIFormatUsesMatches(t *testing.T) {
-	for _, format := range []string{"uri", "url", "uri-reference"} {
+	for _, format := range []string{"uri", "url"} {
 		s := &specpkg.Schema{
 			Type: "object",
 			Properties: map[string]*specpkg.Schema{
@@ -125,6 +125,18 @@ func TestSchemaAssertions_URIFormatUsesMatches(t *testing.T) {
 		require.Len(t, assertions, 1, "format=%s", format)
 		assert.Equal(t, "matches", assertions[0].Operator, "format=%s", format)
 	}
+}
+
+func TestSchemaAssertions_URIReferenceFormatUsesExists(t *testing.T) {
+	s := &specpkg.Schema{
+		Type: "object",
+		Properties: map[string]*specpkg.Schema{
+			"link": {Type: "string", Format: "uri-reference"},
+		},
+	}
+	assertions := SchemaAssertions("body", s)
+	require.Len(t, assertions, 1)
+	assert.Equal(t, "exists", assertions[0].Operator, "uri-reference allows relative refs, must use exists not matches")
 }
 
 func TestSchemaAssertions_IPv4FormatUsesMatches(t *testing.T) {

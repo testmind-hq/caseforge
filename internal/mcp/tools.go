@@ -168,7 +168,7 @@ func makeLintHandler(_ context.Context, req *mcpsdk.CallToolRequest) (*mcpsdk.Ca
 
 	issues := lint.RunAll(ps, nil)
 
-	// Filter by fail_on severity
+	// Filter by fail_on severity: "error" shows only errors; "warning" (default) shows all.
 	var filtered []lint.LintIssue
 	for _, iss := range issues {
 		if args.FailOn == "error" && iss.Severity != "error" {
