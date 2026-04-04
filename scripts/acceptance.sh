@@ -825,6 +825,27 @@ contains "AT-086" "export --format testrail creates testrail-import.csv" "testra
 echo ""
 
 # -------------------------------------------------------
+# AT-087 – AT-088: caseforge diff --gen-cases (3.3)
+# -------------------------------------------------------
+echo "--- diff --gen-cases ---"
+
+GENCASESDIR=$(mktemp -d)
+
+# AT-087: --gen-cases flag registered
+contains "AT-087" "diff --gen-cases flag registered" "gen-cases" \
+  "'$BIN' diff --help"
+
+# AT-088: breaking changes → generates index.json with test cases
+"$BIN" diff \
+  --old "$WORKDIR/petstore.yaml" \
+  --new "$WORKDIR/petstore-v2.yaml" \
+  --gen-cases "$GENCASESDIR" 2>/dev/null || true
+contains "AT-088" "diff --gen-cases writes index.json for breaking operations" "test_cases" \
+  "cat '$GENCASESDIR/index.json'"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))
