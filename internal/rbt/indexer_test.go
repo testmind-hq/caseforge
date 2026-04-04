@@ -78,3 +78,59 @@ func TestIndexer_Overwrites_WhenFlagTrue(t *testing.T) {
 	data, _ := os.ReadFile(outPath)
 	assert.False(t, strings.Contains(string(data), "existing: true"))
 }
+
+func TestRunTreeSitterPhase_NoTreeSitter_ReturnsEmpty(t *testing.T) {
+	t.Setenv("PATH", t.TempDir()) // make tree-sitter unavailable
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "handler.go")
+	require.NoError(t, os.WriteFile(srcFile, []byte("package handler\n"), 0644))
+
+	idx := &Indexer{SrcDir: dir}
+	files := []ChangedFile{{Path: srcFile}}
+	mappings, routeFiles := idx.runTreeSitterPhase(files)
+	assert.Empty(t, mappings)
+	assert.Empty(t, routeFiles)
+}
+
+func TestRunCallGraphPhaseWithBuilder_MockBuilder_TracesChain(t *testing.T) {
+	handlerPath := "/tmp/cg-test-idx/handler.go"
+	servicePath := "/tmp/cg-test-idx/service.go"
+	utilsPath := "/tmp/cg-test-idx/utils.go"
+
+	routeFiles := map[string][]RouteMapping{
+		handlerPath: {{SourceFile: handlerPath, Method: "POST", RoutePath: "/users", Via: "treesitter"}},
+	}
+
+	allFiles := []ChangedFile{{Path: handlerPath}, {Path: servicePath}, {Path: utilsPath}}
+	unclaimed := []ChangedFile{{Path: utilsPath}}
+
+	builder := &mockCallGraphBuilder{
+		data: map[string]struct {
+			defs  []CallNode
+			calls []CallEdge
+		}{
+			handlerPath: {
+				defs:  []CallNode{{File: handlerPath, FuncName: "Register"}},
+				calls: []CallEdge{{CallerFile: handlerPath, CallerFunc: "Register", CalleeName: "CreateUser"}},
+			},
+			servicePath: {
+				defs:  []CallNode{{File: servicePath, FuncName: "CreateUser"}},
+				calls: []CallEdge{{CallerFile: servicePath, CallerFunc: "CreateUser", CalleeName: "validate"}},
+			},
+			utilsPath: {
+				defs:  []CallNode{{File: utilsPath, FuncName: "validate"}},
+				calls: nil,
+			},
+		},
+	}
+
+	idx := &Indexer{Depth: 0}
+	mappings, claimed := idx.runCallGraphPhaseWithBuilder(allFiles, unclaimed, routeFiles, builder)
+	require.Len(t, mappings, 1)
+	assert.Equal(t, "POST", mappings[0].Method)
+	assert.Equal(t, "/users", mappings[0].RoutePath)
+	assert.Equal(t, "callgraph", mappings[0].Via)
+	// utils.go was resolved through the call chain — it should appear in claimed
+	require.Len(t, claimed, 1)
+	assert.Equal(t, utilsPath, claimed[0].Path)
+}

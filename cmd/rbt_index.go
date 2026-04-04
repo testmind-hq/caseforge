@@ -33,6 +33,7 @@ func init() {
 	rbtIndexCmd.Flags().String("out", "caseforge-map.yaml", "Output map file path")
 	rbtIndexCmd.Flags().String("strategy", "llm", "Indexing strategy: llm|embed|hybrid")
 	rbtIndexCmd.Flags().Bool("overwrite", false, "Overwrite existing map file")
+	rbtIndexCmd.Flags().Int("depth", 0, "Call graph traversal depth (0 = dynamic, stop at route node)")
 	_ = rbtIndexCmd.MarkFlagRequired("spec")
 }
 
@@ -42,6 +43,7 @@ func runRBTIndex(cmd *cobra.Command, _ []string) error {
 	outPath, _ := cmd.Flags().GetString("out")
 	strategy, _ := cmd.Flags().GetString("strategy")
 	overwrite, _ := cmd.Flags().GetBool("overwrite")
+	depth, _ := cmd.Flags().GetInt("depth")
 
 	out := cmd.OutOrStdout()
 
@@ -58,6 +60,7 @@ func runRBTIndex(cmd *cobra.Command, _ []string) error {
 		Overwrite: overwrite,
 		Store:     rbt.NewIndexStore(".caseforge-index"),
 		Embedder:  rbt.NewOpenAIEmbedder(),
+		Depth:     depth,
 	}
 
 	var err error

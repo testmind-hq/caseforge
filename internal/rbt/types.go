@@ -15,7 +15,7 @@ type RouteMapping struct {
 	Line       int
 	Method     string  // "GET", "POST", ...
 	RoutePath  string  // "/users/{id}"
-	Via        string  // "mapfile"|"treesitter"|"regex"|"llm"
+	Via        string  // "mapfile"|"treesitter"|"regex"|"llm"|"callgraph"|"callgraph-llm"
 	Confidence float64 // 0.0–1.0; <0.5 → "uncertain"
 }
 
@@ -55,4 +55,31 @@ type RiskReport struct {
 	TotalUncovered int
 	RiskScore      float64   // uncovered/affected, 0.0–1.0
 	GeneratedAt    time.Time
+}
+
+// CallNode identifies a function within a source file.
+type CallNode struct {
+	File     string // absolute path
+	FuncName string // short function/method name (no package prefix)
+	Line     int
+}
+
+// CallEdge records that CallerFunc (in CallerFile) calls a function named CalleeName.
+type CallEdge struct {
+	CallerFile string
+	CallerFunc string
+	CalleeName string // name only; resolved to CallNode during graph build
+}
+
+// CallGraph is an inverted call graph: Edges[key] lists every caller of that key.
+// Key format: "<abs-path>::<FuncName>" — use CallNodeKey to construct.
+// RouteNodes holds the route-registering nodes used as BFS termination sentinels.
+type CallGraph struct {
+	Edges      map[string][]CallNode
+	RouteNodes []CallNode // route-registering nodes; BFS stops at their files
+}
+
+// CallNodeKey constructs the lookup key for a CallNode.
+func CallNodeKey(file, funcName string) string {
+	return file + "::" + funcName
 }
