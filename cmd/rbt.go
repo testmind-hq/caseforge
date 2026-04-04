@@ -42,7 +42,7 @@ func init() {
 	rbtCmd.Flags().String("head", "HEAD", "Head git ref for diff")
 	rbtCmd.Flags().Bool("generate", false, "Generate test cases for high-risk uncovered operations")
 	rbtCmd.Flags().Bool("no-ai", false, "Disable LLM for generated test cases; use algorithm-only mode")
-	rbtCmd.Flags().String("gen-format", "hurl", "Format for generated test cases: hurl|json|postman|k6|markdown|csv")
+	rbtCmd.Flags().String("gen-format", "hurl", "Format for generated test cases: hurl|postman|k6|markdown|csv")
 	rbtCmd.Flags().String("output", "./reports", "Output directory for rbt-report.json")
 	rbtCmd.Flags().String("format", "terminal", "Output format: terminal or json")
 	rbtCmd.Flags().String("fail-on", "high", "Exit non-zero if any operation has risk >= level (none|low|medium|high)")
@@ -163,7 +163,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 		if dryRun {
 			fmt.Fprintln(out, "--generate is ignored with --dry-run (no HIGH-risk operations in dry-run mode)")
 		} else {
-			if err := runGenerate(cmd, out, parsedSpec, report, casesDir); err != nil {
+			if err := runGenerate(cmd, out, errOut, specPath, parsedSpec, report, casesDir); err != nil {
 				return err
 			}
 		}
@@ -180,7 +180,9 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 // runGenerate generates test cases for all HIGH-risk operations in the report.
 // It runs the same methodology pipeline as `caseforge gen`, restricted to the
 // high-risk operations identified by the assessor.
-func runGenerate(cmd *cobra.Command, w io.Writer, parsedSpec *spec.ParsedSpec, report rbt.RiskReport, casesDir string) error {
+// specPath is the spec file path used to compute the spec hash for index.json.
+// errOut is used for the success message so stdout stays clean when --format=json.
+func runGenerate(cmd *cobra.Command, w, errOut io.Writer, specPath string, parsedSpec *spec.ParsedSpec, report rbt.RiskReport, casesDir string) error {
 	highRiskOps := rbt.HighRiskOperations(report, parsedSpec)
 	if len(highRiskOps) == 0 {
 		fmt.Fprintln(w, "No HIGH-risk operations to generate tests for.")
@@ -233,9 +235,11 @@ func runGenerate(cmd *cobra.Command, w io.Writer, parsedSpec *spec.ParsedSpec, r
 		return fmt.Errorf("generating test cases: %w", err)
 	}
 
-	// Write index.json to casesDir.
+	// Write index.json to casesDir; include spec hash for provenance.
+	specHash, _ := writer.HashFile(specPath)
 	caseWriter := writer.NewJSONSchemaWriter()
 	if err := caseWriter.Write(cases, casesDir, writer.WriteOptions{
+		SpecHash:         specHash,
 		CaseforgeVersion: Version,
 	}); err != nil {
 		return fmt.Errorf("writing generated cases: %w", err)
@@ -259,7 +263,8 @@ func runGenerate(cmd *cobra.Command, w io.Writer, parsedSpec *spec.ParsedSpec, r
 		return fmt.Errorf("rendering generated cases: %w", err)
 	}
 
-	fmt.Fprintf(w, "✓ Generated %d test cases for %d HIGH-risk operation(s) → %s\n",
+	// Write to errOut (stderr) so stdout stays clean when --format=json.
+	fmt.Fprintf(errOut, "✓ Generated %d test cases for %d HIGH-risk operation(s) → %s\n",
 		len(cases), len(highRiskOps), casesDir)
 	return nil
 }

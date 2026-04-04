@@ -37,6 +37,9 @@ func TestRBTCommand_HasRequiredFlags(t *testing.T) {
 	assert.NotNil(t, rbtCmd.Flags().Lookup("format"))
 	assert.NotNil(t, rbtCmd.Flags().Lookup("fail-on"))
 	assert.NotNil(t, rbtCmd.Flags().Lookup("dry-run"))
+	assert.NotNil(t, rbtCmd.Flags().Lookup("generate"))
+	assert.NotNil(t, rbtCmd.Flags().Lookup("no-ai"))
+	assert.NotNil(t, rbtCmd.Flags().Lookup("gen-format"))
 }
 
 func TestRBTCommand_MissingSpec_ReturnsError(t *testing.T) {
