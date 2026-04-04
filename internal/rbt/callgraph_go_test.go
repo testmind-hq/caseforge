@@ -110,20 +110,31 @@ func TestGoCallGraphBuilder_DepthCap(t *testing.T) {
 
 	handlerFile := filepath.Join(dir, "handler", "handler.go")
 	serviceFile := filepath.Join(dir, "service", "service.go")
+	deepFile := filepath.Join(dir, "deep", "deep.go")
 
 	routeFiles := map[string][]RouteMapping{
 		handlerFile: {{SourceFile: handlerFile, Method: "POST", RoutePath: "/users", Via: "treesitter"}},
 	}
-	unclaimed := []ChangedFile{{Path: serviceFile}}
 
-	// maxDepth=1: service.go (depth=0) → handler.go (depth=1) is exactly 1 hop.
-	// The terminal check fires BEFORE the depth cap (matching V2 semantics), so the
-	// route file at depth=1 IS recorded when maxDepth=1 — 1 hop is within the cap.
 	b := &GoCallGraphBuilder{SrcDir: dir, Algo: "rta"}
-	mappings, _, err := b.BuildAndTrace(unclaimed, routeFiles, 1)
 
-	require.NoError(t, err)
-	assert.NotEmpty(t, mappings, "depth cap of 1 should allow reaching a route file 1 hop away")
+	// Positive boundary: service.go (depth=0) → handler.go (depth=1) is 1 hop.
+	// Terminal check fires BEFORE the depth cap (matching V2 semantics), so the
+	// route file at exactly depth=maxDepth IS recorded.
+	t.Run("boundary_positive", func(t *testing.T) {
+		mappings, _, err := b.BuildAndTrace([]ChangedFile{{Path: serviceFile}}, routeFiles, 1)
+		require.NoError(t, err)
+		assert.NotEmpty(t, mappings, "depth cap of 1 should allow reaching a route file 1 hop away")
+	})
+
+	// Negative boundary: deep.go (depth=0) → middleware.go (depth=1) → handler.go (depth=2).
+	// With maxDepth=1, middleware.go is visited but its callers are not enqueued,
+	// so handler.go (the route file at depth=2) is never reached.
+	t.Run("boundary_negative", func(t *testing.T) {
+		mappings, _, err := b.BuildAndTrace([]ChangedFile{{Path: deepFile}}, routeFiles, 1)
+		require.NoError(t, err)
+		assert.Empty(t, mappings, "depth cap of 1 should not reach a route file 2 hops away")
+	})
 }
 
 func TestGoCallGraphBuilder_EmptyUnclaimedGoFiles(t *testing.T) {
