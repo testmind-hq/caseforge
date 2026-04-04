@@ -19,7 +19,7 @@ type stubParser struct {
 	claimsIf func(path string) bool
 }
 
-func (s *stubParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+func (s *stubParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	var out []RouteMapping
 	for _, f := range files {
 		if s.claimsIf == nil || s.claimsIf(f.Path) {
@@ -77,7 +77,7 @@ mappings:
 
 	parser := NewMapFileParser(filepath.Join(dir, "caseforge-map.yaml"))
 	files := []ChangedFile{{Path: "internal/user/service.go"}}
-	mappings, err := parser.ExtractRoutes(dir, files)
+	mappings, err := parser.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
 	require.Len(t, mappings, 2)
 	assert.Equal(t, "POST", mappings[0].Method)
@@ -90,7 +90,7 @@ mappings:
 func TestMapFileParser_NoMapFile_ReturnsEmpty(t *testing.T) {
 	parser := NewMapFileParser("/nonexistent/caseforge-map.yaml")
 	files := []ChangedFile{{Path: "handler.go"}}
-	mappings, err := parser.ExtractRoutes(".", files)
+	mappings, err := parser.ExtractRoutes(context.Background(), ".", files)
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
 }
@@ -106,7 +106,7 @@ mappings:
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "caseforge-map.yaml"), []byte(mapContent), 0644))
 	parser := NewMapFileParser(filepath.Join(dir, "caseforge-map.yaml"))
 	files := []ChangedFile{{Path: "internal/order/handler.go"}}
-	mappings, err := parser.ExtractRoutes(dir, files)
+	mappings, err := parser.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
 }
@@ -128,7 +128,7 @@ func Register(r *gin.Engine) {
 
 	parser := NewRegexParser()
 	files := []ChangedFile{{Path: srcPath}}
-	mappings, err := parser.ExtractRoutes(dir, files)
+	mappings, err := parser.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
 	assert.Len(t, mappings, 3)
 	methods := make(map[string]string)
@@ -147,7 +147,7 @@ func TestRegexParser_NoRoutes_ReturnsEmpty(t *testing.T) {
 	require.NoError(t, os.WriteFile(srcPath, []byte("package util\nfunc Helper() {}\n"), 0644))
 	parser := NewRegexParser()
 	files := []ChangedFile{{Path: srcPath}}
-	mappings, err := parser.ExtractRoutes(dir, files)
+	mappings, err := parser.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
 }
@@ -173,7 +173,7 @@ func TestLLMParser_ParsesJSONResponse(t *testing.T) {
 	provider := &fakeLLMProvider{response: resp}
 	parser := NewLLMParser(provider, "openapi: 3.0.0\n")
 	files := []ChangedFile{{Path: srcPath}}
-	mappings, err := parser.ExtractRoutes(dir, files)
+	mappings, err := parser.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
 	require.Len(t, mappings, 1)
 	assert.Equal(t, "POST", mappings[0].Method)
@@ -185,7 +185,7 @@ func TestLLMParser_ParsesJSONResponse(t *testing.T) {
 func TestLLMParser_UnavailableProvider_ReturnsEmpty(t *testing.T) {
 	parser := NewLLMParser(nil, "")
 	files := []ChangedFile{{Path: "service/user.go"}}
-	mappings, err := parser.ExtractRoutes(".", files)
+	mappings, err := parser.ExtractRoutes(context.Background(), ".", files)
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
 }
@@ -196,7 +196,7 @@ func TestTreeSitterParser_NotInstalled_ReturnsEmpty(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	parser := NewTreeSitterParser()
 	files := []ChangedFile{{Path: "handler.go"}}
-	mappings, err := parser.ExtractRoutes(".", files)
+	mappings, err := parser.ExtractRoutes(context.Background(), ".", files)
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
 }

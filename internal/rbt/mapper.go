@@ -1,16 +1,23 @@
 // internal/rbt/mapper.go
 package rbt
 
+import "context"
+
 // SourceParser extracts route mappings from source files.
 // TODO(v2): add BuildCallGraph(srcDir string) (map[string][]string, error) to enable
 // service-layer tracing — mapping changed helper/service files upward to the route
 // handlers that call them. V1 only maps files that directly register routes.
 type SourceParser interface {
-	ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error)
+	ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error)
 }
 
 // MapChain runs parsers in order, passing only unclaimed files to each parser.
 func MapChain(parsers []SourceParser, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+	return MapChainContext(context.Background(), parsers, srcDir, files)
+}
+
+// MapChainContext runs parsers in order with a caller-provided context.
+func MapChainContext(ctx context.Context, parsers []SourceParser, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
@@ -24,7 +31,7 @@ func MapChain(parsers []SourceParser, srcDir string, files []ChangedFile) ([]Rou
 		if len(remaining) == 0 {
 			break
 		}
-		mappings, err := p.ExtractRoutes(srcDir, remaining)
+		mappings, err := p.ExtractRoutes(ctx, srcDir, remaining)
 		if err != nil {
 			return allMappings, err
 		}

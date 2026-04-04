@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/testmind-hq/caseforge/internal/llm"
@@ -65,24 +64,22 @@ File: %s
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	resp, err := b.provider.Complete(ctx, &llm.CompletionRequest{
-		Messages:  []llm.Message{{Role: "user", Content: prompt}},
-		MaxTokens: 512,
+	resp, err := llm.Retry(ctx, 3, func() (*llm.CompletionResponse, error) {
+		return b.provider.Complete(ctx, &llm.CompletionRequest{
+			Messages:  []llm.Message{{Role: "user", Content: prompt}},
+			MaxTokens: 512,
+		})
 	})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "warn: LLM call graph inference failed for %s: %v\n", filePath, err)
 		return nil, nil, nil
 	}
 
-	text := resp.Text
-	start := strings.Index(text, "{")
-	end := strings.LastIndex(text, "}")
-	if start == -1 || end == -1 || end < start {
-		return nil, nil, nil
-	}
-	text = text[start : end+1]
+	text := llm.ExtractJSON(resp.Text)
 
 	var parsed llmCallGraphResponse
 	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: LLM call graph response parse failed for %s: %v\n", filePath, err)
 		return nil, nil, nil
 	}
 

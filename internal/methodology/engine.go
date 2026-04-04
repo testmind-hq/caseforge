@@ -5,7 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"os"
+	"time"
 
 	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
@@ -94,11 +95,10 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 	if !e.llm.IsAvailable() {
 		return // NoopProvider: skip annotation, SemanticInfo stays nil
 	}
-	// For each operation, call LLM to get semantic annotation
 	for _, op := range ops {
 		annotation, err := e.annotateOperation(op)
 		if err != nil {
-			// Per-operation annotation failure is non-fatal — degrade gracefully
+			fmt.Fprintf(os.Stderr, "warn: LLM annotation failed for %s %s: %v\n", op.Method, op.Path, err)
 			continue
 		}
 		op.SemanticInfo = annotation
@@ -106,17 +106,22 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 }
 
 func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation, error) {
-	// Build prompt from template
 	prompt := fmt.Sprintf(
 		"Analyze this API operation and return JSON:\n"+
 			"Operation: %s %s\nSummary: %s\nDescription: %s\n"+
 			"Return: {resource_type, action_type, has_state_machine, state_field, unique_fields, implicit_rules}",
 		op.Method, op.Path, op.Summary, op.Description,
 	)
-	resp, err := e.llm.Complete(context.Background(), &llm.CompletionRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req := &llm.CompletionRequest{
 		System:    "You are an API testing expert. Analyze operations and return structured JSON.",
 		Messages:  []llm.Message{{Role: "user", Content: prompt}},
 		MaxTokens: 512,
+	}
+	resp, err := llm.Retry(ctx, 3, func() (*llm.CompletionResponse, error) {
+		return e.llm.Complete(ctx, req)
 	})
 	if err != nil {
 		return nil, err
@@ -128,16 +133,7 @@ func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation
 }
 
 func parseSemanticAnnotation(text string) *spec.SemanticAnnotation {
-	text = strings.TrimSpace(text)
-	// Strip markdown code fence wrappers (```json ... ``` or ``` ... ```)
-	if strings.HasPrefix(text, "```") {
-		if idx := strings.Index(text, "\n"); idx != -1 {
-			text = text[idx+1:]
-		}
-		text = strings.TrimSuffix(strings.TrimSpace(text), "```")
-		text = strings.TrimSpace(text)
-	}
-	// Parse JSON response from LLM
+	extracted := llm.ExtractJSON(text)
 	var raw struct {
 		ResourceType    string   `json:"resource_type"`
 		ActionType      string   `json:"action_type"`
@@ -146,7 +142,7 @@ func parseSemanticAnnotation(text string) *spec.SemanticAnnotation {
 		UniqueFields    []string `json:"unique_fields"`
 		ImplicitRules   []string `json:"implicit_rules"`
 	}
-	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+	if err := json.Unmarshal([]byte(extracted), &raw); err != nil {
 		return nil
 	}
 	return &spec.SemanticAnnotation{

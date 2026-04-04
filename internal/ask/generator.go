@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,6 +29,8 @@ Each step object must have:
 - "assertions": array of {"target":"status_code","operator":"eq","expected":<number>}
 
 Generate 3-7 diverse test cases covering happy path and error scenarios.`
+
+const llmCallTimeout = 30 * time.Second
 
 // llmTestCase is the structure the LLM is instructed to return.
 type llmTestCase struct {
@@ -65,18 +66,26 @@ func (g *Generator) Generate(ctx context.Context, description string) ([]schema.
 		return nil, fmt.Errorf("AI provider unavailable: ask requires a configured LLM (set ANTHROPIC_API_KEY or equivalent)")
 	}
 
-	resp, err := g.provider.Complete(ctx, &llm.CompletionRequest{
-		System: systemPrompt,
-		Messages: []llm.Message{
-			{Role: "user", Content: description},
-		},
+	// Ensure a deadline: if the caller didn't set one, add our default.
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, llmCallTimeout)
+		defer cancel()
+	}
+
+	req := &llm.CompletionRequest{
+		System:    systemPrompt,
+		Messages:  []llm.Message{{Role: "user", Content: description}},
 		MaxTokens: 4096,
+	}
+	resp, err := llm.Retry(ctx, 3, func() (*llm.CompletionResponse, error) {
+		return g.provider.Complete(ctx, req)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("LLM completion failed: %w", err)
 	}
 
-	text := stripMarkdownFences(resp.Text)
+	text := llm.ExtractJSON(resp.Text)
 
 	var raw []llmTestCase
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {
@@ -88,24 +97,6 @@ func (g *Generator) Generate(ctx context.Context, description string) ([]schema.
 		cases[i] = toTestCase(r, description)
 	}
 	return cases, nil
-}
-
-// stripMarkdownFences removes ```json ... ``` or ``` ... ``` fences if present.
-func stripMarkdownFences(s string) string {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "```") {
-		// Remove opening fence (```json or ```)
-		end := strings.Index(s, "\n")
-		if end == -1 {
-			return s
-		}
-		s = s[end+1:]
-		// Remove closing fence
-		if idx := strings.LastIndex(s, "```"); idx != -1 {
-			s = strings.TrimSpace(s[:idx])
-		}
-	}
-	return s
 }
 
 func toTestCase(lc llmTestCase, description string) schema.TestCase {

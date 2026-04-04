@@ -2,6 +2,7 @@
 package rbt
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -42,7 +43,7 @@ func (p *MapFileParser) load() (*mapFileConfig, error) {
 	return p.config, nil
 }
 
-func (p *MapFileParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+func (p *MapFileParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	cfg, err := p.load()
 	if err != nil || cfg == nil {
 		return nil, err

@@ -3,6 +3,7 @@ package rbt
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,7 +37,7 @@ func (p *TreeSitterParser) IsAvailable() bool {
 	return err == nil
 }
 
-func (p *TreeSitterParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+func (p *TreeSitterParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	if !p.IsAvailable() {
 		return nil, nil
 	}

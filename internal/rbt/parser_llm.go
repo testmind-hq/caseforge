@@ -27,13 +27,13 @@ func NewLLMParser(provider llm.LLMProvider, specYAML string) *LLMParser {
 	return &LLMParser{provider: provider, specYAML: specYAML}
 }
 
-func (p *LLMParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMapping, error) {
+func (p *LLMParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
 	if p.provider == nil || !p.provider.IsAvailable() {
 		return nil, nil
 	}
 
 	var mappings []RouteMapping
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	for _, f := range files {
@@ -41,8 +41,9 @@ func (p *LLMParser) ExtractRoutes(srcDir string, files []ChangedFile) ([]RouteMa
 		if err != nil {
 			continue
 		}
-		routes, err := p.inferRoutes(ctx, f.Path, string(content))
+		routes, err := p.inferRoutes(callCtx, f.Path, string(content))
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: LLM route inference failed for %s: %v\n", f.Path, err)
 			continue
 		}
 		for _, r := range routes {
@@ -78,25 +79,21 @@ Rules:
 - confidence: 0.0-1.0
 - Return [] if no operations are clearly affected`, filePath, content, p.specYAML)
 
-	resp, err := p.provider.Complete(ctx, &llm.CompletionRequest{
+	req := &llm.CompletionRequest{
 		Messages:  []llm.Message{{Role: "user", Content: prompt}},
 		MaxTokens: 512,
+	}
+	resp, err := llm.Retry(ctx, 3, func() (*llm.CompletionResponse, error) {
+		return p.provider.Complete(ctx, req)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	text := resp.Text
-	start := strings.Index(text, "[")
-	end := strings.LastIndex(text, "]")
-	if start == -1 || end == -1 || end < start {
-		return nil, nil
-	}
-	text = text[start : end+1]
-
+	text := llm.ExtractJSON(resp.Text)
 	var results []llmRouteResult
 	if err := json.Unmarshal([]byte(text), &results); err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("parsing LLM route response for %s: %w", filePath, err)
 	}
 	return results, nil
 }
