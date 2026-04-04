@@ -40,6 +40,20 @@ contains() {
     [ -n "$VERBOSE" ] && cat "$WORKDIR/out"
   fi
 }
+exits_with() {
+  local id="$1"; local desc="$2"; local expected_code="$3"; shift 3
+  [ -n "$VERBOSE" ] && log "\n--- $id: $desc ---"
+  set +e
+  eval "$@" > "$WORKDIR/out" 2>&1
+  local actual_code=$?
+  set -e
+  if [ "$actual_code" -eq "$expected_code" ]; then
+    ok "$id: $desc"
+  else
+    fail "$id: $desc  [expected exit $expected_code, got $actual_code]"
+    [ -n "$VERBOSE" ] && cat "$WORKDIR/out"
+  fi
+}
 
 # -------------------------------------------------------
 # Fixtures
@@ -636,6 +650,31 @@ YAML
 # AT-060: L020 sensitive query param
 contains "AT-060" "L020 sensitive query param detected" "L020" \
   "$BIN lint --spec $WORKDIR/sensitive-query.yaml --format json"
+
+echo ""
+
+# -------------------------------------------------------
+# Exit Codes (P1-15, P1-16)
+# -------------------------------------------------------
+echo "=== Exit Codes (P1-15, P1-16) ==="
+
+# AT-071: lint exits 3 when errors found (reuse dup-opid spec which has L016 error)
+exits_with "AT-071" "lint exits 3 when errors found" 3 \
+  "$BIN lint --spec $WORKDIR/dup-opid.yaml"
+
+# AT-072: gen exits 4 when LLM unavailable without --no-ai
+# Create a dir with anthropic config but no API key so factory returns NoopProvider
+mkdir -p "$WORKDIR/exit4-test"
+cat > "$WORKDIR/exit4-test/.caseforge.yaml" << 'YAML'
+ai:
+  provider: anthropic
+  api_key: ""
+output:
+  default_format: hurl
+  dir: ./cases
+YAML
+exits_with "AT-072" "gen exits 4 when LLM unavailable without --no-ai" 4 \
+  "cd '$WORKDIR/exit4-test' && ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' gen --spec '$WORKDIR/petstore.yaml' --output '$WORKDIR/cases-exit4'"
 
 echo ""
 

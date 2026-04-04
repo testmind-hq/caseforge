@@ -83,8 +83,10 @@ func runGen(cmd *cobra.Command, args []string) error {
 	// Resolve LLM provider
 	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
 	if cfg.AI.Provider != "noop" && !provider.IsAvailable() {
-		fmt.Fprintln(os.Stderr, "warning: LLM provider unavailable, degrading to --no-ai mode")
-		provider = &llm.NoopProvider{}
+		if !genNoAI {
+			fmt.Fprintln(os.Stderr, "✗ LLM provider unavailable. Use --no-ai to run in algorithm-only mode.")
+			os.Exit(ExitNoOutput)
+		}
 	}
 
 	// Load spec

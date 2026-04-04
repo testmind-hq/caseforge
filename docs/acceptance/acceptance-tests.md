@@ -252,6 +252,15 @@
 
 ---
 
+### Exit Codes (P1-15, P1-16)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-071 | lint exits 3 when errors found | `caseforge lint --spec <spec-with-errors>` (spec with duplicate operationId) | exit code 3 | ✅ PASS |
+| AT-072 | gen exits 4 when LLM unavailable without --no-ai | `caseforge gen --spec petstore.yaml` (no API key, no --no-ai) | exit code 4, error message about --no-ai | ✅ PASS |
+
+---
+
 
 ## Summary (last run: 2026-04-04)
 
@@ -277,7 +286,8 @@
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
-| **Total** | **78** | **78** | **0** |
+| exit codes | 2 | 2 | 0 |
+| **Total** | **80** | **80** | **0** |
 
 ---
 
