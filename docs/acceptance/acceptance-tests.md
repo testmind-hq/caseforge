@@ -64,19 +64,6 @@
 
 ---
 
-### `lint` — Enhancement (AT-039–AT-044)
-
-| ID | Scenario | Command | Expected | Status |
-|----|----------|---------|----------|--------|
-| AT-039 | lint --format json outputs valid JSON | `caseforge lint --spec petstore.yaml --format json` | parseable JSON with `score` and `issues` keys | ✅ PASS |
-| AT-040 | lint --output writes lint-report.json | `caseforge lint --spec petstore.yaml --output /tmp/lr` | `/tmp/lr/lint-report.json` created | ✅ PASS |
-| AT-041 | lint --skip-rules suppresses rule | `caseforge lint --spec petstore.yaml --skip-rules L014 --format json` | L014 absent from issues | ✅ PASS |
-| AT-042 | .caseforgelint.yaml skip_rules respected | `.caseforgelint.yaml` with `skip_rules: [L014]`, run lint | L014 absent from output | ✅ PASS |
-| AT-043 | L016 duplicate operationId detected | spec with two operations sharing same operationId | error L016 reported | ✅ PASS |
-| AT-044 | L020 sensitive query param detected | spec with `?token` query parameter | error L020 reported | ✅ PASS |
-
----
-
 ### `diff` — Spec Diff
 
 | ID | Scenario | Command | Expected | Status |
@@ -149,6 +136,35 @@
 
 ---
 
+### `rbt` — Regression-Based Testing
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-039 | rbt command registered | `caseforge --help` | `rbt` listed | ✅ PASS |
+| AT-040 | missing --spec returns error | `caseforge rbt` | error message | ✅ PASS |
+| AT-041 | --format json + --dry-run produces valid JSON | see script | rbt-report.json with diff_base field | ✅ PASS |
+| AT-042 | --fail-on high, dry-run → exit 0 | see script | exit 0 | ✅ PASS |
+| AT-043 | --dry-run skips git/tree-sitter | see script | no git errors | ✅ PASS |
+| AT-044 | doctor shows tree-sitter status | `caseforge doctor` | tree-sitter line present | ✅ PASS |
+| AT-045 | rbt index command registered | `caseforge rbt --help` | `index` listed | ✅ PASS |
+| AT-046 | rbt index --strategy llm writes map file | see script | map.yaml created with mappings: | ✅ PASS |
+| AT-044b | rbt index --out existing without --overwrite fails | see script | error: already exists | ✅ PASS |
+
+---
+
+### `dedupe` — Duplicate Test Case Detection
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-047 | dedupe command registered | `caseforge --help` | `dedupe` listed | ✅ PASS |
+| AT-048 | no cases dir returns error | `caseforge dedupe --cases /nonexistent/xyz/cases` | error: cases | ✅ PASS |
+| AT-049 | no duplicates exits 0 | `caseforge dedupe --cases <unique-cases-dir>` | exit 0 | ✅ PASS |
+| AT-050 | exact duplicate reports group | `caseforge dedupe --cases <dup-cases-dir>` | output contains `Group 1` | ✅ PASS |
+| AT-051 | --dry-run exits 0 and files still exist | `caseforge dedupe --cases <dup-cases-dir> --dry-run` | exit 0, both files present | ✅ PASS |
+| AT-052 | --merge exits 0 and deletes lower-scoring file | `caseforge dedupe --cases <dup-cases-dir> --merge` | exit 0, lower-scoring file removed | ✅ PASS |
+
+---
+
 ### `onboard` — Setup Wizard
 
 | ID | Scenario | Command | Expected | Status |
@@ -165,17 +181,34 @@
 | AT-032 | run hurl (no server) | `caseforge run --cases ./cases --format hurl` | hurl exits with `base_url not set` error (expected without server) | ✅ PASS |
 | AT-033 | run k6 (no server) | `caseforge run --cases ./cases --format k6` | k6 exits with connection refused (expected without server) | ✅ PASS |
 | AT-034 | run non-existent dir | `caseforge run --cases /nonexistent --format k6` | error: file not found | ✅ PASS |
+| AT-053 | run --target injects BASE_URL | `caseforge run --cases ./cases --target http://localhost:9999` | BASE_URL injected (hurl error mentions base_url) | ✅ PASS |
+| AT-054 | run --output writes run-report.json | `caseforge run --cases ./cases --target http://localhost:9999 --output ./reports` | `run-report.json` created | ✅ PASS |
 
 ---
 
-## Summary (last run: 2026-03-29)
+### `lint` — Enhancement (AT-055–AT-060)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-055 | lint --format json outputs valid JSON | `caseforge lint --spec petstore.yaml --format json` | parseable JSON with `score` and `issues` keys | ✅ PASS |
+| AT-056 | lint --output writes lint-report.json | `caseforge lint --spec petstore.yaml --output /tmp/lr` | `/tmp/lr/lint-report.json` created | ✅ PASS |
+| AT-057 | lint --skip-rules suppresses rule | `caseforge lint --spec petstore.yaml --skip-rules L014 --format json` | L014 absent from issues | ✅ PASS |
+| AT-058 | .caseforgelint.yaml skip_rules respected | `.caseforgelint.yaml` with `skip_rules: [L014]`, run lint | L014 absent from output | ✅ PASS |
+| AT-059 | L016 duplicate operationId detected | spec with two operations sharing same operationId | error L016 reported | ✅ PASS |
+| AT-060 | L020 sensitive query param detected | spec with `?token` query parameter | error L020 reported | ✅ PASS |
+
+---
+
+
+## Summary (last run: 2026-04-04)
 
 | Category | Total | Pass | Fail |
 |----------|-------|------|------|
 | Core / CLI | 3 | 3 | 0 |
 | gen — formats | 7 | 7 | 0 |
 | gen — techniques | 4 | 4 | 0 |
-| lint | 8 | 8 | 0 |
+| lint | 2 | 2 | 0 |
+| lint enhancement | 6 | 6 | 0 |
 | diff | 2 | 2 | 0 |
 | doctor | 1 | 1 | 0 |
 | fake | 1 | 1 | 0 |
@@ -184,9 +217,11 @@
 | config show | 2 | 2 | 0 |
 | ask | 2 | 2 | 0 |
 | explore | 4 | 4 | 0 |
+| rbt | 9 | 9 | 0 |
+| dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
-| run | 3 | 3 | 0 |
-| **Total** | **44** | **44** | **0** |
+| run | 5 | 5 | 0 |
+| **Total** | **60** | **60** | **0** |
 
 ---
 
