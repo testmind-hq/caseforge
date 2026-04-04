@@ -86,7 +86,8 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	// --gen-cases: generate test cases for breaking operations into the given dir
 	if diffGenCases != "" && result.HasBreaking() {
 		if err := generateCasesForBreakingChanges(result, newSpec, diffGenCases, cmd.OutOrStdout()); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: gen-cases failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "error: gen-cases failed: %v\n", err)
+			return err
 		}
 	}
 
@@ -109,6 +110,9 @@ func generateCasesForBreakingChanges(result diff.DiffResult, newSpec *spec.Parse
 		}
 	}
 	if len(breakingOps) == 0 {
+		// Breaking changes are path renames only — removed paths have no matching
+		// operation in newSpec to generate cases for.
+		fmt.Fprintln(out, "\nNote: breaking changes are path renames — no operations in new spec to generate cases for.")
 		return nil
 	}
 
@@ -120,6 +124,8 @@ func generateCasesForBreakingChanges(result diff.DiffResult, newSpec *spec.Parse
 		}
 	}
 	if len(ops) == 0 {
+		// Affected operations were removed from the spec (endpoint removal) — nothing to generate.
+		fmt.Fprintln(out, "\nNote: affected operations were removed from the new spec — no cases to generate.")
 		return nil
 	}
 

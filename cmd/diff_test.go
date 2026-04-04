@@ -132,6 +132,80 @@ func TestDiffCommand_GenCases_JSONIsValid(t *testing.T) {
 	assert.True(t, hasTestCases, "index.json must have 'test_cases' key")
 }
 
+func TestDiffCommand_GenCases_ErrorPropagated(t *testing.T) {
+	resetDiffFlags(t)
+	diffOld = "../testdata/petstore_v1.yaml"
+	diffNew = "../testdata/petstore_v2.yaml"
+	diffFormat = "text"
+	// Use an unwritable path — writing index.json here will fail.
+	diffGenCases = "/dev/null/cannot-create-subdir"
+
+	var buf bytes.Buffer
+	diffCmd.SetOut(&buf)
+	diffCmd.SetErr(&buf)
+
+	err := runDiff(diffCmd, nil)
+	// Must return the gen-cases error, not errBreakingChanges.
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, errBreakingChanges, "gen-cases failure should not be swallowed as errBreakingChanges")
+}
+
+func TestDiffCommand_GenCases_PathRenameOnly_PrintsNote(t *testing.T) {
+	resetDiffFlags(t)
+
+	// Write a pair of specs where only a path rename occurs.
+	dir := t.TempDir()
+	oldSpec := `openapi: "3.0.3"
+info:
+  title: Old
+  version: "1.0"
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      responses:
+        "200":
+          description: OK
+`
+	newSpec := `openapi: "3.0.3"
+info:
+  title: New
+  version: "1.0"
+paths:
+  /customers:
+    get:
+      operationId: listCustomers
+      responses:
+        "200":
+          description: OK
+`
+	oldFile := filepath.Join(dir, "old.yaml")
+	newFile := filepath.Join(dir, "new.yaml")
+	require.NoError(t, os.WriteFile(oldFile, []byte(oldSpec), 0o644))
+	require.NoError(t, os.WriteFile(newFile, []byte(newSpec), 0o644))
+
+	genDir := t.TempDir()
+	diffOld = oldFile
+	diffNew = newFile
+	diffFormat = "text"
+	diffGenCases = genDir
+
+	var buf bytes.Buffer
+	diffCmd.SetOut(&buf)
+	diffCmd.SetErr(&buf)
+
+	err := runDiff(diffCmd, nil)
+	// Path rename is still a breaking change → errBreakingChanges
+	require.ErrorIs(t, err, errBreakingChanges)
+
+	// Should print a note explaining why no cases were generated.
+	assert.Contains(t, buf.String(), "Note:")
+
+	// index.json must NOT be written (nothing to generate for a rename).
+	_, statErr := os.Stat(filepath.Join(genDir, "index.json"))
+	assert.True(t, os.IsNotExist(statErr), "index.json must not be written for path-rename-only breaking changes")
+}
+
 func TestDiffCommand_Cases_ReadsProperIndexJSON(t *testing.T) {
 	resetDiffFlags(t)
 	dir := t.TempDir()
