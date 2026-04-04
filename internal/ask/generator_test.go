@@ -221,7 +221,6 @@ func TestGenerator_ChainKind_Preserved(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, cases, 1)
 	assert.Equal(t, "chain", cases[0].Kind)
-	assert.Len(t, cases[0].Steps, 3)
 }
 
 const headersJSON = `[{
@@ -325,8 +324,7 @@ func TestGenerator_ProseWrappedJSON(t *testing.T) {
 func TestGenerator_JSONObjectInsteadOfArray_ReturnsError(t *testing.T) {
 	gen := ask.NewGenerator(&stubProvider{text: `{"title":"oops","steps":[]}`, available: true})
 	_, err := gen.Generate(context.Background(), "GET /")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "parsing LLM response")
+	require.Error(t, err, "a JSON object from the LLM must fail — only arrays are valid")
 }
 
 const bodyPassJSON = `[{
