@@ -926,6 +926,70 @@ contains "AT-095" "suite validate reports valid suite" "valid" \
 echo ""
 
 # -------------------------------------------------------
+# AT-096 – AT-098: operator rendering
+# -------------------------------------------------------
+echo "--- operator rendering ---"
+
+OPDIR=$(mktemp -d)
+
+# Build a minimal spec for operator rendering tests
+cat > "$OPDIR/op-spec.yaml" << 'SPEC'
+openapi: "3.0.0"
+info:
+  title: Op Test
+  version: "1.0"
+paths:
+  /items/{id}:
+    get:
+      operationId: getItem
+      summary: Get item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9999
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  score:
+                    type: number
+                  created_at:
+                    type: string
+                    format: date-time
+SPEC
+
+"$BIN" gen --spec "$OPDIR/op-spec.yaml" --output "$OPDIR/cases" --no-ai 2>/dev/null || true
+
+# AT-096: gen produces index.json with assertions
+contains "AT-096" "gen produces index.json with assertions" "assertions" \
+  "cat '$OPDIR/cases/index.json'"
+
+# AT-097: hurl output does not contain unrendered assertion fallback
+"$BIN" gen --spec "$OPDIR/op-spec.yaml" --output "$OPDIR/cases" --no-ai --format hurl 2>/dev/null || true
+run "AT-097" "hurl output has no unrendered assertion comments" \
+  "! grep -r '# unrendered assertion' '$OPDIR/cases/' 2>/dev/null"
+
+# AT-098: k6 output does not contain unrendered assertion fallback
+"$BIN" gen --spec "$OPDIR/op-spec.yaml" --output "$OPDIR/cases" --no-ai --format k6 2>/dev/null || true
+run "AT-098" "k6 output has no unrendered assertion comments" \
+  "! grep -r '// unrendered:' '$OPDIR/cases/' 2>/dev/null"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))

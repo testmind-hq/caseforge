@@ -163,6 +163,10 @@ func buildK6Checks(assertions []schema.Assertion) []string {
 }
 
 func k6AssertionLine(a schema.Assertion) string {
+	// Normalise legacy "body.field" → "jsonpath $.field" so all operators are handled uniformly.
+	if strings.HasPrefix(a.Target, "body.") {
+		a.Target = "jsonpath $." + strings.TrimPrefix(a.Target, "body.")
+	}
 	switch {
 	case a.Target == "status_code":
 		switch a.Operator {
@@ -183,8 +187,18 @@ func k6AssertionLine(a schema.Assertion) string {
 				return fmt.Sprintf("'jsonpath $.%s not null': (r) => r.json('%s') !== undefined,", field, field)
 			}
 			return fmt.Sprintf("'jsonpath $.%s ne %v': (r) => r.json('%s') !== %s,", field, a.Expected, field, k6JSValue(a.Expected))
+		case "lt":
+			return fmt.Sprintf("'jsonpath $.%s lt %v': (r) => r.json('%s') < %v,", field, a.Expected, field, a.Expected)
+		case "gt":
+			return fmt.Sprintf("'jsonpath $.%s gt %v': (r) => r.json('%s') > %v,", field, a.Expected, field, a.Expected)
 		case "contains":
 			return fmt.Sprintf("'jsonpath $.%s contains %v': (r) => String(r.json('%s')).includes(%s),", field, a.Expected, field, k6JSValue(a.Expected))
+		case "matches":
+			return fmt.Sprintf("'jsonpath $.%s matches %v': (r) => new RegExp(%s).test(String(r.json('%s'))),", field, a.Expected, k6JSValue(a.Expected), field)
+		case "is_iso8601":
+			return fmt.Sprintf("'jsonpath $.%s is_iso8601': (r) => !isNaN(Date.parse(r.json('%s'))),", field, field)
+		case "is_uuid":
+			return fmt.Sprintf("'jsonpath $.%s is_uuid': (r) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.json('%s')),", field, field)
 		}
 	case strings.HasPrefix(a.Target, "header "):
 		name := strings.TrimPrefix(a.Target, "header ")
@@ -193,10 +207,17 @@ func k6AssertionLine(a schema.Assertion) string {
 			return fmt.Sprintf("'header %s eq %v': (r) => r.headers['%s'] === %s,", name, a.Expected, name, k6JSValue(a.Expected))
 		case "ne":
 			return fmt.Sprintf("'header %s ne %v': (r) => r.headers['%s'] !== %s,", name, a.Expected, name, k6JSValue(a.Expected))
+		case "contains":
+			return fmt.Sprintf("'header %s contains %v': (r) => String(r.headers['%s']).includes(%s),", name, a.Expected, name, k6JSValue(a.Expected))
+		case "matches":
+			return fmt.Sprintf("'header %s matches %v': (r) => new RegExp(%s).test(r.headers['%s']),", name, a.Expected, k6JSValue(a.Expected), name)
 		}
 	case a.Target == "duration_ms":
-		if a.Operator == "lt" {
+		switch a.Operator {
+		case "lt":
 			return fmt.Sprintf("'duration < %vms': (r) => r.timings.duration < %v,", a.Expected, a.Expected)
+		case "gt":
+			return fmt.Sprintf("'duration > %vms': (r) => r.timings.duration > %v,", a.Expected, a.Expected)
 		}
 	}
 	return fmt.Sprintf("// unrendered: %s %s %v", a.Target, a.Operator, a.Expected)
