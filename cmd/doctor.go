@@ -57,6 +57,14 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		color.Yellow("  ⚠ neither GEMINI_API_KEY nor GOOGLE_API_KEY is set — gemini provider unavailable")
 	}
 
+	// Check tree-sitter
+	if _, err := exec.LookPath("tree-sitter"); err != nil {
+		color.Yellow("  ⚠ tree-sitter not found — install with: brew install tree-sitter")
+		color.Yellow("    (RBT will use regex fallback for route extraction)")
+	} else {
+		color.Green("  ✓ tree-sitter found")
+	}
+
 	if !ok {
 		return fmt.Errorf("environment check failed")
 	}

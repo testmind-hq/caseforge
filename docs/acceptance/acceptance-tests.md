@@ -136,6 +136,22 @@
 
 ---
 
+### `rbt` — Regression-Based Testing
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-039 | rbt command registered | `caseforge --help` | `rbt` listed | ✅ PASS |
+| AT-040 | missing --spec returns error | `caseforge rbt` | error message | ✅ PASS |
+| AT-041 | --format json + --dry-run produces valid JSON | see script | rbt-report.json with diff_base field | ✅ PASS |
+| AT-042 | --fail-on high, dry-run → exit 0 | see script | exit 0 | ✅ PASS |
+| AT-043 | --dry-run skips git/tree-sitter | see script | no git errors | ✅ PASS |
+| AT-044 | doctor shows tree-sitter status | `caseforge doctor` | tree-sitter line present | ✅ PASS |
+| AT-045 | rbt index command registered | `caseforge rbt --help` | `index` listed | ✅ PASS |
+| AT-046 | rbt index --strategy llm writes map file | see script | map.yaml created with mappings: | ✅ PASS |
+| AT-047 | rbt index --out existing without --overwrite fails | see script | error: already exists | ✅ PASS |
+
+---
+
 ### `onboard` — Setup Wizard
 
 | ID | Scenario | Command | Expected | Status |
@@ -171,9 +187,10 @@
 | config show | 2 | 2 | 0 |
 | ask | 2 | 2 | 0 |
 | explore | 4 | 4 | 0 |
+| rbt | 9 | 9 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 3 | 3 | 0 |
-| **Total** | **37** | **37** | **0** |
+| **Total** | **46** | **46** | **0** |
 
 ---
 
