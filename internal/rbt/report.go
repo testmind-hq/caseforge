@@ -86,12 +86,9 @@ type reportJSON struct {
 	GeneratedAt    string              `json:"generated_at"`
 }
 
-// WriteReportJSON writes the report as rbt-report.json to outputDir.
-func WriteReportJSON(outputDir string, report RiskReport) (string, error) {
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return "", fmt.Errorf("create output dir: %w", err)
-	}
-
+// MarshalReportJSON serializes a RiskReport to indented JSON using a consistent
+// snake_case schema. Used by both --format json stdout and WriteReportJSON.
+func MarshalReportJSON(report RiskReport) ([]byte, error) {
 	rj := reportJSON{
 		DiffBase:       report.DiffBase,
 		DiffHead:       report.DiffHead,
@@ -103,8 +100,16 @@ func WriteReportJSON(outputDir string, report RiskReport) (string, error) {
 		RiskScore:      report.RiskScore,
 		GeneratedAt:    report.GeneratedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
+	return json.MarshalIndent(rj, "", "  ")
+}
 
-	data, err := json.MarshalIndent(rj, "", "  ")
+// WriteReportJSON writes the report as rbt-report.json to outputDir.
+func WriteReportJSON(outputDir string, report RiskReport) (string, error) {
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return "", fmt.Errorf("create output dir: %w", err)
+	}
+
+	data, err := MarshalReportJSON(report)
 	if err != nil {
 		return "", err
 	}

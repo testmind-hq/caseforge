@@ -71,6 +71,9 @@ func (s *IndexStore) Save(idx *LocalIndex) error {
 }
 
 // IsChunkStale returns true if the stored hash for file does not match newHash.
+// NOTE: this method reads index.json from disk on each call. For bulk use over
+// many files, load the index once with Load() and use the package-level
+// isChunkStale(localIdx, file, hash) helper instead.
 func (s *IndexStore) IsChunkStale(file, newHash string) bool {
 	idx, err := s.Load()
 	if err != nil || idx == nil {

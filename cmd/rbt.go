@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -101,7 +100,9 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 			rbt.NewMapFileParser(mapFile),
 			rbt.NewTreeSitterParser(),
 			rbt.NewRegexParser(),
-			rbt.NewLLMParser(nil, ""),
+			// LLM provider is nil in V1 — LLMParser gracefully returns empty when no
+		// provider is configured. Wire a real provider here in V2 for LLM inference.
+		rbt.NewLLMParser(nil, ""),
 		}
 
 		// Map changed files to route mappings
@@ -122,8 +123,9 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 
 	// Output
 	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
 	if format == "json" {
-		data, err := json.MarshalIndent(report, "", "  ")
+		data, err := rbt.MarshalReportJSON(report)
 		if err != nil {
 			return fmt.Errorf("marshal report: %w", err)
 		}
@@ -137,7 +139,12 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}
-	fmt.Fprintln(out, "Report written to:", reportPath)
+	// Print to stderr when --format json so stdout is valid JSON for piping.
+	if format == "json" {
+		fmt.Fprintln(errOut, "Report written to:", reportPath)
+	} else {
+		fmt.Fprintln(out, "Report written to:", reportPath)
+	}
 
 	// --generate: auto-generate tests for HIGH-risk operations
 	if generate && !dryRun {

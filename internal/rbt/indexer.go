@@ -125,7 +125,7 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 	// V1 stub: embeddings are stored for incremental re-embedding, but cosine similarity
 	// → RouteMapping conversion (TopKChunks + LLM confirmation) is not yet implemented.
 	// Fall back to regex for any unclaimed files to produce a useful map file.
-	regexMappings, _ := NewRegexParser().ExtractRoutes(".", files)
+	regexMappings, _ := NewRegexParser().ExtractRoutes(idx.SrcDir, files)
 	return regexMappings, nil
 }
 
