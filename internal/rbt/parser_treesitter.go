@@ -82,13 +82,22 @@ func runTreeSitterQuery(filePath, lang string) ([]treeSitterResult, error) {
 	}
 	queryFile.Close()
 
-	cmd := exec.Command("tree-sitter", "query", queryFile.Name(), filePath)
-	out, err := cmd.Output()
+	out, err := runTreeSitterCmd(filePath, queryFile.Name())
 	if err != nil {
-		return nil, fmt.Errorf("tree-sitter query: %w", err)
+		return nil, err
 	}
 
-	return parseTSSexprOutput(string(out)), nil
+	return parseTSSexprOutput(out), nil
+}
+
+// runTreeSitterCmd runs tree-sitter query and returns raw stdout as a string.
+func runTreeSitterCmd(filePath, queryFile string) (string, error) {
+	cmd := exec.Command("tree-sitter", "query", queryFile, filePath)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("tree-sitter query: %w", err)
+	}
+	return string(out), nil
 }
 
 func parseTSSexprOutput(output string) []treeSitterResult {

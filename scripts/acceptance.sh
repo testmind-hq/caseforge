@@ -345,6 +345,21 @@ contains AT-044b "rbt index --out existing without --overwrite fails" "already e
 echo ""
 
 # -------------------------------------------------------
+# AT-061 – AT-063: rbt callgraph
+# -------------------------------------------------------
+echo "--- rbt callgraph ---"
+
+contains "AT-061" "--depth flag registered on rbt index" "depth" \
+  "'$BIN' rbt index --help 2>&1 || true"
+
+contains "AT-062" "rbt --dry-run exits 0" "Report written" \
+  "mkdir -p '$WORKDIR/reports-at062' && '$BIN' rbt --spec '$WORKDIR/petstore.yaml' --dry-run --output '$WORKDIR/reports-at062' 2>&1 || true"
+
+contains "AT-063" "--depth flag default is 0 on rbt index" "depth int" \
+  "'$BIN' rbt index --help 2>&1 || true"
+echo ""
+
+# -------------------------------------------------------
 # AT-047 – AT-051: dedupe
 # -------------------------------------------------------
 echo "--- dedupe ---"
