@@ -36,7 +36,7 @@ func (r *ruleL019) Check(ps *spec.ParsedSpec) []LintIssue {
 		if excluded {
 			continue
 		}
-		if len(op.Security) == 0 {
+		if len(op.Security) == 0 && len(ps.GlobalSecurity) == 0 {
 			issues = append(issues, LintIssue{
 				RuleID:   "L019",
 				Severity: "warning",

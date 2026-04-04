@@ -51,6 +51,13 @@ func convertDoc(doc *openapi3.T) *ParsedSpec {
 		}
 	}
 
+	// Propagate document-level security so per-operation rules can check it.
+	for _, req := range doc.Security {
+		for schemeName := range req {
+			ps.GlobalSecurity = append(ps.GlobalSecurity, schemeName)
+		}
+	}
+
 	return ps
 }
 

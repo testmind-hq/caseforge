@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,10 +50,18 @@ func runLint(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("loading .caseforgelint.yaml: %w", err)
 	}
 
+	// Validate --format early, before any expensive work
+	if lintFormat != "terminal" && lintFormat != "json" {
+		return fmt.Errorf("unknown format %q: use terminal or json", lintFormat)
+	}
+
 	// Resolve fail_on: .caseforgelint.yaml > caseforge.yaml
 	failOn := cfg.Lint.FailOn
 	if fileCfg.FailOn != "" {
 		failOn = fileCfg.FailOn
+	}
+	if failOn != "" && failOn != "error" && failOn != "warning" {
+		return fmt.Errorf("invalid fail_on value %q: must be \"error\" or \"warning\"", failOn)
 	}
 
 	// Build skip set: union of caseforge.yaml + .caseforgelint.yaml + --skip-rules flag
@@ -79,18 +86,18 @@ func runLint(cmd *cobra.Command, args []string) error {
 	issues := lint.RunAll(parsedSpec, skip)
 	report := lint.NewReport(issues)
 
-	// Validate --format
-	if lintFormat != "terminal" && lintFormat != "json" {
-		return fmt.Errorf("unknown format %q: use terminal or json", lintFormat)
+	// Serialize JSON once; reused for both --format json stdout and --output file.
+	var reportJSON []byte
+	if lintFormat == "json" || lintOutput != "" {
+		reportJSON, err = report.ToJSON()
+		if err != nil {
+			return fmt.Errorf("serialising report: %w", err)
+		}
 	}
 
 	// Render output
 	if lintFormat == "json" {
-		data, err := report.ToJSON()
-		if err != nil {
-			return fmt.Errorf("serialising report: %w", err)
-		}
-		fmt.Println(string(data))
+		fmt.Println(string(reportJSON))
 	} else {
 		// terminal (coloured)
 		for _, iss := range issues {
@@ -113,12 +120,8 @@ func runLint(cmd *cobra.Command, args []string) error {
 		if err := os.MkdirAll(lintOutput, 0755); err != nil {
 			return fmt.Errorf("creating output dir: %w", err)
 		}
-		data, err := json.MarshalIndent(report, "", "  ")
-		if err != nil {
-			return fmt.Errorf("serialising report: %w", err)
-		}
 		outPath := filepath.Join(lintOutput, "lint-report.json")
-		if err := os.WriteFile(outPath, data, 0644); err != nil {
+		if err := os.WriteFile(outPath, reportJSON, 0644); err != nil {
 			return fmt.Errorf("writing lint-report.json: %w", err)
 		}
 		fmt.Fprintf(os.Stderr, "✓ Report written to %s\n", outPath)

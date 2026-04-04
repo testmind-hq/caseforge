@@ -76,8 +76,14 @@ func FindVersionedPaths(ops []*spec.Operation) (v1Paths, v2Paths []string) {
 			}
 		}
 	}
-	if len(seen["/v1/"]) > 0 && len(seen["/v2/"]) > 0 {
-		return seen["/v1/"], seen["/v2/"]
+	var nonEmpty []string
+	for _, ver := range []string{"/v1/", "/v2/", "/v3/"} {
+		if len(seen[ver]) > 0 {
+			nonEmpty = append(nonEmpty, ver)
+		}
+	}
+	if len(nonEmpty) >= 2 {
+		return seen[nonEmpty[0]], seen[nonEmpty[1]]
 	}
 	return nil, nil
 }

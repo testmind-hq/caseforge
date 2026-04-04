@@ -19,6 +19,7 @@ type ParsedSpec struct {
 	Operations      []*Operation
 	Schemas         map[string]*Schema
 	SecuritySchemes []string // names of globally defined security schemes
+	GlobalSecurity  []string // scheme names from the document-level security block
 }
 
 type Operation struct {
