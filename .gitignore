@@ -38,3 +38,4 @@ docs/superpowers/
 # Git worktrees
 .worktrees/
 
+docs/design/
