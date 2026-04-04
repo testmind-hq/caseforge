@@ -349,14 +349,14 @@ echo ""
 # -------------------------------------------------------
 echo "--- rbt callgraph ---"
 
-contains "AT-061" "--depth flag registered" "depth" \
-  "'$BIN' rbt --help 2>&1 || true"
+contains "AT-061" "--depth flag registered on rbt index" "depth" \
+  "'$BIN' rbt index --help 2>&1 || true"
 
 contains "AT-062" "rbt --dry-run exits 0" "Report written" \
   "mkdir -p '$WORKDIR/reports-at062' && '$BIN' rbt --spec '$WORKDIR/petstore.yaml' --dry-run --output '$WORKDIR/reports-at062' 2>&1 || true"
 
-contains "AT-063" "--depth flag default is 0" "depth int" \
-  "'$BIN' rbt --help 2>&1 || true"
+contains "AT-063" "--depth flag default is 0 on rbt index" "depth int" \
+  "'$BIN' rbt index --help 2>&1 || true"
 echo ""
 
 # -------------------------------------------------------

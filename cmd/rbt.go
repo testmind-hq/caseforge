@@ -39,7 +39,6 @@ func init() {
 	rbtCmd.Flags().String("fail-on", "high", "Exit non-zero if any operation has risk >= level (none|low|medium|high)")
 	rbtCmd.Flags().String("map", "", "Path to caseforge-map.yaml (default: <src>/caseforge-map.yaml)")
 	rbtCmd.Flags().Bool("dry-run", false, "Skip git diff and tree-sitter; report all operations as risk=none")
-	rbtCmd.Flags().Int("depth", 0, "Call graph traversal depth (0 = dynamic, stop at route node)")
 }
 
 func runRBT(cmd *cobra.Command, _ []string) error {

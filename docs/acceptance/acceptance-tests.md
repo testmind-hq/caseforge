@@ -156,9 +156,9 @@
 
 | ID | Scenario | Command | Expected | Status |
 |----|----------|---------|----------|--------|
-| AT-061 | --depth flag registered | `caseforge rbt --help` | `--depth` listed | ✅ PASS |
+| AT-061 | --depth flag registered on rbt index | `caseforge rbt index --help` | `--depth` listed | ✅ PASS |
 | AT-062 | rbt --dry-run exits 0 | `caseforge rbt --spec petstore.yaml --dry-run` | exit 0, report generated | ✅ PASS |
-| AT-063 | --depth default is 0 | `caseforge rbt --help` | output contains `depth int` | ✅ PASS |
+| AT-063 | --depth default is 0 on rbt index | `caseforge rbt index --help` | output contains `depth int` | ✅ PASS |
 
 ---
 
