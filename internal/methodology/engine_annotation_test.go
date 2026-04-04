@@ -23,6 +23,10 @@ func TestParseSemanticAnnotation(t *testing.T) {
 			input: "```json\n{\"resource_type\":\"order\",\"action_type\":\"read\",\"has_state_machine\":true,\"state_field\":\"status\",\"unique_fields\":[],\"implicit_rules\":[]}\n```",
 		},
 		{
+			name:  "json embedded in prose",
+			input: "The annotation is: {\"resource_type\":\"user\",\"action_type\":\"create\",\"has_state_machine\":false,\"state_field\":\"\",\"unique_fields\":[],\"implicit_rules\":[]}",
+		},
+		{
 			name:    "invalid text",
 			input:   "this is not json at all",
 			wantNil: true,
