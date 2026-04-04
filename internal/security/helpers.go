@@ -50,6 +50,18 @@ func IsAuthRequired(op *spec.Operation) bool {
 	return len(op.Security) > 0
 }
 
+// IsSensitiveName returns true if the field name contains a sensitive keyword
+// (case-insensitive substring match).
+func IsSensitiveName(name string) bool {
+	lower := strings.ToLower(name)
+	for _, kw := range sensitiveKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
+}
+
 // FindVersionedPaths returns two slices: paths containing "/v1/" (or starting with "/v1/")
 // and paths containing "/v2/" (or similar next-version prefix).
 // Returns nil slices when no versioned pair exists.
@@ -64,8 +76,14 @@ func FindVersionedPaths(ops []*spec.Operation) (v1Paths, v2Paths []string) {
 			}
 		}
 	}
-	if len(seen["/v1/"]) > 0 && len(seen["/v2/"]) > 0 {
-		return seen["/v1/"], seen["/v2/"]
+	var nonEmpty []string
+	for _, ver := range []string{"/v1/", "/v2/", "/v3/"} {
+		if len(seen[ver]) > 0 {
+			nonEmpty = append(nonEmpty, ver)
+		}
+	}
+	if len(nonEmpty) >= 2 {
+		return seen[nonEmpty[0]], seen[nonEmpty[1]]
 	}
 	return nil, nil
 }

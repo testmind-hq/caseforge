@@ -14,10 +14,12 @@ type SpecLoader interface {
 }
 
 type ParsedSpec struct {
-	Title      string
-	Version    string
-	Operations []*Operation
-	Schemas    map[string]*Schema
+	Title           string
+	Version         string
+	Operations      []*Operation
+	Schemas         map[string]*Schema
+	SecuritySchemes []string // names of globally defined security schemes
+	GlobalSecurity  []string // scheme names from the document-level security block
 }
 
 type Operation struct {

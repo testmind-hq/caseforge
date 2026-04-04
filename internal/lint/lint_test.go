@@ -21,7 +21,7 @@ func TestL004MissingSuccessResponse(t *testing.T) {
 			},
 		},
 	}
-	issues := RunAll(ps)
+	issues := RunAll(ps, nil)
 	found := false
 	for _, iss := range issues {
 		if iss.RuleID == "L004" {
@@ -37,7 +37,7 @@ func TestL001MissingOperationID(t *testing.T) {
 			{Method: "GET", Path: "/users"},
 		},
 	}
-	issues := RunAll(ps)
+	issues := RunAll(ps, nil)
 	found := false
 	for _, iss := range issues {
 		if iss.RuleID == "L001" {
@@ -59,7 +59,7 @@ func TestL006UndeclaredPathParam(t *testing.T) {
 			},
 		},
 	}
-	issues := RunAll(ps)
+	issues := RunAll(ps, nil)
 	found := false
 	for _, iss := range issues {
 		if iss.RuleID == "L006" {
@@ -83,7 +83,7 @@ func TestL006PassesWhenParamDeclared(t *testing.T) {
 			},
 		},
 	}
-	issues := RunAll(ps)
+	issues := RunAll(ps, nil)
 	for _, iss := range issues {
 		assert.NotEqual(t, "L006", iss.RuleID, "L006 should not fire when path param is declared")
 	}
@@ -101,10 +101,23 @@ func TestNoIssuesForCleanSpec(t *testing.T) {
 			},
 		},
 	}
-	issues := RunAll(ps)
+	issues := RunAll(ps, nil)
 	for _, iss := range issues {
 		if iss.Severity == "error" {
 			t.Errorf("unexpected error: %s %s", iss.RuleID, iss.Message)
 		}
+	}
+}
+
+func TestRunAllSkip(t *testing.T) {
+	ps := &spec.ParsedSpec{
+		Operations: []*spec.Operation{
+			{Method: "GET", Path: "/users"}, // triggers L001 (missing operationId)
+		},
+	}
+	skip := map[string]bool{"L001": true}
+	issues := RunAll(ps, skip)
+	for _, iss := range issues {
+		assert.NotEqual(t, "L001", iss.RuleID, "L001 should be skipped")
 	}
 }
