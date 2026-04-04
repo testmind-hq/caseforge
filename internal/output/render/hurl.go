@@ -96,7 +96,7 @@ func (r *HurlRenderer) renderChainCase(tc schema.TestCase) string {
 	b.WriteString("\n")
 	b.WriteString(fmt.Sprintf("# %s\n", tc.Title))
 	b.WriteString(fmt.Sprintf("# case_id=%s\n", tc.ID))
-	b.WriteString(fmt.Sprintf("# case_kind=chain\n"))
+	b.WriteString("# case_kind=chain\n")
 	b.WriteString(fmt.Sprintf("# priority=%s\n", tc.Priority))
 	b.WriteString(chainSep)
 	b.WriteString("\n\n")

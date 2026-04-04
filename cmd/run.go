@@ -100,7 +100,7 @@ func runRun(cmd *cobra.Command, _ []string) error {
 	}
 
 	if result.Failed > 0 {
-		os.Exit(6)
+		os.Exit(ExitPartialSuccess)
 	}
 	return nil
 }

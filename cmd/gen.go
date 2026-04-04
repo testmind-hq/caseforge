@@ -94,7 +94,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 	parsedSpec, err := loader.Load(genSpec)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Failed to parse spec: %v\n", err)
-		os.Exit(2)
+		os.Exit(ExitSpecParseError)
 	}
 
 	// --operations: filter parsedSpec to only requested operationIds
@@ -178,7 +178,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		CaseforgeVersion: Version,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Failed to write output: %v\n", err)
-		os.Exit(5)
+		os.Exit(ExitWriteError)
 	}
 
 	// Render to target format
@@ -197,7 +197,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 	}
 	if err := renderer.Render(cases, genOutput); err != nil {
 		fmt.Fprintf(os.Stderr, "✗ Render failed: %v\n", err)
-		os.Exit(5)
+		os.Exit(ExitWriteError)
 	}
 
 	bus.Emit(event.Event{Type: event.EventRenderDone})
