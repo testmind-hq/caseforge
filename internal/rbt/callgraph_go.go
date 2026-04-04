@@ -111,9 +111,9 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 	}
 	switch algo {
 	case "vta":
-		// VTA (Variable Type Analysis) is the modern replacement for the
-		// deprecated go/pointer PTA. Run RTA first to get an initial call
-		// graph, then refine it with VTA for more precise interface dispatch.
+		// VTA (Variable Type Analysis) provides more precise interface dispatch
+		// than RTA alone. Run RTA first to get an initial call graph, then
+		// refine it with VTA.
 		rtaGraph := rta.Analyze(roots, true).CallGraph
 		allFuncs := make(map[*ssa.Function]bool)
 		for fn := range rtaGraph.Nodes {
