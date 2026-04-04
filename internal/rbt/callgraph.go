@@ -11,25 +11,32 @@ type CallGraphBuilder interface {
 func BuildCallGraph(files []ChangedFile, builder CallGraphBuilder) *CallGraph {
 	cg := &CallGraph{Edges: make(map[string][]CallNode)}
 
-	// First pass: collect all function definitions (funcName → []CallNode across all files).
-	allDefs := make(map[string][]CallNode)
+	type fileData struct {
+		defs  []CallNode
+		calls []CallEdge
+	}
+	// Single pass: collect defs and calls from each file once.
+	fileResults := make([]fileData, 0, len(files))
 	for _, f := range files {
-		defs, _, err := builder.ExtractFuncs(f.Path)
+		defs, calls, err := builder.ExtractFuncs(f.Path)
 		if err != nil {
+			fileResults = append(fileResults, fileData{})
 			continue
 		}
-		for _, d := range defs {
+		fileResults = append(fileResults, fileData{defs, calls})
+	}
+
+	// Build definition index.
+	allDefs := make(map[string][]CallNode)
+	for _, fd := range fileResults {
+		for _, d := range fd.defs {
 			allDefs[d.FuncName] = append(allDefs[d.FuncName], d)
 		}
 	}
 
-	// Second pass: build inverted edges.
-	for _, f := range files {
-		_, calls, err := builder.ExtractFuncs(f.Path)
-		if err != nil {
-			continue
-		}
-		for _, edge := range calls {
+	// Build inverted edges.
+	for _, fd := range fileResults {
+		for _, edge := range fd.calls {
 			callerNode := CallNode{File: edge.CallerFile, FuncName: edge.CallerFunc}
 			for _, calleeNode := range allDefs[edge.CalleeName] {
 				key := CallNodeKey(calleeNode.File, calleeNode.FuncName)
@@ -74,7 +81,7 @@ func TraceToRoutes(cg *CallGraph, startNodes []CallNode, routeFileMappings map[s
 				if !seen[dedupeKey] {
 					seen[dedupeKey] = true
 					result = append(result, RouteMapping{
-						SourceFile: cur.node.File,
+						SourceFile: rm.SourceFile,
 						Method:     rm.Method,
 						RoutePath:  rm.RoutePath,
 						Via:        "callgraph",
