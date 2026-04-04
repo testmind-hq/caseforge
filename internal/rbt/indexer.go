@@ -30,6 +30,7 @@ type Indexer struct {
 	Overwrite bool
 	Store     *IndexStore
 	Embedder  Embedder
+	Depth     int // 0 = dynamic BFS (stop at route node); >0 = fixed depth cap
 }
 
 // RunRegex uses the regex parser to extract routes and writes caseforge-map.yaml.
@@ -49,7 +50,7 @@ func (idx *Indexer) RunRegex() error {
 	return idx.writeMapFile(mappings, "regex")
 }
 
-// RunHybrid uses tree-sitter + embeddings + LLM confirmation.
+// RunHybrid uses tree-sitter + call-graph + embeddings + LLM confirmation.
 func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 	if err := idx.checkOverwrite(); err != nil {
 		return err
@@ -59,41 +60,80 @@ func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 		return err
 	}
 
-	ts := NewTreeSitterParser()
-	var mappings []RouteMapping
-	if ts.IsAvailable() {
-		mappings, err = ts.ExtractRoutes(idx.SrcDir, files)
-		if err != nil {
-			return err
-		}
-	}
+	// Phase 1: tree-sitter direct route detection.
+	mappings, routeFileMappings := idx.runTreeSitterPhase(files)
+	unclaimed := subtractFiles(files, mappings)
 
-	claimed := make(map[string]bool)
-	for _, m := range mappings {
-		claimed[m.SourceFile] = true
-	}
-	var unclaimed []ChangedFile
-	for _, f := range files {
-		if !claimed[f.Path] {
-			unclaimed = append(unclaimed, f)
-		}
-	}
+	// Phase 2: call-graph traversal for service/DAO/utils files.
+	cgMappings := idx.runCallGraphPhase(files, unclaimed, routeFileMappings, llmParser)
+	mappings = append(mappings, cgMappings...)
+	unclaimed = subtractFiles(unclaimed, cgMappings)
 
-	if len(unclaimed) > 0 {
-		if idx.Embedder != nil {
-			if _, isNoop := idx.Embedder.(*NoopEmbedder); isNoop {
-				regexMappings, _ := NewRegexParser().ExtractRoutes(idx.SrcDir, unclaimed)
-				mappings = append(mappings, regexMappings...)
-			} else {
-				embedMappings, err := idx.runEmbedPhase(unclaimed)
-				if err == nil {
-					mappings = append(mappings, embedMappings...)
-				}
-			}
-		}
+	// Phase 3: embedding-based matching for remaining unclaimed files.
+	embedMappings, err := idx.runEmbedPhase(unclaimed)
+	if err == nil {
+		mappings = append(mappings, embedMappings...)
 	}
 
 	return idx.writeMapFile(mappings, "hybrid")
+}
+
+// runTreeSitterPhase extracts route mappings using the tree-sitter parser.
+// Returns mappings and a map of file → []RouteMapping for route-registering files.
+func (idx *Indexer) runTreeSitterPhase(files []ChangedFile) ([]RouteMapping, map[string][]RouteMapping) {
+	routeFileMappings := make(map[string][]RouteMapping)
+	ts := NewTreeSitterParser()
+	if !ts.IsAvailable() {
+		return nil, routeFileMappings
+	}
+	mappings, err := ts.ExtractRoutes(idx.SrcDir, files)
+	if err != nil {
+		return nil, routeFileMappings
+	}
+	for _, rm := range mappings {
+		routeFileMappings[rm.SourceFile] = append(routeFileMappings[rm.SourceFile], rm)
+	}
+	return mappings, routeFileMappings
+}
+
+// runCallGraphPhase builds a call graph from all source files and traces
+// unclaimed files upward to route-registering files.
+func (idx *Indexer) runCallGraphPhase(
+	allFiles []ChangedFile,
+	unclaimed []ChangedFile,
+	routeFileMappings map[string][]RouteMapping,
+	llmParser *LLMParser,
+) []RouteMapping {
+	tsBuilder := NewTreeSitterCallGraphBuilder()
+	llmBuilder := NewLLMCallGraphBuilder(llmParser)
+	builder := &fallbackCallGraphBuilder{primary: tsBuilder, fallback: llmBuilder}
+	return idx.runCallGraphPhaseWithBuilder(allFiles, unclaimed, routeFileMappings, builder)
+}
+
+// runCallGraphPhaseWithBuilder is the testable core of runCallGraphPhase.
+func (idx *Indexer) runCallGraphPhaseWithBuilder(
+	allFiles []ChangedFile,
+	unclaimed []ChangedFile,
+	routeFileMappings map[string][]RouteMapping,
+	builder CallGraphBuilder,
+) []RouteMapping {
+	if len(unclaimed) == 0 {
+		return nil
+	}
+
+	cg := BuildCallGraph(allFiles, builder)
+
+	// Collect start nodes: all function definitions in unclaimed files.
+	var startNodes []CallNode
+	for _, f := range unclaimed {
+		defs, _, _ := builder.ExtractFuncs(f.Path)
+		startNodes = append(startNodes, defs...)
+	}
+	if len(startNodes) == 0 {
+		return nil
+	}
+
+	return TraceToRoutes(cg, startNodes, routeFileMappings, idx.Depth)
 }
 
 func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
