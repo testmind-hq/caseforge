@@ -8,8 +8,8 @@ import (
 
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/rta"
+	"golang.org/x/tools/go/callgraph/vta"
 	"golang.org/x/tools/go/packages"
-	"golang.org/x/tools/go/pointer"
 	"golang.org/x/tools/go/ssa"
 	"golang.org/x/tools/go/ssa/ssautil"
 )
@@ -19,11 +19,11 @@ import (
 // V2 name-matching cannot resolve.
 type GoCallGraphBuilder struct {
 	SrcDir string
-	Algo   string // "rta" (default) | "pta"
+	Algo   string // "rta" (default) | "vta"
 }
 
 // BuildAndTrace loads the Go module in SrcDir, builds an SSA call graph via
-// RTA or PTA, then BFS-traces upward from functions in unclaimed .go files to
+// RTA or VTA, then BFS-traces upward from functions in unclaimed .go files to
 // route-registering files. Returns the found route mappings, the subset of
 // unclaimed files that were resolved, and any hard error (caller falls back to V2).
 // Returns (nil, nil, nil) silently when: no go.mod, no main package, or no .go
@@ -81,7 +81,7 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 	prog, ssaPkgs := ssautil.AllPackages(pkgs, ssa.InstantiateGenerics)
 	prog.Build()
 
-	// Find main packages for RTA/PTA roots.
+	// Find main packages for RTA/VTA roots.
 	var mainPkgs []*ssa.Package
 	for _, pkg := range ssaPkgs {
 		if pkg != nil && pkg.Pkg.Name() == "main" {
@@ -99,30 +99,30 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 	if algo == "" {
 		algo = "rta"
 	}
+	// Collect main() roots for RTA (needed by both rta and vta paths).
+	var roots []*ssa.Function
+	for _, pkg := range mainPkgs {
+		if fn := pkg.Func("main"); fn != nil {
+			roots = append(roots, fn)
+		}
+	}
+	if len(roots) == 0 {
+		return nil, nil, nil
+	}
 	switch algo {
-	case "pta":
-		ptaCfg := &pointer.Config{
-			Mains:          mainPkgs,
-			BuildCallGraph: true,
-		}
-		ptaResult, ptaErr := pointer.Analyze(ptaCfg)
-		if ptaErr != nil {
-			// PTA is marked deprecated and panics on type aliases introduced in
-			// Go 1.22+ (e.g. "cannot flatten unsupported type *types.Alias").
-			// Fall back silently so V2 can handle the unclaimed files.
-			return nil, nil, nil
-		}
-		cg = ptaResult.CallGraph
-	default: // "rta"
-		var roots []*ssa.Function
-		for _, pkg := range mainPkgs {
-			if fn := pkg.Func("main"); fn != nil {
-				roots = append(roots, fn)
+	case "vta":
+		// VTA (Variable Type Analysis) is the modern replacement for the
+		// deprecated go/pointer PTA. Run RTA first to get an initial call
+		// graph, then refine it with VTA for more precise interface dispatch.
+		rtaGraph := rta.Analyze(roots, true).CallGraph
+		allFuncs := make(map[*ssa.Function]bool)
+		for fn := range rtaGraph.Nodes {
+			if fn != nil {
+				allFuncs[fn] = true
 			}
 		}
-		if len(roots) == 0 {
-			return nil, nil, nil
-		}
+		cg = vta.CallGraph(allFuncs, rtaGraph)
+	default: // "rta"
 		cg = rta.Analyze(roots, true).CallGraph
 	}
 
@@ -175,8 +175,8 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 
 	// Determine via/confidence.
 	via, confidence := "go-callgraph", 0.9
-	if algo == "pta" {
-		via, confidence = "go-callgraph-pta", 0.95
+	if algo == "vta" {
+		via, confidence = "go-callgraph-vta", 0.92
 	}
 
 	// BFS upward.

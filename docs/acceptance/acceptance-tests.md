@@ -168,7 +168,7 @@
 |----|----------|---------|----------|--------|
 | AT-064 | --algo flag registered on rbt index | `caseforge rbt index --help` | `--algo` listed | ✅ PASS |
 | AT-065 | rbt index hybrid runs without error (no Go module) | `caseforge rbt index --spec petstore.yaml --strategy hybrid --src /tmp` | exit 0, map file written | ✅ PASS |
-| AT-066 | --algo pta flag accepted | `caseforge rbt index --help` | `pta` mentioned in --algo description | ✅ PASS |
+| AT-066 | --algo vta flag accepted | `caseforge rbt index --help` | `vta` mentioned in --algo description | ✅ PASS |
 
 ---
 

@@ -58,7 +58,7 @@ func TestGoCallGraphBuilder_RTA_TracesInterface(t *testing.T) {
 	assert.Equal(t, serviceFile, claimed[0].Path)
 }
 
-func TestGoCallGraphBuilder_PTA_TracesInterface(t *testing.T) {
+func TestGoCallGraphBuilder_VTA_TracesInterface(t *testing.T) {
 	dir := goFixtureDir(t)
 
 	handlerFile := filepath.Join(dir, "handler", "handler.go")
@@ -78,21 +78,15 @@ func TestGoCallGraphBuilder_PTA_TracesInterface(t *testing.T) {
 
 	unclaimed := []ChangedFile{{Path: serviceFile}}
 
-	b := &GoCallGraphBuilder{SrcDir: dir, Algo: "pta"}
+	b := &GoCallGraphBuilder{SrcDir: dir, Algo: "vta"}
 	mappings, claimed, err := b.BuildAndTrace(unclaimed, routeFiles, 0)
 
 	require.NoError(t, err)
-	// golang.org/x/tools/go/pointer (v0.1.0-deprecated) panics on *types.Alias
-	// introduced in Go 1.22+. BuildAndTrace silently returns nil on that internal
-	// error so V2 can continue. Skip the happy-path assertions on affected toolchains.
-	if len(mappings) == 0 {
-		t.Skip("PTA fell back silently (known pointer-pkg alias bug on Go 1.22+); skipping happy-path assertions")
-	}
-	require.Len(t, mappings, 1, "should find POST /users via PTA interface dispatch")
+	require.Len(t, mappings, 1, "should find POST /users via VTA interface dispatch")
 	assert.Equal(t, "POST", mappings[0].Method)
 	assert.Equal(t, "/users", mappings[0].RoutePath)
-	assert.Equal(t, "go-callgraph-pta", mappings[0].Via)
-	assert.InDelta(t, 0.95, mappings[0].Confidence, 0.001)
+	assert.Equal(t, "go-callgraph-vta", mappings[0].Via)
+	assert.InDelta(t, 0.92, mappings[0].Confidence, 0.001)
 	require.Len(t, claimed, 1)
 	assert.Equal(t, serviceFile, claimed[0].Path)
 }
