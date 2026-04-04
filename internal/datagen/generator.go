@@ -43,9 +43,9 @@ func (g *Generator) Generate(s *spec.Schema, fieldName string) any {
 		}
 	}
 
-	// Tier 2: field name semantic
+	// Tier 2: field name semantic (description provides disambiguation context)
 	if fieldName != "" {
-		if val, ok := generateByFieldName(fieldName); ok {
+		if val, ok := generateByFieldName(fieldName, s.Description); ok {
 			return val
 		}
 	}
