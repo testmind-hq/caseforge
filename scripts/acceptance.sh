@@ -808,17 +808,17 @@ contains "AT-083" "export command registered" "export" \
   "'$BIN' --help"
 
 # AT-084: allure format creates result file
-"$BIN" export --cases "$EXPORTDIR/cases" --format allure --output "$EXPORTDIR/out" 2>/dev/null || true
+"$BIN" export --cases "$EXPORTDIR/cases" --format allure --output "$EXPORTDIR/out" || true
 contains "AT-084" "export --format allure creates result file" "result.json" \
   "ls '$EXPORTDIR/out/allure/'"
 
 # AT-085: xray format creates xray-import.json
-"$BIN" export --cases "$EXPORTDIR/cases" --format xray --output "$EXPORTDIR/out" 2>/dev/null || true
+"$BIN" export --cases "$EXPORTDIR/cases" --format xray --output "$EXPORTDIR/out" || true
 contains "AT-085" "export --format xray creates xray-import.json" "xray-import.json" \
   "ls '$EXPORTDIR/out/xray/'"
 
 # AT-086: testrail format creates testrail-import.csv
-"$BIN" export --cases "$EXPORTDIR/cases" --format testrail --output "$EXPORTDIR/out" 2>/dev/null || true
+"$BIN" export --cases "$EXPORTDIR/cases" --format testrail --output "$EXPORTDIR/out" || true
 contains "AT-086" "export --format testrail creates testrail-import.csv" "testrail-import.csv" \
   "ls '$EXPORTDIR/out/testrail/'"
 

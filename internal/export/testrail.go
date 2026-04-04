@@ -26,7 +26,6 @@ func (e *TestRailExporter) Export(cases []schema.TestCase, outDir string) error 
 	defer f.Close()
 
 	w := csv.NewWriter(f)
-	defer w.Flush()
 
 	if err := w.Write([]string{"Title", "Type", "Priority", "Section", "Steps", "Expected Results"}); err != nil {
 		return err
@@ -36,6 +35,7 @@ func (e *TestRailExporter) Export(cases []schema.TestCase, outDir string) error 
 			return err
 		}
 	}
+	w.Flush()
 	return w.Error()
 }
 

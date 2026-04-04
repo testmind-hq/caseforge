@@ -34,12 +34,16 @@ func (e *XrayExporter) Export(cases []schema.TestCase, outDir string) error {
 func xrayTest(tc schema.TestCase) map[string]any {
 	desc := fmt.Sprintf("Technique: %s\nSpec: %s\nRationale: %s",
 		tc.Source.Technique, tc.Source.SpecPath, tc.Source.Rationale)
+	labels := tc.Tags
+	if labels == nil {
+		labels = []string{}
+	}
 	return map[string]any{
 		"summary":     tc.ID + " " + tc.Title,
 		"description": desc,
-		"testType":    "Manual",
+		"testType":    "Generic",
 		"priority":    PriorityXray(tc.Priority),
-		"labels":      tc.Tags,
+		"labels":      labels,
 		"steps":       xraySteps(tc.Steps),
 	}
 }
@@ -49,7 +53,9 @@ func xraySteps(steps []schema.Step) []map[string]string {
 	for i, s := range steps {
 		action := s.Method + " " + s.Path
 		if s.Body != nil {
-			action += fmt.Sprintf(" body: %v", s.Body)
+			if b, err := json.Marshal(s.Body); err == nil {
+				action += " body: " + string(b)
+			}
 		}
 		out[i] = map[string]string{
 			"action": action,

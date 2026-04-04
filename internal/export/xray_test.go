@@ -28,7 +28,7 @@ func TestXrayExporter_FileContent(t *testing.T) {
 	s := string(data)
 
 	assert.Contains(t, s, `"TC-0001 POST /users - valid email"`)
-	assert.Contains(t, s, `"Manual"`)
+	assert.Contains(t, s, `"Generic"`)
 	assert.Contains(t, s, `"High"`)        // P1 → High
 	assert.Contains(t, s, `"POST /users"`) // step action
 	assert.Contains(t, s, `"status_code eq 201"`) // step result

@@ -37,8 +37,6 @@ func writeAllureResult(tc schema.TestCase, outDir string) error {
 		"status":    "unknown",
 		"labels":    allureLabels(tc),
 		"steps":     allureSteps(tc.Steps),
-		"start":     tc.GeneratedAt.UnixMilli(),
-		"stop":      tc.GeneratedAt.UnixMilli(),
 	}
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {

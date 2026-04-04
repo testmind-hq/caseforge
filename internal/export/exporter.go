@@ -92,11 +92,7 @@ func AssertionsSummary(assertions []schema.Assertion) string {
 
 // toUUID derives a deterministic UUID-shaped string from an arbitrary string.
 // Uses crypto/md5 so the same ID always produces the same UUID.
-func toUUID(id string) string {
-	return uuidFromString(id)
-}
-
-func uuidFromString(s string) string {
+func toUUID(s string) string {
 	h := md5.Sum([]byte(s))
 	return fmt.Sprintf("%x-%x-%x-%x-%x", h[0:4], h[4:6], h[6:8], h[8:10], h[10:16])
 }
