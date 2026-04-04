@@ -200,13 +200,17 @@ contains "AT-067" "--technique filters output to one technique" "equivalence_par
   "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --technique equivalence_partitioning --output '$WORKDIR/cases-technique' 2>&1 && \
    python3 -c \"import json,os; idx=json.load(open('$WORKDIR/cases-technique/index.json')); techs=set(tc['source']['technique'] for tc in idx.get('test_cases',[])); print(' '.join(techs))\""
 
-# AT-068: --priority filters — only P0/P1 cases survive P1 threshold
-contains "AT-068" "--priority P1 filters out lower priority cases" "Generated" \
-  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --priority P1 --output '$WORKDIR/cases-priority' 2>&1"
+# AT-068: --priority filters — verify no P2/P3 cases appear in output
+contains "AT-068" "--priority P1 filters out lower priority cases" "true" \
+  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --priority P1 --output '$WORKDIR/cases-priority' 2>&1 && \
+   python3 -c \"import json; idx=json.load(open('$WORKDIR/cases-priority/index.json')); bad=[tc['priority'] for tc in idx.get('test_cases',[]) if tc.get('priority') in ('P2','P3')]; print('true' if not bad else 'fail:'+str(bad))\""
 
-# AT-069: --operations limits to specified operationId
-contains "AT-069" "--operations limits to listPets only" "Generated" \
-  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --operations listPets --output '$WORKDIR/cases-ops' 2>&1"
+# AT-069: --operations limits to specified operationId — verify only /pets (listPets) paths in output
+# step.path may include query params (e.g. /pets?limit=1) so use startswith('/pets') and
+# exclude /pets/{...} (other operations).
+contains "AT-069" "--operations limits to listPets only" "true" \
+  "$BIN gen --spec '$WORKDIR/petstore.yaml' --no-ai --operations listPets --output '$WORKDIR/cases-ops' 2>&1 && \
+   python3 -c \"import json; idx=json.load(open('$WORKDIR/cases-ops/index.json')); bad=[tc for tc in idx.get('test_cases',[]) for s in tc.get('steps',[]) if not s.get('path','').split('?')[0].rstrip('/') in ('/pets',)]; print('true' if not bad else 'fail: unexpected paths')\""
 
 # AT-070: --concurrency flag is registered in help
 contains "AT-070" "--concurrency flag registered on gen" "concurrency" \

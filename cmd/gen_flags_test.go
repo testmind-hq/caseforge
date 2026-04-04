@@ -22,6 +22,10 @@ func TestSplitTrimmed_TrimsSpaces(t *testing.T) {
 	assert.Equal(t, []string{"a", "b", "c"}, got)
 }
 
+func TestSplitTrimmed_SingleItem(t *testing.T) {
+	assert.Equal(t, []string{"listPets"}, splitTrimmed("listPets"))
+}
+
 func TestSplitTrimmed_Empty(t *testing.T) {
 	assert.Empty(t, splitTrimmed(""))
 }

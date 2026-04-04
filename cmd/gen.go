@@ -109,6 +109,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 			}
 		}
 		parsedSpec.Operations = filtered
+		if len(filtered) == 0 {
+			fmt.Fprintf(os.Stderr, "warning: --operations %q matched no operationIds in the spec\n", genOperations)
+		}
 	}
 
 	// Set up event bus
@@ -144,6 +147,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewSecuritySpecTechnique(),
 	}
 	selectedTechniques, selectedSpec := filterTechniques(allTechniques, allSpecTechniques, genTechnique)
+	if genTechnique != "" && len(selectedTechniques) == 0 && len(selectedSpec) == 0 {
+		fmt.Fprintf(os.Stderr, "warning: --technique %q matched no known technique names\n", genTechnique)
+	}
 
 	// Generate test cases
 	engine := methodology.NewEngine(provider, selectedTechniques...)
@@ -157,7 +163,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("generating test cases: %w", err)
 	}
 
-	// --priority: keep cases whose priority ≥ the requested threshold
+	// --priority: keep cases whose priority is at least as high as the requested threshold.
 	if genPriority != "" {
 		cases = filterByPriority(cases, genPriority)
 	}
@@ -228,8 +234,10 @@ func filterTechniques(
 	return filteredOps, filteredSpec
 }
 
-// filterByPriority keeps cases whose priority is >= minPriority (closer to P0).
-// Cases with an unrecognised or empty priority field are excluded.
+// filterByPriority keeps cases whose priority is at least as high as minPriority.
+// Because P0 has rank 0 (highest) and P3 has rank 3 (lowest), a case passes
+// when its numeric rank is <= the threshold rank. Cases with unrecognised or
+// empty priority fields are excluded.
 func filterByPriority(cases []schema.TestCase, minPriority string) []schema.TestCase {
 	threshold := priorityRank[minPriority]
 	var out []schema.TestCase
