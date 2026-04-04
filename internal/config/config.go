@@ -26,7 +26,8 @@ type OutputConfig struct {
 }
 
 type LintConfig struct {
-	FailOn string `mapstructure:"fail_on"` // "warning"|"error"
+	FailOn    string   `mapstructure:"fail_on"`    // "warning"|"error"
+	SkipRules []string `mapstructure:"skip_rules"` // rules to skip
 }
 
 func Load() (*Config, error) {
