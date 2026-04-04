@@ -17,7 +17,7 @@ func TestLLMCallGraphBuilder_ParsesValidResponse(t *testing.T) {
 
 	resp := `{"definitions":["CreateUser","validateEmail"],"calls":[{"caller":"CreateUser","callees":["validateEmail","Save"]}]}`
 	provider := &fakeLLMProvider{response: resp}
-	builder := NewLLMCallGraphBuilder(NewLLMParser(provider, ""))
+	builder := NewLLMCallGraphBuilder(NewLLMParser(provider, nil))
 
 	defs, calls, err := builder.ExtractFuncs(srcPath)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestLLMCallGraphBuilder_MalformedJSON_ReturnsEmpty(t *testing.T) {
 	require.NoError(t, os.WriteFile(srcPath, []byte("package svc\n"), 0644))
 
 	provider := &fakeLLMProvider{response: "not json at all"}
-	builder := NewLLMCallGraphBuilder(NewLLMParser(provider, ""))
+	builder := NewLLMCallGraphBuilder(NewLLMParser(provider, nil))
 
 	defs, calls, err := builder.ExtractFuncs(srcPath)
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestLLMCallGraphBuilder_EmptyResponse_ReturnsEmpty(t *testing.T) {
 	require.NoError(t, os.WriteFile(srcPath, []byte("package svc\n"), 0644))
 
 	provider := &fakeLLMProvider{response: `{"definitions":[],"calls":[]}`}
-	builder := NewLLMCallGraphBuilder(NewLLMParser(provider, ""))
+	builder := NewLLMCallGraphBuilder(NewLLMParser(provider, nil))
 
 	defs, calls, err := builder.ExtractFuncs(srcPath)
 	require.NoError(t, err)
