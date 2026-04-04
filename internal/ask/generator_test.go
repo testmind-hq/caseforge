@@ -17,9 +17,13 @@ type stubProvider struct {
 	text      string
 	available bool
 	err       error
+	callFn    func() (*llm.CompletionResponse, error)
 }
 
 func (s *stubProvider) Complete(_ context.Context, _ *llm.CompletionRequest) (*llm.CompletionResponse, error) {
+	if s.callFn != nil {
+		return s.callFn()
+	}
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -102,6 +106,25 @@ func TestGenerator_LLMError_ReturnsError(t *testing.T) {
 	_, err := gen.Generate(context.Background(), "POST /users")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "LLM completion failed")
+}
+
+func TestGenerator_RetriesOnTransientError(t *testing.T) {
+	calls := 0
+	provider := &stubProvider{
+		available: true,
+		callFn: func() (*llm.CompletionResponse, error) {
+			calls++
+			if calls < 2 {
+				return nil, fmt.Errorf("transient")
+			}
+			return &llm.CompletionResponse{Text: sampleJSON}, nil
+		},
+	}
+	gen := ask.NewGenerator(provider)
+	cases, err := gen.Generate(context.Background(), "POST /users")
+	require.NoError(t, err)
+	assert.Len(t, cases, 1)
+	assert.Equal(t, 2, calls)
 }
 
 func TestGenerator_NoNewlineAfterFence_Passthrough(t *testing.T) {
