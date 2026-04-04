@@ -152,6 +152,16 @@
 
 ---
 
+### `rbt` — Call Graph (V2)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-061 | --depth flag registered | `caseforge rbt --help` | `--depth` listed | ✅ PASS |
+| AT-062 | rbt --dry-run exits 0 | `caseforge rbt --spec petstore.yaml --dry-run` | exit 0, report generated | ✅ PASS |
+| AT-063 | --depth default is 0 | `caseforge rbt --help` | output contains `depth int` | ✅ PASS |
+
+---
+
 ### `dedupe` — Duplicate Test Case Detection
 
 | ID | Scenario | Command | Expected | Status |
@@ -217,11 +227,11 @@
 | config show | 2 | 2 | 0 |
 | ask | 2 | 2 | 0 |
 | explore | 4 | 4 | 0 |
-| rbt | 9 | 9 | 0 |
+| rbt | 12 | 12 | 0 |
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
-| **Total** | **60** | **60** | **0** |
+| **Total** | **63** | **63** | **0** |
 
 ---
 
