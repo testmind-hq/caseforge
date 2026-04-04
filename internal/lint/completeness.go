@@ -18,6 +18,9 @@ func init() {
 	register(&ruleL001{})
 	register(&ruleL002{})
 	register(&ruleL003{})
+	register(&ruleL013{})
+	register(&ruleL014{})
+	register(&ruleL015{})
 }
 
 // L001: operation missing operationId (warning, P1)
@@ -181,6 +184,86 @@ func (r *ruleL006) Check(ps *spec.ParsedSpec) []LintIssue {
 						Message:  fmt.Sprintf("path parameter {%s} not declared in parameters", name),
 						Path:     fmt.Sprintf("%s %s", op.Method, op.Path),
 					})
+				}
+			}
+		}
+	}
+	return issues
+}
+
+// L013: parameter missing type (warning, P1)
+type ruleL013 struct{}
+
+func (r *ruleL013) ID() string       { return "L013" }
+func (r *ruleL013) Severity() string { return "warning" }
+func (r *ruleL013) Check(ps *spec.ParsedSpec) []LintIssue {
+	var issues []LintIssue
+	for _, op := range ps.Operations {
+		for _, p := range op.Parameters {
+			if p.Schema == nil || p.Schema.Type == "" {
+				issues = append(issues, LintIssue{
+					RuleID:   "L013",
+					Severity: "warning",
+					Message:  fmt.Sprintf("parameter %q has no type declaration", p.Name),
+					Path:     fmt.Sprintf("%s %s parameter.%s", op.Method, op.Path, p.Name),
+				})
+			}
+		}
+	}
+	return issues
+}
+
+// L014: no 4xx error response defined (warning, P1)
+type ruleL014 struct{}
+
+func (r *ruleL014) ID() string       { return "L014" }
+func (r *ruleL014) Severity() string { return "warning" }
+func (r *ruleL014) Check(ps *spec.ParsedSpec) []LintIssue {
+	var issues []LintIssue
+	for _, op := range ps.Operations {
+		has4xx := false
+		for code := range op.Responses {
+			n, err := strconv.Atoi(code)
+			if err == nil && n >= 400 && n < 500 {
+				has4xx = true
+				break
+			}
+		}
+		if !has4xx {
+			issues = append(issues, LintIssue{
+				RuleID:   "L014",
+				Severity: "warning",
+				Message:  "no 4xx error response defined",
+				Path:     fmt.Sprintf("%s %s", op.Method, op.Path),
+			})
+		}
+	}
+	return issues
+}
+
+// L015: 2xx response schema properties missing example (warning, P1)
+type ruleL015 struct{}
+
+func (r *ruleL015) ID() string       { return "L015" }
+func (r *ruleL015) Severity() string { return "warning" }
+func (r *ruleL015) Check(ps *spec.ParsedSpec) []LintIssue {
+	var issues []LintIssue
+	for _, op := range ps.Operations {
+		for code, resp := range op.Responses {
+			n, err := strconv.Atoi(code)
+			if err != nil || n < 200 || n >= 300 {
+				continue
+			}
+			if mt, ok := resp.Content["application/json"]; ok && mt.Schema != nil {
+				for fieldName, prop := range mt.Schema.Properties {
+					if prop.Example == nil {
+						issues = append(issues, LintIssue{
+							RuleID:   "L015",
+							Severity: "warning",
+							Message:  fmt.Sprintf("response field %q has no example", fieldName),
+							Path:     fmt.Sprintf("%s %s %s response.properties.%s", op.Method, op.Path, code, fieldName),
+						})
+					}
 				}
 			}
 		}
