@@ -73,7 +73,7 @@ func (t *ClassificationTreeTechnique) Generate(op *spec.Operation) ([]schema.Tes
 		base := buildValidBody(t.gen, op)
 		tc := buildTestCase(op, base,
 			fmt.Sprintf("classification tree row %d: %v", row+1, leafLabels),
-			fmt.Sprintf("%s %s parameters", op.Method, op.Path))
+			"")
 		tc.Priority = "P2"
 		tc.Source = schema.CaseSource{
 			Technique: "classification_tree",

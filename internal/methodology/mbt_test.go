@@ -69,13 +69,17 @@ func TestClassificationTree_ECTCoverage(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, cases, 3, "ECT row count = max leaves across classifications = 3")
 
-	// Verify all enum values and both boolean values appear somewhere in the paths.
-	allPaths := ""
-	for _, tc := range cases {
-		allPaths += tc.Steps[0].Path
-	}
-	for _, v := range []string{"active", "inactive", "pending", "admin", "user", "true", "false"} {
-		assert.Contains(t, allPaths, v, "every leaf must appear in at least one test case")
+	// Verify each leaf appears in at least one test case path (checked per-path to
+	// avoid false positives from path segment substring matches).
+	for _, leaf := range []string{"active", "inactive", "pending", "admin", "user", "true", "false"} {
+		found := false
+		for _, tc := range cases {
+			if containsParamValue(tc.Steps[0].Path, leaf) {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "leaf %q must appear in at least one test case path", leaf)
 	}
 }
 

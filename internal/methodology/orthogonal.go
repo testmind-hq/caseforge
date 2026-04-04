@@ -23,8 +23,9 @@ import (
 //   - Factors with exactly 1 value are excluded
 //
 // Array selection priority: fewest rows that accommodate the required column count.
-// Mixed-level arrays are handled by using the 3-level base arrays and treating
-// 2-level factors as 3-level with level-2 repeating level-0.
+// Mixed-level scenarios (2-level params in a 3-level L27 array): level 2 wraps to
+// level 0 via modulo, so the first value appears twice as often as the second. This
+// produces approximately-balanced (not strictly uniform) coverage for those params.
 //
 // Distinct from PairwiseTechnique (IPOG minimises test count while covering all
 // pairs) and ClassificationTreeTechnique (ECT per-leaf variation): OA provides
@@ -58,6 +59,24 @@ func (t *OrthogonalArrayTechnique) Generate(op *spec.Operation) ([]schema.TestCa
 		return nil, nil
 	}
 
+	// Determine whether any 2-level param is mapped into a 3-level array (L27).
+	// If so, level 2 wraps to level 0, producing approximately-balanced (not strictly
+	// uniform) coverage for those params.
+	arrayIs3Level := len(array) == 27
+	has2LevelIn3Level := false
+	if arrayIs3Level {
+		for _, p := range params {
+			if len(p.values) == 2 {
+				has2LevelIn3Level = true
+				break
+			}
+		}
+	}
+	balanceDesc := "balanced factor-level distribution"
+	if has2LevelIn3Level {
+		balanceDesc = "approximately balanced (2-level params in L27: first value appears 2× as often)"
+	}
+
 	var cases []schema.TestCase
 	for rowIdx, row := range array {
 		queryParams := make(map[string]any, len(params))
@@ -73,12 +92,12 @@ func (t *OrthogonalArrayTechnique) Generate(op *spec.Operation) ([]schema.TestCa
 		base := buildValidBody(t.gen, op)
 		tc := buildTestCase(op, base,
 			fmt.Sprintf("orthogonal array row %d", rowIdx+1),
-			fmt.Sprintf("%s %s parameters", op.Method, op.Path))
+			"")
 		tc.Priority = "P2"
 		tc.Source = schema.CaseSource{
 			Technique: "orthogonal_array",
 			SpecPath:  fmt.Sprintf("%s %s parameters", op.Method, op.Path),
-			Rationale: fmt.Sprintf("OA %s row %d — balanced factor-level distribution", array.name(), rowIdx+1),
+			Rationale: fmt.Sprintf("OA %s row %d — %s", array.name(), rowIdx+1, balanceDesc),
 		}
 		tc.Steps[0].Path = buildPathWithQuery(op.Path, queryParams)
 		cases = append(cases, tc)
@@ -129,16 +148,21 @@ func levelToValue(values []any, level int) any {
 // oaArray is a slice of rows; each row is a slice of level indices (0, 1, or 2).
 type oaArray [][]int
 
+// name returns the Taguchi designation based on the number of columns, which
+// uniquely identifies the array regardless of how many rows it has.
 func (a oaArray) name() string {
-	switch len(a) {
-	case 4:
+	if len(a) == 0 {
+		return "L0"
+	}
+	switch len(a[0]) {
+	case 3:
 		return "L4(2^3)"
-	case 8:
+	case 7:
 		return "L8(2^7)"
-	case 27:
+	case 13:
 		return "L27(3^13)"
 	default:
-		return fmt.Sprintf("L%d", len(a))
+		return fmt.Sprintf("L%d(%dcols)", len(a), len(a[0]))
 	}
 }
 

@@ -140,18 +140,20 @@ func TestSelectOAArray(t *testing.T) {
 	cases := []struct {
 		n    int
 		rows int
+		cols int
 		name string
 	}{
-		{3, 4, "L4(2^3)"},
-		{4, 8, "L8(2^7)"},
-		{7, 8, "L8(2^7)"},
-		{8, 27, "L27(3^13)"},
-		{13, 27, "L27(3^13)"},
+		{3, 4, 3, "L4(2^3)"},
+		{4, 8, 7, "L8(2^7)"},
+		{7, 8, 7, "L8(2^7)"},
+		{8, 27, 13, "L27(3^13)"},
+		{13, 27, 13, "L27(3^13)"},
 	}
 	for _, tc := range cases {
 		arr := selectOAArray(tc.n)
 		require.NotNil(t, arr, "n=%d", tc.n)
 		assert.Len(t, arr, tc.rows, "n=%d should use %d-row array", tc.n, tc.rows)
+		assert.Len(t, arr[0], tc.cols, "n=%d should have %d columns", tc.n, tc.cols)
 		assert.Equal(t, tc.name, arr.name(), "n=%d", tc.n)
 	}
 }
@@ -159,6 +161,54 @@ func TestSelectOAArray(t *testing.T) {
 func TestSelectOAArray_TooManyParams_ReturnsNil(t *testing.T) {
 	assert.Nil(t, selectOAArray(14))
 	assert.Nil(t, selectOAArray(100))
+}
+
+func TestOrthogonalArrayApplies_FalseForFourteenParams(t *testing.T) {
+	tech := NewOrthogonalArrayTechnique()
+	params := make([]*spec.Parameter, 14)
+	for i := range params {
+		params[i] = &spec.Parameter{
+			Name:   fmt.Sprintf("p%d", i),
+			Schema: &spec.Schema{Type: "boolean"},
+		}
+	}
+	op := &spec.Operation{Parameters: params}
+	assert.False(t, tech.Applies(op), "14 params exceeds L27 column capacity")
+}
+
+func TestOrthogonalArray_L27_EightParams(t *testing.T) {
+	// 8 boolean params → L27 → 27 test cases; paths must contain valid boolean values.
+	tech := NewOrthogonalArrayTechnique()
+	params := make([]*spec.Parameter, 8)
+	for i := range params {
+		params[i] = &spec.Parameter{
+			Name:   fmt.Sprintf("flag%d", i),
+			Schema: &spec.Schema{Type: "boolean"},
+		}
+	}
+	op := &spec.Operation{
+		Method:     "GET",
+		Path:       "/items",
+		Parameters: params,
+		Responses:  map[string]*spec.Response{"200": {Description: "OK"}},
+	}
+	cases, err := tech.Generate(op)
+	require.NoError(t, err)
+	require.Len(t, cases, 27, "L27 produces 27 rows for 8–13 factors")
+
+	// Each case path must contain only valid boolean values ("true" or "false").
+	for i, tc := range cases {
+		path := tc.Steps[0].Path
+		assert.True(t,
+			strings.Contains(path, "=true") || strings.Contains(path, "=false"),
+			"case %d path %q must contain a boolean param value", i, path)
+	}
+
+	// Rationale should mention the approximately-balanced limitation.
+	for _, tc := range cases {
+		assert.Contains(t, tc.Source.Rationale, "approximately balanced",
+			"L27 rationale must mention approximate balance for 2-level params")
+	}
 }
 
 func TestExtractOAParams_EnumAndBoolean(t *testing.T) {
