@@ -350,7 +350,7 @@ func TestRenderAssertion_NewOperators_Hurl(t *testing.T) {
 		{
 			name:     "jsonpath matches",
 			a:        schema.Assertion{Target: "jsonpath $.email", Operator: "matches", Expected: `^.+@.+\..+$`},
-			contains: `jsonpath "$.email" matches`,
+			contains: `jsonpath "$.email" matches /^.+@.+\..+$/`,
 		},
 		{
 			name:     "jsonpath is_iso8601",
@@ -380,7 +380,7 @@ func TestRenderAssertion_NewOperators_Hurl(t *testing.T) {
 		{
 			name:     "header matches",
 			a:        schema.Assertion{Target: "header Content-Type", Operator: "matches", Expected: `application/.*`},
-			contains: `header "Content-Type" matches`,
+			contains: `header "Content-Type" matches /application/.*/`,
 		},
 	}
 	for _, tc := range cases {

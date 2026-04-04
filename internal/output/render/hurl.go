@@ -194,7 +194,21 @@ func renderCapture(c schema.Capture) string {
 	return fmt.Sprintf("%s: %s\n", c.Name, c.From)
 }
 
+// formatHurlRegex wraps a pattern in Hurl's /regex/ literal syntax.
+// Hurl's matches predicate requires /pattern/, not "pattern".
+func formatHurlRegex(v any) string {
+	if v == nil {
+		return "/./"
+	}
+	return fmt.Sprintf("/%v/", v)
+}
+
 func renderAssertion(a schema.Assertion) string {
+	// Normalise legacy "body.field" → "jsonpath $.field" to avoid duplicating
+	// the full operator set in a separate case block.
+	if strings.HasPrefix(a.Target, "body.") {
+		a.Target = "jsonpath $." + strings.TrimPrefix(a.Target, "body.")
+	}
 	switch {
 	case a.Target == "duration_ms":
 		switch a.Operator {
@@ -222,7 +236,7 @@ func renderAssertion(a schema.Assertion) string {
 		case "contains":
 			return fmt.Sprintf("jsonpath %q contains %s\n", expr, formatHurlValue(a.Expected))
 		case "matches":
-			return fmt.Sprintf("jsonpath %q matches %s\n", expr, formatHurlValue(a.Expected))
+			return fmt.Sprintf("jsonpath %q matches %s\n", expr, formatHurlRegex(a.Expected))
 		case "is_iso8601":
 			return fmt.Sprintf("jsonpath %q isDate\n", expr)
 		case "is_uuid":
@@ -243,33 +257,7 @@ func renderAssertion(a schema.Assertion) string {
 		case "contains":
 			return fmt.Sprintf("header %q contains %s\n", headerName, formatHurlValue(a.Expected))
 		case "matches":
-			return fmt.Sprintf("header %q matches %s\n", headerName, formatHurlValue(a.Expected))
-		}
-	case strings.HasPrefix(a.Target, "body."):
-		// Legacy target format — delegate to jsonpath
-		field := strings.TrimPrefix(a.Target, "body.")
-		switch a.Operator {
-		case "eq":
-			return fmt.Sprintf("jsonpath \"$.%s\" == %s\n", field, formatHurlValue(a.Expected))
-		case "ne":
-			if a.Expected == nil {
-				return fmt.Sprintf("jsonpath \"$.%s\" not exists\n", field)
-			}
-			return fmt.Sprintf("jsonpath \"$.%s\" != %s\n", field, formatHurlValue(a.Expected))
-		case "lt":
-			return fmt.Sprintf("jsonpath \"$.%s\" < %v\n", field, a.Expected)
-		case "gt":
-			return fmt.Sprintf("jsonpath \"$.%s\" > %v\n", field, a.Expected)
-		case "exists":
-			return fmt.Sprintf("jsonpath \"$.%s\" exists\n", field)
-		case "contains":
-			return fmt.Sprintf("jsonpath \"$.%s\" contains %s\n", field, formatHurlValue(a.Expected))
-		case "matches":
-			return fmt.Sprintf("jsonpath \"$.%s\" matches %s\n", field, formatHurlValue(a.Expected))
-		case "is_iso8601":
-			return fmt.Sprintf("jsonpath \"$.%s\" isDate\n", field)
-		case "is_uuid":
-			return fmt.Sprintf("jsonpath \"$.%s\" matches /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i\n", field)
+			return fmt.Sprintf("header %q matches %s\n", headerName, formatHurlRegex(a.Expected))
 		}
 	}
 	return fmt.Sprintf("# unrendered assertion: %s %s %v\n", a.Target, a.Operator, a.Expected)
