@@ -88,3 +88,28 @@ func TestValidateExample_MultipleMissingRequired(t *testing.T) {
 	errs := ValidateExample(value, s)
 	assert.Len(t, errs, 3)
 }
+
+func TestValidateExample_IntegerRejectsNonIntegralFloat(t *testing.T) {
+	s := &Schema{
+		Type: "object",
+		Properties: map[string]*Schema{
+			"count": {Type: "integer"},
+		},
+	}
+	// float64(3.5) must be rejected — it is not an integer despite being float64
+	errs := ValidateExample(map[string]any{"count": float64(3.5)}, s)
+	assert.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "non-integral")
+}
+
+func TestValidateExample_IntegerAcceptsIntegralFloat(t *testing.T) {
+	s := &Schema{
+		Type: "object",
+		Properties: map[string]*Schema{
+			"count": {Type: "integer"},
+		},
+	}
+	// float64(3.0) is a whole number — JSON-decoded integers arrive as float64
+	errs := ValidateExample(map[string]any{"count": float64(3.0)}, s)
+	assert.Empty(t, errs)
+}

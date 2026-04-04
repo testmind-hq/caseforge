@@ -155,6 +155,26 @@ func TestExampleTechnique_SchemaExampleFallback(t *testing.T) {
 	assert.Contains(t, cases[0].Title, "schema")
 }
 
+// TestExampleTechnique_BothNamedAndInlineExamplesCollected documents the behaviour
+// when a MediaType carries both a named map (Examples) and an inline value (Example):
+// both are collected — named examples first (sorted), then the inline "inline" case.
+func TestExampleTechnique_BothNamedAndInlineExamplesCollected(t *testing.T) {
+	et := NewExampleTechnique()
+	op := makeExampleOp(&spec.MediaType{
+		Schema: &spec.Schema{Type: "object"},
+		Examples: map[string]*spec.Example{
+			"named": {Value: map[string]any{"x": "n"}},
+		},
+		Example: map[string]any{"x": "i"},
+	})
+	cases, err := et.Generate(op)
+	require.NoError(t, err)
+	// Named example first, then inline — total 2 cases.
+	require.Len(t, cases, 2)
+	assert.Contains(t, cases[0].Title, "named")
+	assert.Contains(t, cases[1].Title, "inline")
+}
+
 func TestExampleTechnique_MediaTypeExampleTakesPrecedenceOverSchemaExample(t *testing.T) {
 	et := NewExampleTechnique()
 	op := makeExampleOp(&spec.MediaType{

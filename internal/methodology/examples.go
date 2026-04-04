@@ -87,7 +87,7 @@ func (t *ExampleTechnique) Generate(op *spec.Operation) ([]schema.TestCase, erro
 	for _, ex := range examples {
 		body, ok := ex.value.(map[string]any)
 		if !ok {
-			// Non-object examples: wrap in a simple structure for the test step.
+			// Non-object examples (arrays, primitives): no request body map to inject.
 			body = nil
 		}
 

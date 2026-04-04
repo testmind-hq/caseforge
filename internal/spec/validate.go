@@ -1,7 +1,10 @@
 // internal/spec/validate.go
 package spec
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // ValidateExample checks whether value conforms to the given schema.
 // It performs structural validation:
@@ -58,8 +61,13 @@ func validateType(v any, s *Schema) []string {
 			return []string{fmt.Sprintf("expected string, got %T", v)}
 		}
 	case "integer":
-		switch v.(type) {
-		case int, int32, int64, float64: // JSON numbers decode as float64
+		switch val := v.(type) {
+		case int, int32, int64:
+			// always integral
+		case float64: // JSON numbers decode as float64
+			if val != math.Trunc(val) {
+				return []string{fmt.Sprintf("expected integer, got non-integral float64 %v", val)}
+			}
 		default:
 			return []string{fmt.Sprintf("expected integer, got %T", v)}
 		}

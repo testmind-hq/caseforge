@@ -314,6 +314,7 @@
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
 | exit codes | 2 | 2 | 0 |
+| example_extraction | 2 | 2 | 0 |
 | **Total** | **90** | **90** | **0** |
 
 ---
