@@ -82,10 +82,9 @@ func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 	unclaimed = subtractChangedFiles(unclaimed, cgClaimed)
 
 	// Phase 4: embedding-based matching for remaining unclaimed files.
-	embedMappings, err := idx.runEmbedPhase(unclaimed)
-	if err == nil {
-		mappings = append(mappings, embedMappings...)
-	}
+	// runEmbedPhase never returns an error (all failures are swallowed internally).
+	embedMappings, _ := idx.runEmbedPhase(unclaimed)
+	mappings = append(mappings, embedMappings...)
 
 	return idx.writeMapFile(mappings, "hybrid")
 }
