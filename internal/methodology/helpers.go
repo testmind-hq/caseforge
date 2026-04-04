@@ -13,6 +13,8 @@ import (
 )
 
 // buildValidBody generates a body map with valid values for all fields in op's JSON schema.
+// After individual field generation, cross-field constraints (temporal ordering, min/max
+// range ordering) are applied to ensure consistency.
 func buildValidBody(gen *datagen.Generator, op *spec.Operation) map[string]any {
 	s := getJSONSchema(op.RequestBody)
 	if s == nil {
@@ -22,7 +24,7 @@ func buildValidBody(gen *datagen.Generator, op *spec.Operation) map[string]any {
 	for fieldName, fieldSchema := range s.Properties {
 		body[fieldName] = gen.Generate(fieldSchema, fieldName)
 	}
-	return body
+	return datagen.ApplyCrossFieldConstraints(body, s)
 }
 
 func buildTestCase(op *spec.Operation, body map[string]any, title, specPath string) schema.TestCase {
