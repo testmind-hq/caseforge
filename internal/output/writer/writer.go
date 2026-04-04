@@ -23,6 +23,8 @@ type WriteOptions struct {
 	SpecHash string
 	// CaseforgeVersion is the binary version string (from ldflags).
 	CaseforgeVersion string
+	// Suites are cross-case orchestration suites to embed in index.json.
+	Suites []schema.TestSuite
 }
 
 // IndexMeta holds statistics and provenance data written to index.json.
@@ -41,11 +43,12 @@ type SchemaWriter interface {
 
 // IndexFile is the top-level structure of index.json.
 type IndexFile struct {
-	Schema      string            `json:"$schema"`
-	Version     string            `json:"version"`
-	GeneratedAt time.Time         `json:"generated_at"`
-	Meta        IndexMeta         `json:"meta"`
-	TestCases   []schema.TestCase `json:"test_cases"`
+	Schema      string              `json:"$schema"`
+	Version     string              `json:"version"`
+	GeneratedAt time.Time           `json:"generated_at"`
+	Meta        IndexMeta           `json:"meta"`
+	TestCases   []schema.TestCase   `json:"test_cases"`
+	Suites      []schema.TestSuite  `json:"suites,omitempty"`
 }
 
 type JSONSchemaWriter struct{}
@@ -64,6 +67,7 @@ func (w *JSONSchemaWriter) Write(cases []schema.TestCase, outDir string, opts Wr
 		GeneratedAt: time.Now(),
 		Meta:        buildMeta(cases, opts),
 		TestCases:   cases,
+		Suites:      opts.Suites,
 	}
 	data, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
@@ -76,6 +80,15 @@ func (w *JSONSchemaWriter) Write(cases []schema.TestCase, outDir string, opts Wr
 }
 
 func (w *JSONSchemaWriter) Read(indexPath string) ([]schema.TestCase, error) {
+	index, err := w.ReadFull(indexPath)
+	if err != nil {
+		return nil, err
+	}
+	return index.TestCases, nil
+}
+
+// ReadFull parses the complete index.json, including test_cases and suites.
+func (w *JSONSchemaWriter) ReadFull(indexPath string) (*IndexFile, error) {
 	data, err := os.ReadFile(indexPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading index: %w", err)
@@ -84,7 +97,7 @@ func (w *JSONSchemaWriter) Read(indexPath string) ([]schema.TestCase, error) {
 	if err := json.Unmarshal(data, &index); err != nil {
 		return nil, fmt.Errorf("parsing index: %w", err)
 	}
-	return index.TestCases, nil
+	return &index, nil
 }
 
 // buildMeta computes IndexMeta from cases and caller-supplied options.

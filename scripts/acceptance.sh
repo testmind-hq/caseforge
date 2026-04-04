@@ -899,6 +899,33 @@ contains "AT-090" "diff --gen-cases writes index.json for breaking operations" "
 echo ""
 
 # -------------------------------------------------------
+# AT-093 – AT-095: caseforge suite (3.6)
+# -------------------------------------------------------
+echo "--- suite command ---"
+
+SUITEDIR=$(mktemp -d)
+
+# AT-093: suite command registered
+contains "AT-093" "suite command registered" "suite" \
+  "'$BIN' --help"
+
+# AT-094: suite create writes a valid suite.json
+"$BIN" suite create \
+  --id "SUITE-AT094" \
+  --title "AT-094 E2E" \
+  --kind chain \
+  --cases "TC-001,TC-002" \
+  --output "$SUITEDIR/suite.json" 2>/dev/null || true
+contains "AT-094" 'suite create writes suite.json with $schema' 'suite.json' \
+  "cat '$SUITEDIR/suite.json'"
+
+# AT-095: suite validate confirms valid suite
+contains "AT-095" "suite validate reports valid suite" "valid" \
+  "'$BIN' suite validate --suite '$SUITEDIR/suite.json'"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))
