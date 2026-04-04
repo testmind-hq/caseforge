@@ -30,7 +30,8 @@ type Indexer struct {
 	Overwrite bool
 	Store     *IndexStore
 	Embedder  Embedder
-	Depth     int // 0 = dynamic BFS (stop at route node); >0 = fixed depth cap
+	Depth     int    // 0 = dynamic BFS (stop at route node); >0 = fixed depth cap
+	Algo      string // Go call graph algorithm: "rta" (default) | "pta"
 }
 
 // RunRegex uses the regex parser to extract routes and writes caseforge-map.yaml.
@@ -50,7 +51,8 @@ func (idx *Indexer) RunRegex() error {
 	return idx.writeMapFile(mappings, "regex")
 }
 
-// RunHybrid uses tree-sitter + call-graph + embeddings + LLM confirmation.
+// RunHybrid uses tree-sitter + Go call graph (V3) + name-based call graph (V2)
+// + embeddings + LLM confirmation.
 func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 	if err := idx.checkOverwrite(); err != nil {
 		return err
@@ -64,12 +66,17 @@ func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 	mappings, routeFileMappings := idx.runTreeSitterPhase(files)
 	unclaimed := subtractFiles(files, mappings)
 
-	// Phase 2: call-graph traversal for service/DAO/utils files.
+	// Phase 2: Go type-aware call graph (V3) — handles interface dispatch.
+	goMappings, goClaimed := idx.runGoCallGraphPhase(unclaimed, routeFileMappings)
+	mappings = append(mappings, goMappings...)
+	unclaimed = subtractChangedFiles(unclaimed, goClaimed)
+
+	// Phase 3: name-based call graph (V2) — covers non-Go files and Go fallback.
 	cgMappings, cgClaimed := idx.runCallGraphPhase(files, unclaimed, routeFileMappings, llmParser)
 	mappings = append(mappings, cgMappings...)
 	unclaimed = subtractChangedFiles(unclaimed, cgClaimed)
 
-	// Phase 3: embedding-based matching for remaining unclaimed files.
+	// Phase 4: embedding-based matching for remaining unclaimed files.
 	embedMappings, err := idx.runEmbedPhase(unclaimed)
 	if err == nil {
 		mappings = append(mappings, embedMappings...)
@@ -94,6 +101,18 @@ func (idx *Indexer) runTreeSitterPhase(files []ChangedFile) ([]RouteMapping, map
 		routeFileMappings[rm.SourceFile] = append(routeFileMappings[rm.SourceFile], rm)
 	}
 	return mappings, routeFileMappings
+}
+
+// runGoCallGraphPhase uses golang.org/x/tools/go/callgraph to perform type-aware
+// call graph analysis for Go modules. Silently returns empty on any error so V2
+// can handle the unclaimed files.
+func (idx *Indexer) runGoCallGraphPhase(
+	unclaimed []ChangedFile,
+	routeFileMappings map[string][]RouteMapping,
+) ([]RouteMapping, []ChangedFile) {
+	b := &GoCallGraphBuilder{SrcDir: idx.SrcDir, Algo: idx.Algo}
+	mappings, claimed, _ := b.BuildAndTrace(unclaimed, routeFileMappings, idx.Depth)
+	return mappings, claimed
 }
 
 // runCallGraphPhase builds a call graph from all source files and traces

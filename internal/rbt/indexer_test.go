@@ -134,3 +134,15 @@ func TestRunCallGraphPhaseWithBuilder_MockBuilder_TracesChain(t *testing.T) {
 	require.Len(t, claimed, 1)
 	assert.Equal(t, utilsPath, claimed[0].Path)
 }
+
+func TestRunGoCallGraphPhase_NoGoMod_ReturnsEmpty(t *testing.T) {
+	// A directory without go.mod should return empty without panic.
+	dir := t.TempDir()
+	idx := &Indexer{SrcDir: dir, Algo: "rta"}
+	unclaimed := []ChangedFile{{Path: filepath.Join(dir, "service.go")}}
+	routeFiles := map[string][]RouteMapping{}
+
+	mappings, claimed := idx.runGoCallGraphPhase(unclaimed, routeFiles)
+	assert.Empty(t, mappings)
+	assert.Empty(t, claimed)
+}
