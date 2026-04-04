@@ -79,17 +79,154 @@ func TestHurlRendererOutputContainsAssertions(t *testing.T) {
 	assert.True(t, strings.Contains(s, "HTTP 201") || strings.Contains(s, "status == 201"))
 }
 
-func TestHurlRendererOutputContainsSourceAnnotation(t *testing.T) {
-	dir := t.TempDir()
+// TestHurlSingleCaseAppendixBFormat verifies the Appendix B comment format for single cases.
+func TestHurlSingleCaseAppendixBFormat(t *testing.T) {
 	r := NewHurlRenderer("{{base_url}}")
-	require.NoError(t, r.Render([]schema.TestCase{sampleCase()}, dir))
+	tc := sampleCase()
+	content := r.renderCase(tc)
 
-	files, _ := filepath.Glob(filepath.Join(dir, "*.hurl"))
-	content, _ := os.ReadFile(files[0])
-	s := string(content)
-	// Machine-readable annotation
-	assert.Contains(t, s, "technique=equivalence_partitioning")
-	assert.Contains(t, s, "priority=P0")
+	// New required fields
+	assert.Contains(t, content, "# case_id=TC-0001")
+	assert.Contains(t, content, "# step_id=step-main")
+	assert.Contains(t, content, "# step_type=test")
+	assert.Contains(t, content, "# priority=P0")
+	assert.Contains(t, content, "# title=")
+	assert.Contains(t, content, "# technique=equivalence_partitioning")
+
+	// Old format must be absent
+	assert.NotContains(t, content, "# id=TC-0001")
+	assert.NotContains(t, content, "# spec_path=")
+	assert.NotContains(t, content, "# ─────")
+
+	// Single-line separator style
+	assert.Contains(t, content, "# ──")
+}
+
+// TestHurlSingleCaseNoChainHeaders ensures single cases don't get chain-style headers.
+func TestHurlSingleCaseNoChainHeaders(t *testing.T) {
+	r := NewHurlRenderer("{{base_url}}")
+	tc := sampleCase()
+	content := r.renderCase(tc)
+
+	assert.NotContains(t, content, "# ══════")
+	assert.NotContains(t, content, "# case_kind=chain")
+}
+
+// TestHurlSingleCaseTechniqueOmittedWhenEmpty verifies technique line is omitted when empty.
+func TestHurlSingleCaseTechniqueOmittedWhenEmpty(t *testing.T) {
+	r := NewHurlRenderer("{{base_url}}")
+	tc := sampleCase()
+	tc.Source.Technique = ""
+	content := r.renderCase(tc)
+
+	assert.NotContains(t, content, "# technique=")
+}
+
+// TestHurlChainCaseAppendixBFormat verifies the Appendix B comment format for chain cases.
+func TestHurlChainCaseAppendixBFormat(t *testing.T) {
+	r := NewHurlRenderer("")
+	tc := schema.TestCase{
+		ID:       "TC-chain01",
+		Title:    "CRUD user lifecycle",
+		Priority: "P1",
+		Kind:     "chain",
+		Source:   schema.CaseSource{Technique: "chain_crud"},
+		Steps: []schema.Step{
+			{
+				ID:     "step-setup",
+				Title:  "create user",
+				Type:   "setup",
+				Method: "POST",
+				Path:   "/users",
+				Headers: map[string]string{"Content-Type": "application/json"},
+				Body:    map[string]any{"name": "Alice"},
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "eq", Expected: 201},
+					{Target: "jsonpath $.id", Operator: "exists", Expected: nil},
+				},
+				Captures: []schema.Capture{
+					{Name: "userId", From: "jsonpath $.id"},
+				},
+			},
+			{
+				ID:        "step-test",
+				Title:     "get user",
+				Type:      "test",
+				Method:    "GET",
+				Path:      "/users/{{userId}}",
+				DependsOn: []string{"step-setup"},
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "eq", Expected: 200},
+				},
+			},
+		},
+	}
+
+	content := r.renderCase(tc)
+
+	// Chain header
+	assert.Contains(t, content, "# ══════")
+	assert.Contains(t, content, "# case_id=TC-chain01")
+	assert.Contains(t, content, "# case_kind=chain")
+	assert.Contains(t, content, "# priority=P1")
+
+	// Per-step headers (with [type] in the title separator)
+	assert.Contains(t, content, "# ── create user [setup]")
+	assert.Contains(t, content, "# step_id=step-setup")
+	assert.Contains(t, content, "# step_type=setup")
+	assert.Contains(t, content, "# title=create user")
+
+	assert.Contains(t, content, "# ── get user [test]")
+	assert.Contains(t, content, "# step_id=step-test")
+	assert.Contains(t, content, "# step_type=test")
+	assert.Contains(t, content, "# title=get user")
+
+	// depends_on present for step-test
+	assert.Contains(t, content, "# depends_on=step-setup")
+
+	// technique NOT present in chain case
+	assert.NotContains(t, content, "# technique=")
+
+	// spec_path NOT present
+	assert.NotContains(t, content, "# spec_path=")
+
+	// Captures and HTTP still present
+	assert.Contains(t, content, "[Captures]")
+	assert.Contains(t, content, `userId: jsonpath "$.id"`)
+	assert.Contains(t, content, "GET {{base_url}}/users/{{userId}}")
+
+	// [Captures] must appear before [Asserts]
+	capturesIdx := strings.Index(content, "[Captures]")
+	assertsIdx := strings.Index(content, "[Asserts]")
+	require.True(t, capturesIdx >= 0, "[Captures] block must be present in output")
+	require.True(t, assertsIdx >= 0, "[Asserts] block must be present in output")
+	assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
+}
+
+// TestHurlChainCaseDependsOnOmittedWhenEmpty verifies depends_on not emitted when empty.
+func TestHurlChainCaseDependsOnOmittedWhenEmpty(t *testing.T) {
+	r := NewHurlRenderer("")
+	tc := schema.TestCase{
+		ID:       "TC-chain02",
+		Title:    "simple chain",
+		Priority: "P2",
+		Kind:     "chain",
+		Steps: []schema.Step{
+			{
+				ID:     "step-only",
+				Title:  "only step",
+				Type:   "test",
+				Method: "GET",
+				Path:   "/ping",
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "eq", Expected: 200},
+				},
+			},
+		},
+	}
+
+	content := r.renderCase(tc)
+	assert.NotContains(t, content, "# depends_on=")
 }
 
 func TestHurlRendererRendersCaptureBlock(t *testing.T) {
@@ -139,6 +276,19 @@ func TestHurlRendererRendersCaptureBlock(t *testing.T) {
 	require.True(t, capturesIdx >= 0, "[Captures] block must be present in output")
 	require.True(t, assertsIdx >= 0, "[Asserts] block must be present in output")
 	assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
+}
+
+func TestHurlRendererOutputContainsSourceAnnotation(t *testing.T) {
+	dir := t.TempDir()
+	r := NewHurlRenderer("{{base_url}}")
+	require.NoError(t, r.Render([]schema.TestCase{sampleCase()}, dir))
+
+	files, _ := filepath.Glob(filepath.Join(dir, "*.hurl"))
+	content, _ := os.ReadFile(files[0])
+	s := string(content)
+	// Machine-readable annotation (Appendix B format)
+	assert.Contains(t, s, "technique=equivalence_partitioning")
+	assert.Contains(t, s, "priority=P0")
 }
 
 func TestRenderAssertionJSONPath(t *testing.T) {

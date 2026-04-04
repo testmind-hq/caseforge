@@ -39,25 +39,81 @@ func (r *HurlRenderer) Render(cases []schema.TestCase, outDir string) error {
 	return nil
 }
 
+// singleLineSep returns "# ── {title} " padded to ~50 chars with "─" characters.
+func singleLineSep(title string) string {
+	prefix := fmt.Sprintf("# ── %s ", title)
+	const totalWidth = 50
+	padding := totalWidth - len(prefix)
+	if padding < 2 {
+		padding = 2
+	}
+	return prefix + strings.Repeat("─", padding)
+}
+
+const chainSep = "# ══════════════════════════════════════════════════"
+
 func (r *HurlRenderer) renderCase(tc schema.TestCase) string {
+	if tc.Kind == "chain" {
+		return r.renderChainCase(tc)
+	}
+	return r.renderSingleCase(tc)
+}
+
+func (r *HurlRenderer) renderSingleCase(tc schema.TestCase) string {
 	var b strings.Builder
 
-	// Machine-readable annotations (CaseForge whitelist keys)
-	b.WriteString(fmt.Sprintf("# id=%s\n", tc.ID))
-	b.WriteString(fmt.Sprintf("# priority=%s\n", tc.Priority))
-	b.WriteString(fmt.Sprintf("# technique=%s\n", tc.Source.Technique))
-	if tc.Source.SpecPath != "" {
-		b.WriteString(fmt.Sprintf("# spec_path=%s\n", tc.Source.SpecPath))
+	// Use title from case, or from first step if case title empty.
+	caseTitle := tc.Title
+	if caseTitle == "" && len(tc.Steps) > 0 {
+		caseTitle = tc.Steps[0].Title
 	}
-	// Human-readable separator and description
-	b.WriteString("# ─────────────────────────────────────────────\n")
-	b.WriteString(fmt.Sprintf("# %s\n", tc.Title))
-	if tc.Source.Rationale != "" {
-		b.WriteString(fmt.Sprintf("# %s\n", tc.Source.Rationale))
-	}
-	b.WriteString("\n")
 
 	for _, step := range tc.Steps {
+		// Appendix B single case header: "# ── {title} ────..."
+		b.WriteString(singleLineSep(caseTitle))
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf("# case_id=%s\n", tc.ID))
+		b.WriteString(fmt.Sprintf("# step_id=%s\n", step.ID))
+		b.WriteString(fmt.Sprintf("# step_type=%s\n", step.Type))
+		if tc.Source.Technique != "" {
+			b.WriteString(fmt.Sprintf("# technique=%s\n", tc.Source.Technique))
+		}
+		b.WriteString(fmt.Sprintf("# priority=%s\n", tc.Priority))
+		b.WriteString(fmt.Sprintf("# title=%s\n", caseTitle))
+		b.WriteString("\n")
+
+		b.WriteString(r.renderStep(step))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func (r *HurlRenderer) renderChainCase(tc schema.TestCase) string {
+	var b strings.Builder
+
+	// Chain file header with double-line separator
+	b.WriteString(chainSep)
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("# %s\n", tc.Title))
+	b.WriteString(fmt.Sprintf("# case_id=%s\n", tc.ID))
+	b.WriteString(fmt.Sprintf("# case_kind=chain\n"))
+	b.WriteString(fmt.Sprintf("# priority=%s\n", tc.Priority))
+	b.WriteString(chainSep)
+	b.WriteString("\n\n")
+
+	for _, step := range tc.Steps {
+		// Per-step separator: "# ── {step.Title} [{step.Type}] ──..."
+		stepTitle := fmt.Sprintf("%s [%s]", step.Title, step.Type)
+		b.WriteString(singleLineSep(stepTitle))
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf("# step_id=%s\n", step.ID))
+		b.WriteString(fmt.Sprintf("# step_type=%s\n", step.Type))
+		b.WriteString(fmt.Sprintf("# title=%s\n", step.Title))
+		for _, dep := range step.DependsOn {
+			b.WriteString(fmt.Sprintf("# depends_on=%s\n", dep))
+		}
+		b.WriteString("\n")
+
 		b.WriteString(r.renderStep(step))
 		b.WriteString("\n")
 	}
