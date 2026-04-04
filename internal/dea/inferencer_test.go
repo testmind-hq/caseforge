@@ -238,3 +238,115 @@ func TestInferRule_NilEvidence_Panics(t *testing.T) {
 	h := &HypothesisNode{Kind: KindRequiredField, Status: StatusConfirmed, Evidence: nil}
 	assert.Panics(t, func() { InferRule(h) })
 }
+
+func TestInferRule_ArrayMinItems_Confirmed(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindArrayMinItems,
+		FieldPath: "requestBody.tags",
+		Status:    StatusConfirmed,
+		Evidence:  &Evidence{ActualStatus: 422},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.False(t, rule.Implicit)
+	assert.Equal(t, CategoryFieldConstraint, rule.Category)
+	assert.Contains(t, rule.Description, "tags")
+}
+
+func TestInferRule_ArrayMinItems_Refuted(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindArrayMinItems,
+		FieldPath: "requestBody.tags",
+		Status:    StatusRefuted,
+		Evidence:  &Evidence{ActualStatus: 200},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.True(t, rule.Implicit)
+	assert.Equal(t, CategorySpecMismatch, rule.Category)
+	assert.Contains(t, rule.Description, "minItems")
+}
+
+func TestInferRule_ArrayMaxItems_Confirmed(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindArrayMaxItems,
+		FieldPath: "requestBody.tags",
+		Status:    StatusConfirmed,
+		Evidence:  &Evidence{ActualStatus: 400},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.False(t, rule.Implicit)
+	assert.Equal(t, CategoryFieldConstraint, rule.Category)
+}
+
+func TestInferRule_ArrayMaxItems_Refuted(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindArrayMaxItems,
+		FieldPath: "requestBody.tags",
+		Status:    StatusRefuted,
+		Evidence:  &Evidence{ActualStatus: 201},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.True(t, rule.Implicit)
+	assert.Equal(t, CategorySpecMismatch, rule.Category)
+	assert.Contains(t, rule.Description, "maxItems")
+}
+
+func TestInferRule_RequiredQueryParam_Confirmed(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindRequiredQueryParam,
+		Operation: "GET /pets",
+		FieldPath: "query.status",
+		Status:    StatusConfirmed,
+		Evidence:  &Evidence{ActualStatus: 400},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.False(t, rule.Implicit)
+	assert.Equal(t, CategoryFieldConstraint, rule.Category)
+	assert.Contains(t, rule.Description, "status")
+}
+
+func TestInferRule_RequiredQueryParam_Refuted(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindRequiredQueryParam,
+		FieldPath: "query.status",
+		Status:    StatusRefuted,
+		Evidence:  &Evidence{ActualStatus: 200},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.True(t, rule.Implicit)
+	assert.Equal(t, CategorySpecMismatch, rule.Category)
+	assert.Contains(t, rule.Description, "spec declares required")
+}
+
+func TestInferRule_FormatViolation_Confirmed(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindFormatViolation,
+		FieldPath: "requestBody.email",
+		Status:    StatusConfirmed,
+		Evidence:  &Evidence{ActualStatus: 422},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.False(t, rule.Implicit)
+	assert.Equal(t, CategoryFieldConstraint, rule.Category)
+	assert.Contains(t, rule.Description, "email")
+}
+
+func TestInferRule_FormatViolation_Refuted(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindFormatViolation,
+		FieldPath: "requestBody.email",
+		Status:    StatusRefuted,
+		Evidence:  &Evidence{ActualStatus: 201},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.True(t, rule.Implicit)
+	assert.Equal(t, CategorySpecMismatch, rule.Category)
+	assert.Contains(t, rule.Description, "format")
+}

@@ -71,6 +71,10 @@ func seedFieldConstraintHypotheses(op *spec.Operation, fieldName string, s *spec
 
 	switch s.Type {
 	case "string":
+		if s.Format != "" {
+			nodes = append(nodes, newHypothesis(op, KindFormatViolation, prefix,
+				fmt.Sprintf("invalid format value for field '%s' (format: %s) must return 4xx", fieldName, s.Format)))
+		}
 		if s.MinLength != nil {
 			nodes = append(nodes, newHypothesis(op, KindStringMinLength, prefix,
 				fmt.Sprintf("string field '%s' with length < minLength(%d) must return 4xx", fieldName, *s.MinLength)))
@@ -94,6 +98,15 @@ func seedFieldConstraintHypotheses(op *spec.Operation, fieldName string, s *spec
 			nodes = append(nodes, newHypothesis(op, KindNumericMax, prefix,
 				fmt.Sprintf("numeric field '%s' above maximum(%.0f) must return 4xx", fieldName, *s.Maximum)))
 		}
+	case "array":
+		if s.MinItems != nil {
+			nodes = append(nodes, newHypothesis(op, KindArrayMinItems, prefix,
+				fmt.Sprintf("array field '%s' with fewer than minItems(%d) items must return 4xx", fieldName, *s.MinItems)))
+		}
+		if s.MaxItems != nil {
+			nodes = append(nodes, newHypothesis(op, KindArrayMaxItems, prefix,
+				fmt.Sprintf("array field '%s' with more than maxItems(%d) items must return 4xx", fieldName, *s.MaxItems)))
+		}
 	}
 	return nodes
 }
@@ -101,10 +114,17 @@ func seedFieldConstraintHypotheses(op *spec.Operation, fieldName string, s *spec
 func seedQueryParamHypotheses(op *spec.Operation) []*HypothesisNode {
 	var nodes []*HypothesisNode
 	for _, p := range op.Parameters {
-		if p.In != "query" || p.Schema == nil {
+		if p.In != "query" {
 			continue
 		}
 		prefix := fmt.Sprintf("query.%s", p.Name)
+		if p.Required {
+			nodes = append(nodes, newHypothesis(op, KindRequiredQueryParam, prefix,
+				fmt.Sprintf("omitting required query param '%s' must return 4xx", p.Name)))
+		}
+		if p.Schema == nil {
+			continue
+		}
 		if p.Schema.Type == "integer" || p.Schema.Type == "number" {
 			if p.Schema.Minimum != nil {
 				nodes = append(nodes, newHypothesis(op, KindNumericMin, prefix,

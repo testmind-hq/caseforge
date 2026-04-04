@@ -1050,6 +1050,14 @@ run "AT-109" "classification_tree technique generates ECT test cases" \
 run "AT-110" "orthogonal_array technique generates balanced OA test cases" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestOrthogonalArray|TestSelectOA|TestExtractOA|TestLevelTo' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
 
+# AT-111: DEA seeds array constraints and format violations
+run "AT-111" "DEA seeds array constraints (minItems/maxItems), required query param, and format violations" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestSeedHypotheses_Array|TestSeedHypotheses_Format|TestSeedHypotheses_RequiredQuery|TestSeedHypotheses_OptionalQuery' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-112: DEA infers rules for new hypothesis kinds
+run "AT-112" "DEA infers rules for array, required query param, and format violation hypotheses" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestInferRule_Array|TestInferRule_Required|TestInferRule_Format' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

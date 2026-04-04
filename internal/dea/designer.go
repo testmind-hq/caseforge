@@ -86,6 +86,23 @@ func mutateField(body map[string]any, fieldName string, kind HypothesisKind, op 
 
 	case KindEnumViolation:
 		body[fieldName] = "__INVALID__ENUM_VALUE"
+
+	case KindFormatViolation:
+		body[fieldName] = "not-a-valid-format-value"
+
+	case KindArrayMinItems:
+		body[fieldName] = []any{}
+
+	case KindArrayMaxItems:
+		if s != nil && s.MaxItems != nil {
+			arr := make([]any, int(*s.MaxItems)+1)
+			for i := range arr {
+				arr[i] = "item"
+			}
+			body[fieldName] = arr
+		} else {
+			body[fieldName] = make([]any, 101)
+		}
 	}
 }
 
@@ -173,6 +190,9 @@ func queryParamSchema(op *spec.Operation, paramName string) *spec.Schema {
 func mutateQueryParam(params map[string]string, paramName string, kind HypothesisKind, op *spec.Operation) {
 	s := queryParamSchema(op, paramName)
 	switch kind {
+	case KindRequiredQueryParam:
+		delete(params, paramName)
+
 	case KindNumericMin:
 		if s != nil && s.Minimum != nil {
 			params[paramName] = fmt.Sprintf("%g", *s.Minimum-1)

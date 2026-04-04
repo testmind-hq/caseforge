@@ -46,6 +46,8 @@ type Schema struct {
 	Maximum     *float64
 	MinLength   *int64
 	MaxLength   *int64
+	MinItems    *uint64
+	MaxItems    *uint64
 	Required    []string
 	Nullable    bool
 	Ref         string // original $ref path if applicable
