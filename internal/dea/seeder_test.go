@@ -298,3 +298,150 @@ func TestSeedHypotheses_AllNodesHaveOperationSet(t *testing.T) {
 		assert.NotEmpty(t, n.FieldPath)
 	}
 }
+
+func TestSeedHypotheses_ArrayConstraints(t *testing.T) {
+	minI := uint64(1)
+	maxI := uint64(10)
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/orders",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{
+							"tags": {Type: "array", MinItems: &minI, MaxItems: &maxI},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var kinds []HypothesisKind
+	for _, n := range nodes {
+		kinds = append(kinds, n.Kind)
+	}
+	assert.Contains(t, kinds, KindArrayMinItems)
+	assert.Contains(t, kinds, KindArrayMaxItems)
+}
+
+func TestSeedHypotheses_ArrayNoConstraints_NoArrayKinds(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/orders",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{
+							"tags": {Type: "array"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	for _, n := range nodes {
+		assert.NotEqual(t, KindArrayMinItems, n.Kind)
+		assert.NotEqual(t, KindArrayMaxItems, n.Kind)
+	}
+}
+
+func TestSeedHypotheses_RequiredQueryParam(t *testing.T) {
+	op := &spec.Operation{
+		Method: "GET",
+		Path:   "/pets",
+		Parameters: []*spec.Parameter{
+			{
+				Name:     "status",
+				In:       "query",
+				Required: true,
+				Schema:   &spec.Schema{Type: "string"},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var kinds []HypothesisKind
+	for _, n := range nodes {
+		kinds = append(kinds, n.Kind)
+	}
+	assert.Contains(t, kinds, KindRequiredQueryParam)
+}
+
+func TestSeedHypotheses_OptionalQueryParam_NoRequiredKind(t *testing.T) {
+	op := &spec.Operation{
+		Method: "GET",
+		Path:   "/pets",
+		Parameters: []*spec.Parameter{
+			{
+				Name:     "status",
+				In:       "query",
+				Required: false,
+				Schema:   &spec.Schema{Type: "string"},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	for _, n := range nodes {
+		assert.NotEqual(t, KindRequiredQueryParam, n.Kind)
+	}
+}
+
+func TestSeedHypotheses_FormatViolation(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/users",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type:     "object",
+						Required: []string{"email"},
+						Properties: map[string]*spec.Schema{
+							"email": {Type: "string", Format: "email"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var kinds []HypothesisKind
+	for _, n := range nodes {
+		kinds = append(kinds, n.Kind)
+	}
+	assert.Contains(t, kinds, KindFormatViolation)
+}
+
+func TestSeedHypotheses_NoFormatViolation_WhenNoFormat(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/pets",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{
+							"name": {Type: "string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	for _, n := range nodes {
+		assert.NotEqual(t, KindFormatViolation, n.Kind)
+	}
+}

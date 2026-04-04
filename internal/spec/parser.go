@@ -174,6 +174,13 @@ func convertSchema(s *openapi3.Schema) *Schema {
 		ml := int64(*s.MaxLength)
 		cs.MaxLength = &ml
 	}
+	if s.MinItems > 0 {
+		mi := s.MinItems
+		cs.MinItems = &mi
+	}
+	if s.MaxItems != nil {
+		cs.MaxItems = s.MaxItems
+	}
 	if s.Items != nil && s.Items.Value != nil {
 		cs.Items = convertSchema(s.Items.Value)
 	}

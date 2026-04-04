@@ -158,6 +158,8 @@
 | AT-108 | Schema `minimum`/`maximum` constraints generate `gte`/`lte` assertions | `go test ./internal/assert/... -run TestRangeAssertions` | PASS | ✅ PASS |
 | AT-109 | `classification_tree` technique applies when enum/boolean params present | `go test ./internal/methodology/... -run TestClassificationTree` | All classification tree tests pass | ✅ PASS |
 | AT-110 | `orthogonal_array` technique generates L4/L8/L27 arrays for 3–13 params | `go test ./internal/methodology/... -run TestOrthogonalArray\|TestSelectOA\|TestExtractOA\|TestLevelTo` | All orthogonal array tests pass | ✅ PASS |
+| AT-111 | DEA seeds array constraints (minItems/maxItems) and format violations | `go test ./internal/dea/... -run TestSeedHypotheses_Array\|TestSeedHypotheses_Format\|TestSeedHypotheses_RequiredQuery` | All new seeder tests pass | ✅ PASS |
+| AT-112 | DEA infers rules for array, required query param, and format violation hypotheses | `go test ./internal/dea/... -run TestInferRule_Array\|TestInferRule_Required\|TestInferRule_Format` | All new inferencer tests pass | ✅ PASS |
 
 ---
 

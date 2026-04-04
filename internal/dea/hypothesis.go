@@ -14,6 +14,10 @@ const (
 	KindNumericMax        HypothesisKind = "numeric_max"
 	KindNullValue         HypothesisKind = "null_value"
 	KindEnumViolation     HypothesisKind = "enum_violation"
+	KindArrayMinItems     HypothesisKind = "array_min_items"
+	KindArrayMaxItems     HypothesisKind = "array_max_items"
+	KindRequiredQueryParam HypothesisKind = "required_query_param"
+	KindFormatViolation   HypothesisKind = "format_violation"
 )
 
 type HypothesisStatus string

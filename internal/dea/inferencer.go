@@ -40,6 +40,14 @@ func InferRule(h *HypothesisNode) *DiscoveredRule {
 		return inferNullValue(h)
 	case KindEnumViolation:
 		return inferEnumViolation(h)
+	case KindArrayMinItems:
+		return inferArrayMinItems(h)
+	case KindArrayMaxItems:
+		return inferArrayMaxItems(h)
+	case KindRequiredQueryParam:
+		return inferRequiredQueryParam(h)
+	case KindFormatViolation:
+		return inferFormatViolation(h)
 	}
 	return nil
 }
@@ -178,6 +186,54 @@ func inferEnumViolation(h *HypothesisNode) *DiscoveredRule {
 	}
 	return newRule(h, CategorySpecMismatch,
 		fmt.Sprintf("Field '%s': spec declares enum but server accepts any value", field),
+		true)
+}
+
+func inferArrayMinItems(h *HypothesisNode) *DiscoveredRule {
+	field := extractFieldName(h.FieldPath)
+	if h.Status == StatusConfirmed {
+		return newRule(h, CategoryFieldConstraint,
+			fmt.Sprintf("Field '%s': minItems boundary enforced by server (%d on empty array)", field, h.Evidence.ActualStatus),
+			false)
+	}
+	return newRule(h, CategorySpecMismatch,
+		fmt.Sprintf("Field '%s': spec declares minItems but server accepts empty array (returned %d)", field, h.Evidence.ActualStatus),
+		true)
+}
+
+func inferArrayMaxItems(h *HypothesisNode) *DiscoveredRule {
+	field := extractFieldName(h.FieldPath)
+	if h.Status == StatusConfirmed {
+		return newRule(h, CategoryFieldConstraint,
+			fmt.Sprintf("Field '%s': maxItems boundary enforced by server (%d on oversized array)", field, h.Evidence.ActualStatus),
+			false)
+	}
+	return newRule(h, CategorySpecMismatch,
+		fmt.Sprintf("Field '%s': spec declares maxItems but server accepts oversized array (returned %d)", field, h.Evidence.ActualStatus),
+		true)
+}
+
+func inferRequiredQueryParam(h *HypothesisNode) *DiscoveredRule {
+	field := extractFieldName(h.FieldPath)
+	if h.Status == StatusConfirmed {
+		return newRule(h, CategoryFieldConstraint,
+			fmt.Sprintf("Query param '%s' is required and server validates it (returns %d when omitted)", field, h.Evidence.ActualStatus),
+			false)
+	}
+	return newRule(h, CategorySpecMismatch,
+		fmt.Sprintf("Query param '%s': spec declares required but server accepts omission (returned %d)", field, h.Evidence.ActualStatus),
+		true)
+}
+
+func inferFormatViolation(h *HypothesisNode) *DiscoveredRule {
+	field := extractFieldName(h.FieldPath)
+	if h.Status == StatusConfirmed {
+		return newRule(h, CategoryFieldConstraint,
+			fmt.Sprintf("Field '%s': format validation enforced by server (%d on invalid format value)", field, h.Evidence.ActualStatus),
+			false)
+	}
+	return newRule(h, CategorySpecMismatch,
+		fmt.Sprintf("Field '%s': spec declares format but server does not validate it (returned %d)", field, h.Evidence.ActualStatus),
 		true)
 }
 
