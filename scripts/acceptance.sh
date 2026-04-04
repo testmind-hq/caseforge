@@ -312,6 +312,78 @@ contains AT-034 "run non-existent cases dir" "no such file" \
 echo ""
 
 # -------------------------------------------------------
+# lint enhancement (AT-039–AT-044)
+# -------------------------------------------------------
+
+# AT-039: --format json produces parseable JSON with score and issues
+contains "AT-039" "lint --format json" '"score"' \
+  "$BIN lint --spec $WORKDIR/petstore.yaml --format json"
+
+# AT-040: --output writes lint-report.json
+run "AT-040" "lint --output writes lint-report.json" \
+  "$BIN lint --spec $WORKDIR/petstore.yaml --output $WORKDIR/lint-out; test -f $WORKDIR/lint-out/lint-report.json"
+
+# AT-041: --skip-rules suppresses rule
+run "AT-041" "lint --skip-rules suppresses rule" \
+  "out=\$($BIN lint --spec $WORKDIR/petstore.yaml --skip-rules L014 --format json 2>/dev/null); echo \"\$out\" | python3 -c \"import sys,json; d=json.load(sys.stdin); ids=[i.get('RuleID','') for i in d.get('issues',[])]; assert 'L014' not in ids, 'L014 found but should be skipped'\""
+
+# AT-042: .caseforgelint.yaml skip_rules respected
+run "AT-042" ".caseforgelint.yaml skip_rules respected" \
+  "echo 'skip_rules: [L014]' > $WORKDIR/.caseforgelint.yaml; out=\$(cd $WORKDIR && $BIN lint --spec $WORKDIR/petstore.yaml --format json 2>/dev/null); echo \"\$out\" | python3 -c \"import sys,json; d=json.load(sys.stdin); ids=[i.get('RuleID','') for i in d.get('issues',[])]; assert 'L014' not in ids, 'L014 found but should be skipped by file config'\"; rm -f $WORKDIR/.caseforgelint.yaml"
+
+# Fixture: spec with duplicate operationId for AT-043
+cat > "$WORKDIR/dup-opid.yaml" << 'YAML'
+openapi: "3.0.0"
+info:
+  title: Dup
+  version: "1.0"
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List
+      responses:
+        "200":
+          description: OK
+  /admin/users:
+    get:
+      operationId: listUsers
+      summary: Admin list
+      responses:
+        "200":
+          description: OK
+YAML
+
+# AT-043: L016 duplicate operationId
+contains "AT-043" "L016 duplicate operationId detected" "L016" \
+  "$BIN lint --spec $WORKDIR/dup-opid.yaml --format json"
+
+# Fixture: spec with sensitive query param for AT-044
+cat > "$WORKDIR/sensitive-query.yaml" << 'YAML'
+openapi: "3.0.0"
+info:
+  title: Sensitive
+  version: "1.0"
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      parameters:
+        - name: token
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+YAML
+
+# AT-044: L020 sensitive query param
+contains "AT-044" "L020 sensitive query param detected" "L020" \
+  "$BIN lint --spec $WORKDIR/sensitive-query.yaml --format json"
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))

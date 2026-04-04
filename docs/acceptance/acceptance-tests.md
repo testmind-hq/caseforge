@@ -64,6 +64,19 @@
 
 ---
 
+### `lint` — Enhancement (AT-039–AT-044)
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-039 | lint --format json outputs valid JSON | `caseforge lint --spec petstore.yaml --format json` | parseable JSON with `score` and `issues` keys | ✅ PASS |
+| AT-040 | lint --output writes lint-report.json | `caseforge lint --spec petstore.yaml --output /tmp/lr` | `/tmp/lr/lint-report.json` created | ✅ PASS |
+| AT-041 | lint --skip-rules suppresses rule | `caseforge lint --spec petstore.yaml --skip-rules L014 --format json` | L014 absent from issues | ✅ PASS |
+| AT-042 | .caseforgelint.yaml skip_rules respected | `.caseforgelint.yaml` with `skip_rules: [L014]`, run lint | L014 absent from output | ✅ PASS |
+| AT-043 | L016 duplicate operationId detected | spec with two operations sharing same operationId | error L016 reported | ✅ PASS |
+| AT-044 | L020 sensitive query param detected | spec with `?token` query parameter | error L020 reported | ✅ PASS |
+
+---
+
 ### `diff` — Spec Diff
 
 | ID | Scenario | Command | Expected | Status |
@@ -162,7 +175,7 @@
 | Core / CLI | 3 | 3 | 0 |
 | gen — formats | 7 | 7 | 0 |
 | gen — techniques | 4 | 4 | 0 |
-| lint | 2 | 2 | 0 |
+| lint | 8 | 8 | 0 |
 | diff | 2 | 2 | 0 |
 | doctor | 1 | 1 | 0 |
 | fake | 1 | 1 | 0 |
@@ -173,7 +186,7 @@
 | explore | 4 | 4 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 3 | 3 | 0 |
-| **Total** | **37** | **37** | **0** |
+| **Total** | **44** | **44** | **0** |
 
 ---
 
