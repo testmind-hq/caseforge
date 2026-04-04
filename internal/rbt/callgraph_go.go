@@ -28,6 +28,16 @@ type GoCallGraphBuilder struct {
 // unclaimed files that were resolved, and any hard error (caller falls back to V2).
 // Returns (nil, nil, nil) silently when: no go.mod, no main package, or no .go
 // files in unclaimed.
+//
+// maxDepth controls how many BFS levels are explored from the seed functions:
+//   - maxDepth=0 means unlimited (no depth cap).
+//   - maxDepth=N discards any BFS node whose depth >= N before expanding it,
+//     so only nodes at depths 0..N-1 are visited. Concretely, maxDepth=N means
+//     "traverse at most N-1 hops from the seeded functions".
+//
+// Important ordering: the depth cap fires BEFORE the terminal (route-file) check.
+// This differs from V2's TraceToRoutes, which checks terminal first. The effect is
+// that a route file reached exactly at depth=N is not recorded when maxDepth=N.
 func (b *GoCallGraphBuilder) BuildAndTrace(
 	unclaimed []ChangedFile,
 	routeFileMappings map[string][]RouteMapping,

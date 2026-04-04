@@ -83,7 +83,9 @@ func TestGoCallGraphBuilder_DepthCap(t *testing.T) {
 	}
 	unclaimed := []ChangedFile{{Path: serviceFile}}
 
-	// maxDepth=1: service.go → handler.go is multiple hops, should not reach with depth=1
+	// maxDepth=1: service.go (depth=0) → handler.go (depth=1) is exactly 1 hop.
+	// The depth cap fires BEFORE the terminal check, so at depth=1 with maxDepth=1
+	// the node is discarded and handler.go is never recognized as a route file.
 	b := &GoCallGraphBuilder{SrcDir: dir, Algo: "rta"}
 	mappings, _, err := b.BuildAndTrace(unclaimed, routeFiles, 1)
 
