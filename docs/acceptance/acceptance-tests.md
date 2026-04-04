@@ -181,6 +181,8 @@
 | AT-032 | run hurl (no server) | `caseforge run --cases ./cases --format hurl` | hurl exits with `base_url not set` error (expected without server) | ✅ PASS |
 | AT-033 | run k6 (no server) | `caseforge run --cases ./cases --format k6` | k6 exits with connection refused (expected without server) | ✅ PASS |
 | AT-034 | run non-existent dir | `caseforge run --cases /nonexistent --format k6` | error: file not found | ✅ PASS |
+| AT-053 | run --target injects BASE_URL | `caseforge run --cases ./cases --target http://localhost:9999` | BASE_URL injected (hurl error mentions base_url) | ✅ PASS |
+| AT-054 | run --output writes run-report.json | `caseforge run --cases ./cases --target http://localhost:9999 --output ./reports` | `run-report.json` created | ✅ PASS |
 
 ---
 
@@ -203,8 +205,8 @@
 | rbt | 9 | 9 | 0 |
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
-| run | 3 | 3 | 0 |
-| **Total** | **52** | **52** | **0** |
+| run | 5 | 5 | 0 |
+| **Total** | **54** | **54** | **0** |
 
 ---
 

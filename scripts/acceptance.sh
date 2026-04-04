@@ -309,6 +309,10 @@ contains AT-032 "run hurl error without server" "base_url" \
   "$BIN run --cases '$WORKDIR/cases-hurl' --format hurl 2>&1 || true"
 contains AT-034 "run non-existent cases dir" "no such file" \
   "$BIN run --cases /nonexistent/path --format k6 2>&1 || true"
+contains AT-053 "run --target injects BASE_URL into vars" "base_url" \
+  "$BIN run --cases '$WORKDIR/cases-hurl' --format hurl --target http://localhost:9999 2>&1 || true"
+contains AT-054 "run --output writes run-report.json" "run-report.json" \
+  "mkdir -p '$WORKDIR/run-out' && '$BIN' run --cases '$WORKDIR/cases-hurl' --format hurl --target http://localhost:9999 --output '$WORKDIR/run-out' 2>&1 || true"
 echo ""
 
 # -------------------------------------------------------
