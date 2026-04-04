@@ -32,9 +32,9 @@ type Indexer struct {
 	Store     *IndexStore
 	Embedder  Embedder
 	Depth     int    // 0 = dynamic BFS (stop at route node); >0 = fixed depth cap.
-	               // Note: V3 (runGoCallGraphPhase) checks depth before terminal, so
-	               // maxDepth=N covers N-1 hops; V2 (runCallGraphPhase) checks terminal
-	               // first, so maxDepth=N covers N hops.
+	               // maxDepth=N means "traverse at most N hops from the seeded functions".
+	               // Both V2 (runCallGraphPhase) and V3 (runGoCallGraphPhase) check terminal
+	               // before depth cap, so route files at exactly depth=N are recorded.
 	Algo      string // Go call graph algorithm: "rta" (default) | "vta"
 }
 

@@ -117,13 +117,13 @@ func TestGoCallGraphBuilder_DepthCap(t *testing.T) {
 	unclaimed := []ChangedFile{{Path: serviceFile}}
 
 	// maxDepth=1: service.go (depth=0) → handler.go (depth=1) is exactly 1 hop.
-	// The depth cap fires BEFORE the terminal check, so at depth=1 with maxDepth=1
-	// the node is discarded and handler.go is never recognized as a route file.
+	// The terminal check fires BEFORE the depth cap (matching V2 semantics), so the
+	// route file at depth=1 IS recorded when maxDepth=1 — 1 hop is within the cap.
 	b := &GoCallGraphBuilder{SrcDir: dir, Algo: "rta"}
 	mappings, _, err := b.BuildAndTrace(unclaimed, routeFiles, 1)
 
 	require.NoError(t, err)
-	assert.Empty(t, mappings, "depth cap of 1 should prevent reaching the route handler")
+	assert.NotEmpty(t, mappings, "depth cap of 1 should allow reaching a route file 1 hop away")
 }
 
 func TestGoCallGraphBuilder_EmptyUnclaimedGoFiles(t *testing.T) {

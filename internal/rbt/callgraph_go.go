@@ -31,13 +31,13 @@ type GoCallGraphBuilder struct {
 //
 // maxDepth controls how many BFS levels are explored from the seed functions:
 //   - maxDepth=0 means unlimited (no depth cap).
-//   - maxDepth=N discards any BFS node whose depth >= N before expanding it,
-//     so only nodes at depths 0..N-1 are visited. Concretely, maxDepth=N means
-//     "traverse at most N-1 hops from the seeded functions".
+//   - maxDepth=N means the BFS visits nodes at depths 0..N. A node at depth N
+//     is recorded if it is a terminal (route file), but its callers are not
+//     enqueued. Concretely, maxDepth=N means "traverse at most N hops from the
+//     seeded functions", matching V2's TraceToRoutes semantics.
 //
-// Important ordering: the depth cap fires BEFORE the terminal (route-file) check.
-// This differs from V2's TraceToRoutes, which checks terminal first. The effect is
-// that a route file reached exactly at depth=N is not recorded when maxDepth=N.
+// Ordering: the terminal (route-file) check fires BEFORE the depth cap so that
+// a route file reached exactly at depth=N is recorded when maxDepth=N.
 func (b *GoCallGraphBuilder) BuildAndTrace(
 	unclaimed []ChangedFile,
 	routeFileMappings map[string][]RouteMapping,
@@ -188,13 +188,9 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 		cur := queue[0]
 		queue = queue[1:]
 
-		// Depth cap — enforced before terminal check so maxDepth=N means
-		// "callers reachable in at most N−1 hops from the seeded functions".
-		if maxDepth > 0 && cur.depth >= maxDepth {
-			continue
-		}
-
 		// Terminal: current file is a route-registering file.
+		// Checked BEFORE the depth cap so that a route file reached at exactly
+		// depth=maxDepth is still recorded (matches V2's TraceToRoutes ordering).
 		if rms, ok := routeFileMappings[cur.file]; ok {
 			coveredFiles[cur.originFile] = true
 			for _, rm := range rms {
@@ -210,6 +206,13 @@ func (b *GoCallGraphBuilder) BuildAndTrace(
 					})
 				}
 			}
+			continue
+		}
+
+		// Depth cap — stop enqueuing callers once we reach the limit.
+		// Applied AFTER the terminal check so route files at exactly depth=maxDepth
+		// are still recorded above before we stop traversal.
+		if maxDepth > 0 && cur.depth >= maxDepth {
 			continue
 		}
 
