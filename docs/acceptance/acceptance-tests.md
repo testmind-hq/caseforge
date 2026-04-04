@@ -148,7 +148,19 @@
 | AT-044 | doctor shows tree-sitter status | `caseforge doctor` | tree-sitter line present | ✅ PASS |
 | AT-045 | rbt index command registered | `caseforge rbt --help` | `index` listed | ✅ PASS |
 | AT-046 | rbt index --strategy llm writes map file | see script | map.yaml created with mappings: | ✅ PASS |
-| AT-047 | rbt index --out existing without --overwrite fails | see script | error: already exists | ✅ PASS |
+| AT-044b | rbt index --out existing without --overwrite fails | see script | error: already exists | ✅ PASS |
+
+---
+
+### `dedupe` — Duplicate Test Case Detection
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-047 | dedupe command registered | `caseforge --help` | `dedupe` listed | ✅ PASS |
+| AT-048 | no cases dir returns error | `caseforge dedupe --cases /nonexistent/xyz/cases` | error: cases | ✅ PASS |
+| AT-049 | no duplicates exits 0 | `caseforge dedupe --cases <unique-cases-dir>` | exit 0 | ✅ PASS |
+| AT-050 | exact duplicate reports group | `caseforge dedupe --cases <dup-cases-dir>` | output contains `Group 1` | ✅ PASS |
+| AT-051 | --dry-run exits 0 and files still exist | `caseforge dedupe --cases <dup-cases-dir> --dry-run` | exit 0, both files present | ✅ PASS |
 
 ---
 
@@ -171,7 +183,7 @@
 
 ---
 
-## Summary (last run: 2026-03-29)
+## Summary (last run: 2026-04-04)
 
 | Category | Total | Pass | Fail |
 |----------|-------|------|------|
@@ -188,9 +200,10 @@
 | ask | 2 | 2 | 0 |
 | explore | 4 | 4 | 0 |
 | rbt | 9 | 9 | 0 |
+| dedupe | 5 | 5 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 3 | 3 | 0 |
-| **Total** | **46** | **46** | **0** |
+| **Total** | **51** | **51** | **0** |
 
 ---
 

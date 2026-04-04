@@ -336,8 +336,46 @@ contains AT-045 "rbt index command registered" "index" \
   "'$BIN' rbt --help 2>&1 || true"
 contains AT-046 "rbt index --strategy llm writes map file" "mappings:" \
   "mkdir -p '$WORKDIR/idx-out' && '$BIN' rbt index --spec '$WORKDIR/petstore.yaml' --strategy llm --out '$WORKDIR/idx-out/map.yaml' && cat '$WORKDIR/idx-out/map.yaml'"
-contains AT-047 "rbt index --out existing without --overwrite fails" "already exists" \
+contains AT-044b "rbt index --out existing without --overwrite fails" "already exists" \
   "echo 'existing: true' > '$WORKDIR/existing-map.yaml' && '$BIN' rbt index --spec '$WORKDIR/petstore.yaml' --out '$WORKDIR/existing-map.yaml' 2>&1 || true"
+echo ""
+
+# -------------------------------------------------------
+# AT-047 – AT-051: dedupe
+# -------------------------------------------------------
+echo "--- dedupe ---"
+
+contains AT-047 "dedupe command registered" "dedupe" "$BIN --help"
+
+contains AT-048 "no cases dir returns error" "cases" \
+  "'$BIN' dedupe --cases /nonexistent/xyz/cases 2>&1 || true"
+
+# AT-049: two unique cases → exit 0
+mkdir -p "$WORKDIR/dedupe-unique"
+cat > "$WORKDIR/dedupe-unique/get-users-200.json" << 'JSON'
+{"id":"get-users-200","version":"1","kind":"single","priority":"P1","tags":[],"source":{"technique":"equivalence_partitioning","spec_path":"GET /users","rationale":""},"steps":[{"id":"s1","type":"test","method":"GET","path":"/users","assertions":[{"target":"status_code","operator":"eq","expected":200}]}],"generated_at":"2026-01-01T00:00:00Z"}
+JSON
+cat > "$WORKDIR/dedupe-unique/post-users-201.json" << 'JSON'
+{"id":"post-users-201","version":"1","kind":"single","priority":"P1","tags":[],"source":{"technique":"equivalence_partitioning","spec_path":"POST /users","rationale":""},"steps":[{"id":"s1","type":"test","method":"POST","path":"/users","assertions":[{"target":"status_code","operator":"eq","expected":201}]}],"generated_at":"2026-01-01T00:00:00Z"}
+JSON
+run AT-049 "no duplicates exits 0" \
+  "'$BIN' dedupe --cases '$WORKDIR/dedupe-unique'"
+
+# AT-050: two identical cases → output contains "Group 1"
+mkdir -p "$WORKDIR/dedupe-dup"
+cat > "$WORKDIR/dedupe-dup/case-a.json" << 'JSON'
+{"id":"case-a","version":"1","kind":"single","priority":"P1","tags":[],"source":{"technique":"equivalence_partitioning","spec_path":"POST /users","rationale":""},"steps":[{"id":"s1","type":"test","method":"POST","path":"/users","assertions":[{"target":"status_code","operator":"eq","expected":201},{"target":"jsonpath $.id","operator":"eq","expected":"1"}]}],"generated_at":"2026-01-01T00:00:00Z"}
+JSON
+cat > "$WORKDIR/dedupe-dup/case-b.json" << 'JSON'
+{"id":"case-b","version":"1","kind":"single","priority":"P1","tags":[],"source":{"technique":"equivalence_partitioning","spec_path":"POST /users","rationale":""},"steps":[{"id":"s1","type":"test","method":"POST","path":"/users","assertions":[{"target":"status_code","operator":"eq","expected":201},{"target":"jsonpath $.id","operator":"eq","expected":"1"}]}],"generated_at":"2026-01-01T00:00:00Z"}
+JSON
+contains AT-050 "exact duplicate reports group" "Group 1" \
+  "'$BIN' dedupe --cases '$WORKDIR/dedupe-dup' 2>&1; true"
+
+# AT-051: --dry-run exits 0 and both files survive
+run AT-051 "--dry-run exits 0 and files still exist" \
+  "'$BIN' dedupe --cases '$WORKDIR/dedupe-dup' --dry-run && test -f '$WORKDIR/dedupe-dup/case-a.json' && test -f '$WORKDIR/dedupe-dup/case-b.json'"
+
 echo ""
 
 # -------------------------------------------------------
