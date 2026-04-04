@@ -184,7 +184,7 @@ func (idx *Indexer) runCallGraphPhaseWithBuilder(
 }
 
 // runEmbedPhase embeds unclaimed source files and spec operations, then uses
-// cosine similarity (TopKChunks) to produce RouteMapping entries. Falls back
+// cosine similarity (topKAboveThreshold) to produce RouteMapping entries. Falls back
 // to the regex parser when the embedder is noop (no API key) or when no
 // mappings could be derived from the index.
 func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {

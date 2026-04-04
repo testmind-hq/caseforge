@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/testmind-hq/caseforge/internal/rbt"
@@ -64,7 +65,7 @@ func runRBTIndex(cmd *cobra.Command, _ []string) error {
 		SpecPath:  specPath,
 		OutPath:   outPath,
 		Overwrite: overwrite,
-		Store:     rbt.NewIndexStore(".caseforge-index"),
+		Store:     rbt.NewIndexStore(filepath.Join(srcDir, ".caseforge-index")),
 		Embedder:  rbt.NewOpenAIEmbedder(),
 		Depth:     depth,
 		Algo:      algo,
