@@ -88,18 +88,27 @@ func (w *JSONSchemaWriter) Read(indexPath string) ([]schema.TestCase, error) {
 }
 
 // buildMeta computes IndexMeta from cases and caller-supplied options.
+// The stat maps are nil (and thus omitted from JSON via omitempty) when no
+// cases contribute to that dimension.
 func buildMeta(cases []schema.TestCase, opts WriteOptions) IndexMeta {
-	byTechnique := make(map[string]int)
-	byPriority := make(map[string]int)
-	byKind := make(map[string]int)
+	var byTechnique, byPriority, byKind map[string]int
 	for _, tc := range cases {
 		if tc.Source.Technique != "" {
+			if byTechnique == nil {
+				byTechnique = make(map[string]int)
+			}
 			byTechnique[tc.Source.Technique]++
 		}
 		if tc.Priority != "" {
+			if byPriority == nil {
+				byPriority = make(map[string]int)
+			}
 			byPriority[tc.Priority]++
 		}
 		if tc.Kind != "" {
+			if byKind == nil {
+				byKind = make(map[string]int)
+			}
 			byKind[tc.Kind]++
 		}
 	}

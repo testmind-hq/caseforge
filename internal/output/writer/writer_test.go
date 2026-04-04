@@ -137,6 +137,21 @@ func TestWriteMeta_EmptyOpts(t *testing.T) {
 	assert.NotEmpty(t, index.Meta.ByTechnique)
 }
 
+func TestWriteMeta_ZeroCasesProducesNilMaps(t *testing.T) {
+	dir := t.TempDir()
+	w := NewJSONSchemaWriter()
+	require.NoError(t, w.Write([]schema.TestCase{}, dir, WriteOptions{}))
+
+	data, _ := os.ReadFile(filepath.Join(dir, "index.json"))
+	var index IndexFile
+	require.NoError(t, json.Unmarshal(data, &index))
+	// nil maps serialize as absent (omitempty); must not produce {} in JSON
+	assert.Nil(t, index.Meta.ByTechnique)
+	assert.Nil(t, index.Meta.ByPriority)
+	assert.Nil(t, index.Meta.ByKind)
+	assert.NotContains(t, string(data), `"by_technique":{}`)
+}
+
 func TestHashBytes(t *testing.T) {
 	h1 := HashBytes([]byte("hello"))
 	h2 := HashBytes([]byte("hello"))
