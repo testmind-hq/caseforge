@@ -227,7 +227,7 @@ func Register(r *gin.Engine) {
 	require.NoError(t, err)
 	// No spec ops → no embed mappings → falls back to regex.
 	for _, m := range mappings {
-		assert.NotEqual(t, "embed", m.Via, "expected regex fallback, not embed")
+		assert.Equal(t, "regex", m.Via, "expected regex fallback")
 	}
 }
 

@@ -215,6 +215,8 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 			continue
 		}
 		// Replace existing entry for this file or append a new one.
+		// Fn is set to the base filename (e.g. "service.go") as a V1
+		// approximation; function-level chunking via tree-sitter is planned.
 		replaced := false
 		for i, c := range localIdx.Chunks {
 			if c.File == f.Path {
@@ -263,9 +265,29 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 	// Persist updated index for future incremental runs.
 	_ = idx.Store.Save(localIdx)
 
-	// Phase 3: cosine-similarity matching — for each spec op find the top-k
-	// most similar source file chunks and emit a RouteMapping per match.
-	const topK = 3
+	// Phase 3: cosine-similarity matching — for each spec op, find the top-k
+	// most similar source file chunks (above a minimum similarity threshold)
+	// and emit a RouteMapping per match.
+	//
+	// Only chunks from the files passed to this call are considered. The
+	// persisted index may contain chunks from prior runs (already claimed by
+	// tree-sitter or call-graph phases); restricting to the current `files`
+	// slice avoids emitting spurious "embed" mappings for those files.
+	const (
+		topK         = 3
+		minSimilarity = 0.3 // discard near-orthogonal matches
+	)
+	filesSet := make(map[string]bool, len(files))
+	for _, f := range files {
+		filesSet[f.Path] = true
+	}
+	var fileBoundChunks []IndexChunk
+	for _, c := range localIdx.Chunks {
+		if filesSet[c.File] {
+			fileBoundChunks = append(fileBoundChunks, c)
+		}
+	}
+
 	seen := make(map[string]bool) // deduplicate (sourceFile, operation) pairs
 	var mappings []RouteMapping
 	for _, op := range localIdx.SpecOps {
@@ -277,7 +299,7 @@ func (idx *Indexer) runEmbedPhase(files []ChangedFile) ([]RouteMapping, error) {
 			continue
 		}
 		method, routePath := parts[0], parts[1]
-		for _, chunk := range TopKChunks(op.Embedding, localIdx.Chunks, topK) {
+		for _, chunk := range topKAboveThreshold(op.Embedding, fileBoundChunks, topK, minSimilarity) {
 			dedupKey := chunk.File + "|" + op.Operation
 			if seen[dedupKey] {
 				continue
@@ -384,7 +406,10 @@ func isChunkStale(idx *LocalIndex, file, newHash string) bool {
 	return true
 }
 
-// isSpecOpStale returns true if opKey is not yet cached in idx or has an empty embedding.
+// isSpecOpStale returns true if opKey is not yet cached in idx or has an empty
+// embedding. Unlike isChunkStale (which is hash-based), spec ops are considered
+// fresh as long as an embedding exists — there is no content hash to version by.
+// If an operation's summary changes, delete index.json to force re-embedding.
 func isSpecOpStale(idx *LocalIndex, opKey string) bool {
 	if idx == nil {
 		return true
