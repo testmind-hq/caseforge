@@ -80,3 +80,23 @@ type Capture struct {
 	From   string `json:"from"`
 	Filter string `json:"filter,omitempty"`
 }
+
+const SuiteSchemaURL = "https://caseforge.dev/schema/v1/suite.json"
+
+// TestSuite describes cross-case execution orchestration (Suite-level DAG).
+// Kind "sequential" runs cases in listed order; "chain" additionally passes
+// captured exports from each case into the variables of subsequent cases.
+type TestSuite struct {
+	Schema string      `json:"$schema,omitempty"`
+	ID     string      `json:"id"`
+	Title  string      `json:"title"`
+	Kind   string      `json:"kind"` // "sequential" | "chain"
+	Cases  []SuiteCase `json:"cases"`
+}
+
+// SuiteCase is a node in a TestSuite that references a TestCase by its ID.
+type SuiteCase struct {
+	CaseID    string   `json:"case_id"`
+	DependsOn []string `json:"depends_on,omitempty"` // CaseIDs that must complete first
+	Exports   []string `json:"exports,omitempty"`    // variable names made visible to dependents
+}

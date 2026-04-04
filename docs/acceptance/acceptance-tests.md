@@ -113,6 +113,16 @@
 
 ---
 
+### `caseforge suite` — TestSuite Orchestration (3.6)
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-093 | `suite` command registered | `caseforge --help` | `suite` listed | ✅ PASS |
+| AT-094 | `suite create` writes valid suite.json | `caseforge suite create --id S --title T --kind chain --cases TC-001,TC-002` | `suite.json` with `$schema` and `cases` array | ✅ PASS |
+| AT-095 | `suite validate` confirms valid suite | `caseforge suite validate --suite suite.json` | `valid ✓` output | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
