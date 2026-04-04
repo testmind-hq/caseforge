@@ -376,6 +376,18 @@ contains AT-050 "exact duplicate reports group" "Group 1" \
 run AT-051 "--dry-run exits 0 and files still exist" \
   "'$BIN' dedupe --cases '$WORKDIR/dedupe-dup' --dry-run && test -f '$WORKDIR/dedupe-dup/case-a.json' && test -f '$WORKDIR/dedupe-dup/case-b.json'"
 
+# AT-052: --merge exits 0 and deletes lower-scoring duplicate
+# aaa-keep.json sorts before zzz-delete.json → aaa-keep is retained, zzz-delete is removed
+mkdir -p "$WORKDIR/dedupe-merge"
+cat > "$WORKDIR/dedupe-merge/aaa-keep.json" << 'JSON'
+{"id":"aaa-keep","version":"1","kind":"single","priority":"P1","tags":[],"source":{"technique":"equivalence_partitioning","spec_path":"POST /users","rationale":""},"steps":[{"id":"s1","type":"test","method":"POST","path":"/users","assertions":[{"target":"status_code","operator":"eq","expected":201},{"target":"jsonpath $.id","operator":"eq","expected":"1"}]}],"generated_at":"2026-01-01T00:00:00Z"}
+JSON
+cat > "$WORKDIR/dedupe-merge/zzz-delete.json" << 'JSON'
+{"id":"zzz-delete","version":"1","kind":"single","priority":"P1","tags":[],"source":{"technique":"equivalence_partitioning","spec_path":"POST /users","rationale":""},"steps":[{"id":"s1","type":"test","method":"POST","path":"/users","assertions":[{"target":"status_code","operator":"eq","expected":201},{"target":"jsonpath $.id","operator":"eq","expected":"1"}]}],"generated_at":"2026-01-01T00:00:00Z"}
+JSON
+run AT-052 "--merge exits 0 and removes lower-scoring file" \
+  "'$BIN' dedupe --cases '$WORKDIR/dedupe-merge' --merge && test ! -f '$WORKDIR/dedupe-merge/zzz-delete.json'"
+
 echo ""
 
 # -------------------------------------------------------

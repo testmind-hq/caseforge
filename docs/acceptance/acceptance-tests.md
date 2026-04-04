@@ -161,6 +161,7 @@
 | AT-049 | no duplicates exits 0 | `caseforge dedupe --cases <unique-cases-dir>` | exit 0 | ✅ PASS |
 | AT-050 | exact duplicate reports group | `caseforge dedupe --cases <dup-cases-dir>` | output contains `Group 1` | ✅ PASS |
 | AT-051 | --dry-run exits 0 and files still exist | `caseforge dedupe --cases <dup-cases-dir> --dry-run` | exit 0, both files present | ✅ PASS |
+| AT-052 | --merge exits 0 and deletes lower-scoring file | `caseforge dedupe --cases <dup-cases-dir> --merge` | exit 0, lower-scoring file removed | ✅ PASS |
 
 ---
 
@@ -200,10 +201,10 @@
 | ask | 2 | 2 | 0 |
 | explore | 4 | 4 | 0 |
 | rbt | 9 | 9 | 0 |
-| dedupe | 5 | 5 | 0 |
+| dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
 | run | 3 | 3 | 0 |
-| **Total** | **51** | **51** | **0** |
+| **Total** | **52** | **52** | **0** |
 
 ---
 

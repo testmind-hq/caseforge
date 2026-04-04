@@ -24,8 +24,8 @@ assertions; ties broken by lexicographic filename order).
 Use --dry-run to report intended deletions without touching any files.
 
 Exit codes:
-  0 — no duplicates, or --dry-run (even when duplicates are found)
-  1 — duplicates found and --dry-run is not set
+  0 — no duplicates, --dry-run, or --merge (duplicates resolved)
+  1 — duplicates found and neither --dry-run nor --merge is set
 
 Examples:
   caseforge dedupe --cases ./cases
@@ -81,6 +81,10 @@ func runDedupe(cmd *cobra.Command, _ []string) error {
 		GeneratedAt:      time.Now(),
 	}
 
+	if format != "terminal" && format != "json" {
+		return fmt.Errorf("unknown format %q: must be terminal or json", format)
+	}
+
 	if format == "json" {
 		data, marshalErr := dedupe.MarshalReportJSON(report)
 		if marshalErr != nil {
@@ -98,7 +102,8 @@ func runDedupe(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	if len(groups) > 0 && !dryRun {
+	// Exit 1 only when duplicates remain unresolved (not dry-run, not merged).
+	if len(groups) > 0 && !dryRun && !merge {
 		return fmt.Errorf("duplicates found: %d group(s)", len(groups))
 	}
 	return nil
