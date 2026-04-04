@@ -822,6 +822,59 @@ contains "AT-085" "export --format xray creates xray-import.json" "xray-import.j
 contains "AT-086" "export --format testrail creates testrail-import.csv" "testrail-import.csv" \
   "ls '$EXPORTDIR/out/testrail/'"
 
+# -------------------------------------------------------
+# AT-087 – AT-088: example extraction (PH2-15)
+# -------------------------------------------------------
+echo ""
+echo "--- example extraction (PH2-15) ---"
+
+EXDIR=$(mktemp -d)
+cat > "$EXDIR/example-spec.yaml" << 'YAML'
+openapi: "3.0.0"
+info:
+  title: Example API
+  version: "1.0"
+paths:
+  /widgets:
+    post:
+      operationId: createWidget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+            examples:
+              valid_widget:
+                summary: A valid widget
+                value:
+                  name: "Sprocket"
+                  color: "blue"
+              missing_name:
+                summary: Invalid - name missing
+                value:
+                  color: "red"
+      responses:
+        "201":
+          description: created
+YAML
+
+# AT-087: example_extraction technique generates cases with technique comment in Hurl output
+"$BIN" gen --spec "$EXDIR/example-spec.yaml" --no-ai --technique example_extraction --output "$EXDIR/cases" 2>/dev/null || true
+contains "AT-087" "gen --technique example_extraction writes technique comment in hurl" "example_extraction" \
+  "cat '$EXDIR/cases/'*.hurl 2>/dev/null | head -40"
+
+# AT-088: example_extraction produces valid and invalid cases (valid_widget example name appears)
+"$BIN" gen --spec "$EXDIR/example-spec.yaml" --no-ai --technique example_extraction --output "$EXDIR/cases2" 2>/dev/null || true
+contains "AT-088" "example_extraction produces P1 (valid) and P2 (invalid) cases" "valid_widget" \
+  "cat '$EXDIR/cases2/'*.hurl 2>/dev/null | head -60"
+
 echo ""
 
 # -------------------------------------------------------

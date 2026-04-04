@@ -143,6 +143,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIdempotentTechnique(),
 		methodology.NewPairwiseTechnique(),
 		methodology.NewSecurityTechnique(),
+		methodology.NewExampleTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

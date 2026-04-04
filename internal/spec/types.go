@@ -18,7 +18,16 @@ type RequestBody struct {
 }
 
 type MediaType struct {
-	Schema *Schema
+	Schema   *Schema
+	Example  any                 // mediaType-level example (single value)
+	Examples map[string]*Example // mediaType-level named examples
+}
+
+// Example represents a named OpenAPI example object.
+type Example struct {
+	Summary     string
+	Description string
+	Value       any // nil when ExternalValue is used (not supported here)
 }
 
 type Response struct {

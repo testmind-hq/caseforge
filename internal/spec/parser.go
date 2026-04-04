@@ -109,9 +109,24 @@ func convertParameter(p *openapi3.Parameter) *Parameter {
 func convertRequestBody(rb *openapi3.RequestBody) *RequestBody {
 	body := &RequestBody{Required: rb.Required, Content: make(map[string]*MediaType)}
 	for ct, mt := range rb.Content {
+		cmt := &MediaType{}
 		if mt.Schema != nil && mt.Schema.Value != nil {
-			body.Content[ct] = &MediaType{Schema: convertSchema(mt.Schema.Value)}
+			cmt.Schema = convertSchema(mt.Schema.Value)
 		}
+		cmt.Example = mt.Example
+		if len(mt.Examples) > 0 {
+			cmt.Examples = make(map[string]*Example, len(mt.Examples))
+			for name, ref := range mt.Examples {
+				if ref != nil && ref.Value != nil {
+					cmt.Examples[name] = &Example{
+						Summary:     ref.Value.Summary,
+						Description: ref.Value.Description,
+						Value:       ref.Value.Value,
+					}
+				}
+			}
+		}
+		body.Content[ct] = cmt
 	}
 	return body
 }
