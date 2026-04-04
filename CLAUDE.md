@@ -9,7 +9,7 @@ Every development session must run the acceptance suite before committing and af
 ```
 
 **Rules:**
-- All 63 scenarios must pass before pushing to `main`.
+- All 66 scenarios must pass before pushing to `main`.
 - When adding a new command or feature, add the corresponding scenario(s) to `docs/acceptance/acceptance-tests.md` and a matching `contains` / `run` call in `scripts/acceptance.sh` **in the same commit**.
 - If a scenario fails, determine root cause before proceeding:
   - **Code bug** → fix the code, re-run the suite.
