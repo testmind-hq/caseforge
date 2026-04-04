@@ -99,6 +99,8 @@
 | AT-084 | `--format allure` creates Allure result file | `caseforge export --cases ./cases --format allure --output /tmp/out` | `*-result.json` in `/tmp/out/allure/` | ✅ PASS |
 | AT-085 | `--format xray` creates xray-import.json | `caseforge export --cases ./cases --format xray --output /tmp/out` | `xray-import.json` in `/tmp/out/xray/` | ✅ PASS |
 | AT-086 | `--format testrail` creates testrail-import.csv | `caseforge export --cases ./cases --format testrail --output /tmp/out` | `testrail-import.csv` in `/tmp/out/testrail/` | ✅ PASS |
+| AT-087 | `--technique example_extraction` generates cases from spec examples | `caseforge gen --spec example-spec.yaml --no-ai --technique example_extraction` | Output contains `example_extraction` | ✅ PASS |
+| AT-088 | Example extraction produces valid (P1) and invalid (P2) cases | Run `--technique example_extraction` on spec with named examples | `.hurl` output contains example name `valid_widget` | ✅ PASS |
 
 ---
 
@@ -321,7 +323,8 @@
 | onboard | 2 | 2 | 0 |
 | run | 5 | 5 | 0 |
 | exit codes | 2 | 2 | 0 |
-| **Total** | **80** | **80** | **0** |
+| example_extraction | 2 | 2 | 0 |
+| **Total** | **90** | **90** | **0** |
 
 ---
 
