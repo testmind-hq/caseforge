@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -78,6 +79,11 @@ func runLint(cmd *cobra.Command, args []string) error {
 	issues := lint.RunAll(parsedSpec, skip)
 	report := lint.NewReport(issues)
 
+	// Validate --format
+	if lintFormat != "terminal" && lintFormat != "json" {
+		return fmt.Errorf("unknown format %q: use terminal or json", lintFormat)
+	}
+
 	// Render output
 	if lintFormat == "json" {
 		data, err := report.ToJSON()
@@ -111,7 +117,7 @@ func runLint(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("serialising report: %w", err)
 		}
-		outPath := lintOutput + "/lint-report.json"
+		outPath := filepath.Join(lintOutput, "lint-report.json")
 		if err := os.WriteFile(outPath, data, 0644); err != nil {
 			return fmt.Errorf("writing lint-report.json: %w", err)
 		}

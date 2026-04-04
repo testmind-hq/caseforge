@@ -42,4 +42,7 @@ func TestLintReport_ToJSON(t *testing.T) {
 	assert.Equal(t, float64(0), out["error_count"])
 	issues := out["issues"].([]any)
 	assert.Len(t, issues, 1)
+	issue0 := issues[0].(map[string]any)
+	assert.Equal(t, "L001", issue0["rule_id"], "issues must use snake_case rule_id key")
+	assert.Equal(t, "warning", issue0["severity"])
 }
