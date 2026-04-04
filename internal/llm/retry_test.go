@@ -62,6 +62,23 @@ func TestRetry_ContextCancelledDuringWait(t *testing.T) {
 	assert.Equal(t, 1, calls)
 }
 
+func TestRetry_ContextCancelledDuringBlockingWait(t *testing.T) {
+	// Covers the delay>0 (500ms) branch: cancel after attempt 2 triggers the
+	// blocking select in the wait before attempt 3.
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	_, err := Retry(ctx, 3, func() (*CompletionResponse, error) {
+		calls++
+		if calls == 2 {
+			cancel() // cancel before the 500ms wait before attempt 3
+		}
+		return nil, errors.New("fail")
+	})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, context.Canceled), "expected context.Canceled, got %v", err)
+	assert.Equal(t, 2, calls)
+}
+
 func TestRetry_ZeroMaxAttempts_ReturnsNil(t *testing.T) {
 	called := false
 	resp, err := Retry(context.Background(), 0, func() (*CompletionResponse, error) {
