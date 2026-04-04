@@ -59,10 +59,10 @@ func runLint(cmd *cobra.Command, args []string) error {
 	// Build skip set: union of caseforge.yaml + .caseforgelint.yaml + --skip-rules flag
 	skip := make(map[string]bool)
 	for _, id := range cfg.Lint.SkipRules {
-		skip[id] = true
+		skip[strings.TrimSpace(id)] = true
 	}
 	for _, id := range fileCfg.SkipRules {
-		skip[id] = true
+		skip[strings.TrimSpace(id)] = true
 	}
 	for _, id := range lintSkipRules {
 		skip[strings.TrimSpace(id)] = true
