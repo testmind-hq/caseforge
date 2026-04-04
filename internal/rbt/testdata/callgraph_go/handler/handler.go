@@ -3,6 +3,7 @@ package handler
 
 import (
 	"net/http"
+	"testapp/middleware"
 	"testapp/repo"
 	"testapp/service"
 )
@@ -14,7 +15,9 @@ func Register(mux *http.ServeMux, r repo.UserRepo) {
 	})
 }
 
-// CreateUser calls service.Process with the concrete repo.
+// CreateUser calls service.Process with the concrete repo and middleware.Process
+// (so deep.go is two hops away from this route-registering file).
 func CreateUser(w http.ResponseWriter, r *http.Request, ur repo.UserRepo) {
 	service.Process(ur)
+	middleware.Process()
 }
