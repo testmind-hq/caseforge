@@ -50,6 +50,18 @@ func IsAuthRequired(op *spec.Operation) bool {
 	return len(op.Security) > 0
 }
 
+// IsSensitiveName returns true if the field name contains a sensitive keyword
+// (case-insensitive substring match).
+func IsSensitiveName(name string) bool {
+	lower := strings.ToLower(name)
+	for _, kw := range sensitiveKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
+}
+
 // FindVersionedPaths returns two slices: paths containing "/v1/" (or starting with "/v1/")
 // and paths containing "/v2/" (or similar next-version prefix).
 // Returns nil slices when no versioned pair exists.
