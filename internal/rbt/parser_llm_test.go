@@ -200,15 +200,18 @@ func TestLLMParser_ExtractRoutes_ProcessesAllFiles(t *testing.T) {
 	files := make([]ChangedFile, fileCount)
 	for i := range files {
 		path := filepath.Join(dir, fmt.Sprintf("handler%d.go", i))
+		// Each file has unique content so cache deduplication does not suppress calls.
 		require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf("func h%d() {}", i)), 0644))
 		files[i] = ChangedFile{Path: path}
 	}
 
-	stub := &llmStub{text: `[{"method":"GET","path":"/pets","confidence":0.8}]`}
+	stub := &countingStub{text: `[{"method":"GET","path":"/pets","confidence":0.8}]`}
 	p := NewLLMParser(stub, nil)
 	mappings, err := p.ExtractRoutes(context.Background(), dir, files)
 	require.NoError(t, err)
 	assert.Len(t, mappings, fileCount)
+	// Verify the LLM was called once per unique file (not short-circuited by cache).
+	assert.Equal(t, fileCount, stub.count, "LLM should be called once per unique file")
 }
 
 func TestLLMParser_ExtractRoutes_NilProvider_ReturnsNil(t *testing.T) {

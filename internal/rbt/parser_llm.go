@@ -78,6 +78,13 @@ func buildSpecCandidates(ops []*specpkg.Operation) string {
 	return string(b)
 }
 
+// fileContent pairs a file's content with a flag indicating whether it was
+// successfully read. The bool avoids conflating read failures with empty files.
+type fileContent struct {
+	content string
+	ok      bool
+}
+
 // ExtractRoutes processes files concurrently (R-1), returning route mappings
 // inferred by the LLM. Files whose content has been seen before are served
 // from the in-memory cache (R-3).
@@ -86,14 +93,15 @@ func (p *LLMParser) ExtractRoutes(ctx context.Context, srcDir string, files []Ch
 		return nil, nil
 	}
 
-	// Read all file contents upfront; empty string signals read failure.
-	contents := make([]string, len(files))
+	// Read all file contents upfront. Use a struct to distinguish read failures
+	// from legitimately empty files.
+	contents := make([]fileContent, len(files))
 	for i, f := range files {
 		data, err := os.ReadFile(f.Path)
 		if err != nil {
 			continue
 		}
-		contents[i] = string(data)
+		contents[i] = fileContent{content: string(data), ok: true}
 	}
 
 	// Pre-allocate per-file result slots — no mutex needed on the results slice.
@@ -107,20 +115,26 @@ func (p *LLMParser) ExtractRoutes(ctx context.Context, srcDir string, files []Ch
 	sem := make(chan struct{}, llmConcurrency)
 	var wg sync.WaitGroup
 	for i, f := range files {
-		if contents[i] == "" {
+		if !contents[i].ok {
 			continue
 		}
 		wg.Add(1)
 		i, f := i, f // capture loop vars
 		go func() {
 			defer wg.Done()
-			sem <- struct{}{}
+			// Respect context cancellation while waiting for a semaphore slot.
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				results[i] = perFileResult{err: ctx.Err()}
+				return
+			}
 			defer func() { <-sem }()
 
 			callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 
-			routes, err := p.inferRoutes(callCtx, f.Path, contents[i])
+			routes, err := p.inferRoutes(callCtx, f.Path, contents[i].content)
 			results[i] = perFileResult{routes: routes, err: err}
 		}()
 	}
