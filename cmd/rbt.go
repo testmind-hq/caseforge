@@ -41,7 +41,7 @@ func init() {
 	rbtCmd.Flags().String("base", "HEAD~1", "Base git ref for diff")
 	rbtCmd.Flags().String("head", "HEAD", "Head git ref for diff")
 	rbtCmd.Flags().Bool("generate", false, "Generate test cases for high-risk uncovered operations")
-	rbtCmd.Flags().Bool("no-ai", false, "Disable LLM for generated test cases; use algorithm-only mode")
+	rbtCmd.Flags().Bool("no-ai", false, "Disable LLM for both route inference and test case generation; use algorithm-only mode")
 	rbtCmd.Flags().String("gen-format", "hurl", "Format for generated test cases: hurl|postman|k6|markdown|csv")
 	rbtCmd.Flags().String("output", "./reports", "Output directory for rbt-report.json")
 	rbtCmd.Flags().String("format", "terminal", "Output format: terminal or json")
@@ -62,6 +62,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 	mapFile, _ := cmd.Flags().GetString("map")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	generate, _ := cmd.Flags().GetBool("generate")
+	noAI, _ := cmd.Flags().GetBool("no-ai")
 
 	if specPath == "" {
 		return fmt.Errorf("--spec is required")
@@ -74,6 +75,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("load spec: %w", err)
 	}
 
+	var provider llm.LLMProvider
 	var report rbt.RiskReport
 
 	if dryRun {
@@ -95,6 +97,20 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 			GeneratedAt: time.Now(),
 		}
 	} else {
+		// Load LLM provider; used by both the parser chain and --generate.
+		cfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("loading config: %w", err)
+		}
+		providerName := cfg.AI.Provider
+		if noAI {
+			providerName = "noop"
+		}
+		provider = llm.NewProviderWithConfig(cfg.AI.APIKey, providerName, cfg.AI.Model, cfg.AI.BaseURL)
+		if !provider.IsAvailable() {
+			provider = llm.NewProviderWithConfig("", "noop", "", "")
+		}
+
 		// Git diff
 		changedFiles, err := rbt.Diff(srcDir, base, head)
 		if err != nil {
@@ -109,11 +125,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 			rbt.NewMapFileParser(mapFile),
 			rbt.NewTreeSitterParser(),
 			rbt.NewRegexParser(),
-			// LLM provider is nil in V1 — LLMParser gracefully returns empty when no
-			// provider is configured. Wire a real provider here in V2 for LLM inference.
-			// parsedSpec.Operations is passed so the prompt uses a structured candidate
-			// list (R-2) once a real provider is wired.
-			rbt.NewLLMParser(nil, parsedSpec.Operations),
+			rbt.NewLLMParser(provider, parsedSpec.Operations),
 		}
 
 		// Map changed files to route mappings
@@ -163,7 +175,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 		if dryRun {
 			fmt.Fprintln(out, "--generate is ignored with --dry-run (no HIGH-risk operations in dry-run mode)")
 		} else {
-			if err := runGenerate(cmd, out, errOut, specPath, parsedSpec, report, casesDir); err != nil {
+			if err := runGenerate(cmd, out, errOut, specPath, parsedSpec, report, casesDir, provider); err != nil {
 				return err
 			}
 		}
@@ -182,7 +194,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 // high-risk operations identified by the assessor.
 // specPath is the spec file path used to compute the spec hash for index.json.
 // errOut is used for the success message so stdout stays clean when --format=json.
-func runGenerate(cmd *cobra.Command, w, errOut io.Writer, specPath string, parsedSpec *spec.ParsedSpec, report rbt.RiskReport, casesDir string) error {
+func runGenerate(cmd *cobra.Command, w, errOut io.Writer, specPath string, parsedSpec *spec.ParsedSpec, report rbt.RiskReport, casesDir string, provider llm.LLMProvider) error {
 	highRiskOps := rbt.HighRiskOperations(report, parsedSpec)
 	if len(highRiskOps) == 0 {
 		fmt.Fprintln(w, "No HIGH-risk operations to generate tests for.")
@@ -190,22 +202,6 @@ func runGenerate(cmd *cobra.Command, w, errOut io.Writer, specPath string, parse
 	}
 
 	genFormat, _ := cmd.Flags().GetString("gen-format")
-	noAI, _ := cmd.Flags().GetBool("no-ai")
-
-	// Load config for LLM provider settings.
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("loading config for --generate: %w", err)
-	}
-	if noAI {
-		cfg.AI.Provider = "noop"
-	}
-
-	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
-	if !provider.IsAvailable() {
-		// Fall back to noop so generation still works without an LLM key.
-		provider = llm.NewProviderWithConfig("", "noop", "", "")
-	}
 
 	// Build a filtered spec containing only the high-risk operations.
 	filteredSpec := &spec.ParsedSpec{
