@@ -329,6 +329,18 @@ contains AT-044 "doctor shows tree-sitter status" "tree-sitter" \
 echo ""
 
 # -------------------------------------------------------
+# AT-045 – AT-047: rbt index
+# -------------------------------------------------------
+echo "--- rbt index ---"
+contains AT-045 "rbt index command registered" "index" \
+  "'$BIN' rbt --help 2>&1 || true"
+contains AT-046 "rbt index --strategy llm writes map file" "mappings:" \
+  "mkdir -p '$WORKDIR/idx-out' && '$BIN' rbt index --spec '$WORKDIR/petstore.yaml' --strategy llm --out '$WORKDIR/idx-out/map.yaml' && cat '$WORKDIR/idx-out/map.yaml'"
+contains AT-047 "rbt index --out existing without --overwrite fails" "already exists" \
+  "echo 'existing: true' > '$WORKDIR/existing-map.yaml' && '$BIN' rbt index --spec '$WORKDIR/petstore.yaml' --out '$WORKDIR/existing-map.yaml' 2>&1 || true"
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))
