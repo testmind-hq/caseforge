@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/testmind-hq/caseforge/internal/diff"
-	"github.com/testmind-hq/caseforge/internal/output/schema"
+	"github.com/testmind-hq/caseforge/internal/llm"
+	"github.com/testmind-hq/caseforge/internal/methodology"
+	"github.com/testmind-hq/caseforge/internal/output/writer"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -27,10 +30,11 @@ var diffCmd = &cobra.Command{
 }
 
 var (
-	diffOld    string
-	diffNew    string
-	diffCases  string
-	diffFormat string
+	diffOld      string
+	diffNew      string
+	diffCases    string
+	diffFormat   string
+	diffGenCases string
 )
 
 func init() {
@@ -39,6 +43,7 @@ func init() {
 	diffCmd.Flags().StringVar(&diffNew, "new", "", "New spec file (required)")
 	diffCmd.Flags().StringVar(&diffCases, "cases", "", "Cases output dir (optional; reads index.json to infer affected cases)")
 	diffCmd.Flags().StringVar(&diffFormat, "format", "text", "Output format: text|json")
+	diffCmd.Flags().StringVar(&diffGenCases, "gen-cases", "", "Generate test cases for breaking operations into this directory")
 	_ = diffCmd.MarkFlagRequired("old")
 	_ = diffCmd.MarkFlagRequired("new")
 }
@@ -61,7 +66,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	var affected []diff.AffectedCase
 	if diffCases != "" {
 		indexPath := filepath.Join(diffCases, "index.json")
-		cases, readErr := loadCasesFromIndex(indexPath)
+		cases, readErr := writer.NewJSONSchemaWriter().Read(indexPath)
 		if readErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not read %s: %v\n", indexPath, readErr)
 		} else {
@@ -78,22 +83,67 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		printDiffText(cmd, result, affected)
 	}
 
+	// --gen-cases: generate test cases for breaking operations into the given dir
+	if diffGenCases != "" && result.HasBreaking() {
+		if err := generateCasesForBreakingChanges(result, newSpec, diffGenCases, cmd.OutOrStdout()); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: gen-cases failed: %v\n", err)
+		}
+	}
+
 	if result.HasBreaking() {
 		return errBreakingChanges
 	}
 	return nil
 }
 
-func loadCasesFromIndex(indexPath string) ([]schema.TestCase, error) {
-	data, err := os.ReadFile(indexPath)
+// generateCasesForBreakingChanges filters newSpec to operations that have
+// breaking or potentially-breaking changes, generates test cases for them
+// using the algorithm-only engine (no API key required), and writes index.json
+// to outDir.
+func generateCasesForBreakingChanges(result diff.DiffResult, newSpec *spec.ParsedSpec, outDir string, out io.Writer) error {
+	// Collect operations with breaking changes.
+	breakingOps := make(map[string]bool)
+	for _, c := range result.Changes {
+		if (c.Kind == diff.Breaking || c.Kind == diff.PotentiallyBreaking) && c.Method != "" {
+			breakingOps[c.Method+" "+c.Path] = true
+		}
+	}
+	if len(breakingOps) == 0 {
+		return nil
+	}
+
+	// Filter newSpec to only the affected operations.
+	var ops []*spec.Operation
+	for _, op := range newSpec.Operations {
+		if breakingOps[op.Method+" "+op.Path] {
+			ops = append(ops, op)
+		}
+	}
+	if len(ops) == 0 {
+		return nil
+	}
+
+	filteredSpec := &spec.ParsedSpec{Operations: ops}
+
+	// Use noop provider — no API key required, algorithm-only generation.
+	provider := &llm.NoopProvider{}
+	engine := methodology.NewEngine(provider,
+		methodology.NewEquivalenceTechnique(),
+		methodology.NewBoundaryTechnique(),
+	)
+	cases, err := engine.Generate(filteredSpec)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("generating cases: %w", err)
 	}
-	var cases []schema.TestCase
-	if err := json.Unmarshal(data, &cases); err != nil {
-		return nil, err
+
+	w := writer.NewJSONSchemaWriter()
+	if err := w.Write(cases, outDir, writer.WriteOptions{}); err != nil {
+		return fmt.Errorf("writing cases: %w", err)
 	}
-	return cases, nil
+
+	fmt.Fprintf(out, "\nGenerated %d test case(s) for %d breaking operation(s) → %s\n",
+		len(cases), len(ops), outDir)
+	return nil
 }
 
 func printDiffText(cmd *cobra.Command, result diff.DiffResult, affected []diff.AffectedCase) {
