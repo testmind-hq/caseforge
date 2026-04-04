@@ -15,7 +15,7 @@ type RouteMapping struct {
 	Line       int
 	Method     string  // "GET", "POST", ...
 	RoutePath  string  // "/users/{id}"
-	Via        string  // "mapfile"|"treesitter"|"regex"|"llm"
+	Via        string  // "mapfile"|"treesitter"|"regex"|"llm"|"callgraph"|"callgraph-llm"
 	Confidence float64 // 0.0–1.0; <0.5 → "uncertain"
 }
 
@@ -73,8 +73,10 @@ type CallEdge struct {
 
 // CallGraph is an inverted call graph: Edges[key] lists every caller of that key.
 // Key format: "<abs-path>::<FuncName>" — use CallNodeKey to construct.
+// RouteNodes holds the route-registering nodes used as BFS termination sentinels.
 type CallGraph struct {
-	Edges map[string][]CallNode
+	Edges      map[string][]CallNode
+	RouteNodes []CallNode // route-registering nodes; BFS stops at their files
 }
 
 // CallNodeKey constructs the lookup key for a CallNode.

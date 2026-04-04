@@ -125,9 +125,12 @@ func TestRunCallGraphPhaseWithBuilder_MockBuilder_TracesChain(t *testing.T) {
 	}
 
 	idx := &Indexer{Depth: 0}
-	mappings := idx.runCallGraphPhaseWithBuilder(allFiles, unclaimed, routeFiles, builder)
+	mappings, claimed := idx.runCallGraphPhaseWithBuilder(allFiles, unclaimed, routeFiles, builder)
 	require.Len(t, mappings, 1)
 	assert.Equal(t, "POST", mappings[0].Method)
 	assert.Equal(t, "/users", mappings[0].RoutePath)
 	assert.Equal(t, "callgraph", mappings[0].Via)
+	// utils.go was resolved through the call chain — it should appear in claimed
+	require.Len(t, claimed, 1)
+	assert.Equal(t, utilsPath, claimed[0].Path)
 }
