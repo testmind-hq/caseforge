@@ -1087,6 +1087,13 @@ run "AT-119" "score generates improvement suggestions for missing security/bound
 run "AT-120" "gen flag behavioral tests (--no-ai, --technique, --priority, --operations, --resume)" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_NoAI|TestGen_Technique|TestGen_Priority|TestGen_Operations|TestGen_Resume|TestGen_CombinedFlags|TestGen_Format' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+# AT-121–AT-122: webhook
+run "AT-121" "webhook package unit tests (sender retry, HMAC signing, event filtering)" \
+  "(cd $REPO_ROOT && go test ./internal/webhook/... -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-122" "gen fires on_generate and on_run_complete webhook events" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenWebhook' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
