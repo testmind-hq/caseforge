@@ -77,6 +77,20 @@ func NewState(specHash string) *State {
 	}
 }
 
+// Clone returns a deep copy of the State, safe to pass to Save while the
+// original continues to be mutated under a mutex in a concurrent context.
+func (s *State) Clone() *State {
+	clone := &State{
+		SpecHash:  s.SpecHash,
+		StartedAt: s.StartedAt,
+		Completed: make(map[string]bool, len(s.Completed)),
+	}
+	for k, v := range s.Completed {
+		clone.Completed[k] = v
+	}
+	return clone
+}
+
 // OperationKey returns the canonical key for an operation.
 func OperationKey(method, path string) string {
 	return method + " " + path
