@@ -20,6 +20,7 @@ import (
 	"github.com/testmind-hq/caseforge/internal/output/render"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/output/writer"
+	"github.com/testmind-hq/caseforge/internal/webhook"
 	"github.com/testmind-hq/caseforge/internal/spec"
 	"github.com/testmind-hq/caseforge/internal/tui"
 )
@@ -248,6 +249,13 @@ func runGen(cmd *cobra.Command, args []string) error {
 			_ = ckptMgr.Save(snap) // best-effort; ignore write errors
 		}
 	}))
+
+	// Wire webhook sink if any endpoints are configured.
+	if len(cfg.Webhooks) > 0 {
+		whSink := webhook.New(cfg.Webhooks)
+		whSink.SetOutputDir(genOutput)
+		bus.Subscribe(whSink)
+	}
 
 	// Wire TUI if stderr is a terminal
 	var tuiDone <-chan struct{}

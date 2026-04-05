@@ -168,6 +168,8 @@
 | AT-118 | `score --format json` outputs valid JSON report | `go test ./cmd/... -run TestScoreCommand_JSONOutput` | Valid JSON with `overall`, `dimensions`, `total_cases` fields | ✅ PASS |
 | AT-119 | `score` generates improvement suggestions for missing security/boundary cases | `go test ./cmd/... -run TestScoreCommand_OutputContainsSuggestions` | Output contains `Suggestions` and `owasp` | ✅ PASS |
 | AT-120 | gen flag behavioral tests (--no-ai, --technique, --priority, --operations, --resume) | `go test ./cmd/... -run 'TestGen_NoAI\|TestGen_Technique\|TestGen_Priority\|TestGen_Operations\|TestGen_Resume\|TestGen_CombinedFlags\|TestGen_Format'` | All 19 gen e2e behavioral tests pass | ✅ PASS |
+| AT-121 | webhook package unit tests (sender retry, HMAC signing, event filtering) | `go test ./internal/webhook/... -v` | All 14 webhook unit tests pass | ✅ PASS |
+| AT-122 | gen fires on_generate and on_run_complete webhook events | `go test ./cmd/... -run 'TestGenWebhook'` | All 4 webhook integration tests pass | ✅ PASS |
 
 ---
 

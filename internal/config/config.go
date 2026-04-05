@@ -8,9 +8,19 @@ import (
 )
 
 type Config struct {
-	AI     AIConfig     `mapstructure:"ai"`
-	Output OutputConfig `mapstructure:"output"`
-	Lint   LintConfig   `mapstructure:"lint"`
+	AI       AIConfig        `mapstructure:"ai"`
+	Output   OutputConfig    `mapstructure:"output"`
+	Lint     LintConfig      `mapstructure:"lint"`
+	Webhooks []WebhookConfig `mapstructure:"webhooks"`
+}
+
+// WebhookConfig defines a single webhook endpoint to receive CaseForge events.
+type WebhookConfig struct {
+	URL         string   `mapstructure:"url"`
+	Events      []string `mapstructure:"events"`          // "on_generate", "on_run_complete"
+	Secret      string   `mapstructure:"secret"`          // optional HMAC-SHA256 signing key
+	TimeoutSecs int      `mapstructure:"timeout_seconds"` // default 10
+	MaxRetries  int      `mapstructure:"max_retries"`     // default 3
 }
 
 type AIConfig struct {
