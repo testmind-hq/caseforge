@@ -116,7 +116,7 @@ jobs:
         run: |
           caseforge gen \
             --spec ./%s \
-            --technique auto,owasp \
+            --technique equivalence_partitioning,boundary_value,owasp_api_top10 \
             --format hurl \
             --output ./cases/
         env:
@@ -126,7 +126,7 @@ jobs:
         run: |
           caseforge run \
             --cases ./cases/ \
-            --var base_url=${{ vars.API_BASE_URL }}
+            --target ${{ vars.API_BASE_URL }}
 
       - name: Upload Cases
         uses: actions/upload-artifact@v4
@@ -159,7 +159,7 @@ lint-spec:
 generate-cases:
   stage: generate
   script:
-    - caseforge gen --spec $SPEC_PATH --technique auto,owasp --format hurl --output $CASES_DIR
+    - caseforge gen --spec $SPEC_PATH --technique equivalence_partitioning,boundary_value,owasp_api_top10 --format hurl --output $CASES_DIR
   artifacts:
     paths:
       - cases/
@@ -168,7 +168,7 @@ generate-cases:
 run-tests:
   stage: test
   script:
-    - caseforge run --cases $CASES_DIR --var base_url=$API_BASE_URL
+    - caseforge run --cases $CASES_DIR --target $API_BASE_URL
   dependencies:
     - generate-cases
 `, specPath)
@@ -200,13 +200,13 @@ pipeline {
 
         stage('Generate Cases') {
             steps {
-                sh 'caseforge gen --spec $SPEC_PATH --technique auto,owasp --format hurl --output $CASES_DIR'
+                sh 'caseforge gen --spec $SPEC_PATH --technique equivalence_partitioning,boundary_value,owasp_api_top10 --format hurl --output $CASES_DIR'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'caseforge run --cases $CASES_DIR --var base_url=$API_BASE_URL'
+                sh 'caseforge run --cases $CASES_DIR --target $API_BASE_URL'
             }
         }
     }
@@ -238,7 +238,7 @@ caseforge lint --spec "$SPEC_PATH" --fail-on error
 echo "==> Generating test cases..."
 caseforge gen \
   --spec "$SPEC_PATH" \
-  --technique auto,owasp \
+  --technique equivalence_partitioning,boundary_value,owasp_api_top10 \
   --format hurl \
   --output "$CASES_DIR"
 
