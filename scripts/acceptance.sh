@@ -1058,6 +1058,18 @@ run "AT-111" "DEA seeds array constraints (minItems/maxItems), required query pa
 run "AT-112" "DEA infers rules for array, required query param, and format violation hypotheses" \
   "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestInferRule_Array|TestInferRule_Required|TestInferRule_Format' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
 
+# AT-113: TUI enhanced progress model
+run "AT-113" "TUI shows completed operations list (scrolls last 12 rows)" \
+  "(cd $REPO_ROOT && go test ./internal/tui/... -run 'TestProgressModel_ViewShows|TestProgressModel_ViewScrolls|TestProgressModel_WindowSize|TestProgressModel_OperationDone' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-114: Checkpoint Manager persistence
+run "AT-114" "Checkpoint Manager saves / loads / deletes .state.json" \
+  "(cd $REPO_ROOT && go test ./internal/checkpoint/... -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
+# AT-115: gen --resume flag and dynamic flag completion registered
+run "AT-115" "gen --resume flag and --operations/--technique/--format tab completion registered" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenResume|TestGenCompletion' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

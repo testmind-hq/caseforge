@@ -19,6 +19,14 @@ type Event struct {
 	Payload any
 }
 
+// OperationDonePayload is the structured payload for EventOperationDone.
+type OperationDonePayload struct {
+	OperationID string
+	Method      string
+	Path        string
+	CaseCount   int
+}
+
 // Sink receives events. Implement this to observe CaseForge progress.
 type Sink interface {
 	Emit(e Event)
