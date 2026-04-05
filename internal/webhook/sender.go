@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -48,8 +49,7 @@ func newSender(url, secret string, timeoutSecs, maxRetries int) *sender {
 }
 
 // send marshals payload to JSON and posts it, retrying on transient errors.
-// It never returns an error — failures are logged as warnings so they never
-// block the gen pipeline.
+// It returns an error on failure; callers are responsible for treating it as non-fatal.
 func (s *sender) send(ctx context.Context, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -81,6 +81,8 @@ func (s *sender) send(ctx context.Context, payload any) error {
 			lastErr = fmt.Errorf("attempt %d: %w", attempt+1, err)
 			continue // network error → retry
 		}
+		// Drain body before closing so the connection can be reused.
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
 		resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {

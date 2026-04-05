@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -83,12 +84,15 @@ func TestGenWebhook_OnRunCompleteFiredOnce(t *testing.T) {
 func TestGenWebhook_PayloadShapeOnGenerate(t *testing.T) {
 	t.Cleanup(resetGenGlobals(t))
 
+	var mu sync.Mutex
 	var payloads []webhook.GeneratePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var p webhook.GeneratePayload
 		b, _ := io.ReadAll(r.Body)
 		if json.Unmarshal(b, &p) == nil && p.Event == webhook.EventOnGenerate {
+			mu.Lock()
 			payloads = append(payloads, p)
+			mu.Unlock()
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -98,6 +102,8 @@ func TestGenWebhook_PayloadShapeOnGenerate(t *testing.T) {
 	outDir := runMiniGen(t)
 	_ = outDir
 
+	mu.Lock()
+	defer mu.Unlock()
 	require.NotEmpty(t, payloads)
 	for _, p := range payloads {
 		assert.Equal(t, webhook.EventOnGenerate, p.Event)
@@ -115,4 +121,31 @@ func TestGenWebhook_NoWebhookWhenConfigEmpty(t *testing.T) {
 	outDir := runMiniGen(t)
 	cases := readCases(t, outDir)
 	require.NotEmpty(t, cases)
+}
+
+// TestGenWebhook_ConcurrencySafeOnGenerateCount verifies that totalSent is
+// accumulated correctly under --concurrency 3 (race detector must pass).
+func TestGenWebhook_ConcurrencySafeOnGenerateCount(t *testing.T) {
+	t.Cleanup(resetGenGlobals(t))
+
+	var totalReceived int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var p webhook.GeneratePayload
+		b, _ := io.ReadAll(r.Body)
+		if json.Unmarshal(b, &p) == nil && p.Event == webhook.EventOnGenerate {
+			atomic.AddInt32(&totalReceived, int32(p.CaseCount))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	setWebhookConfig(t, srv.URL, []string{"on_generate", "on_run_complete"})
+	genConcurrency = 3
+	outDir := runMiniGen(t)
+	cases := readCases(t, outDir)
+	require.NotEmpty(t, cases)
+
+	// Verify on_generate events fired (race detector enforces no data race on totalSent).
+	assert.Greater(t, atomic.LoadInt32(&totalReceived), int32(0),
+		"on_generate must fire at least once under concurrent execution")
 }

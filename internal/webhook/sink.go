@@ -6,6 +6,8 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/testmind-hq/caseforge/internal/config"
@@ -13,7 +15,14 @@ import (
 )
 
 // now is a variable so tests can override it for deterministic timestamps.
+// Tests that mutate this must NOT call t.Parallel().
 var now = time.Now
+
+// validEvents is the set of recognised event name strings.
+var validEvents = map[EventName]bool{
+	EventOnGenerate:    true,
+	EventOnRunComplete: true,
+}
 
 // entry binds a sender to the set of event names it should receive.
 type entry struct {
@@ -22,16 +31,17 @@ type entry struct {
 }
 
 // Sink subscribes to the event bus and forwards matching events to webhook
-// endpoints. Delivery failures are printed as warnings — they never propagate
-// back to the caller or block the gen pipeline.
+// endpoints. Delivery failures are printed as warnings to stderr — they never
+// propagate back to the caller or block the gen pipeline.
+// Sink is safe for concurrent use: totalSent is updated atomically.
 type Sink struct {
 	entries   []entry
-	outputDir string // captured from RunCompletePayload context
-	totalSent int    // running count of cases seen across all operations
+	outputDir string       // captured from RunCompletePayload context
+	totalSent atomic.Int64 // running count of cases across all operations (goroutine-safe)
 }
 
 // New builds a Sink from the webhook configurations. Entries with an empty
-// URL are silently skipped.
+// URL are silently skipped. Unrecognised event names produce a warning.
 func New(cfgs []config.WebhookConfig) *Sink {
 	s := &Sink{}
 	for _, c := range cfgs {
@@ -40,7 +50,12 @@ func New(cfgs []config.WebhookConfig) *Sink {
 		}
 		evts := make(map[EventName]bool, len(c.Events))
 		for _, e := range c.Events {
-			evts[EventName(e)] = true
+			name := EventName(e)
+			if !validEvents[name] {
+				fmt.Fprintf(os.Stderr, "warning: webhook config: unrecognised event name %q (valid: on_generate, on_run_complete)\n", e)
+				continue
+			}
+			evts[name] = true
 		}
 		// Default: subscribe to both events if none specified.
 		if len(evts) == 0 {
@@ -59,6 +74,7 @@ func New(cfgs []config.WebhookConfig) *Sink {
 func (s *Sink) SetOutputDir(dir string) { s.outputDir = dir }
 
 // Emit handles incoming bus events and dispatches webhook POSTs.
+// It is safe to call from multiple goroutines (--concurrency > 1).
 func (s *Sink) Emit(e event.Event) {
 	switch e.Type {
 	case event.EventOperationDone:
@@ -66,7 +82,7 @@ func (s *Sink) Emit(e event.Event) {
 		if !ok {
 			return
 		}
-		s.totalSent += p.CaseCount
+		s.totalSent.Add(int64(p.CaseCount))
 		s.dispatch(EventOnGenerate, func() any {
 			gp := GeneratePayload{Event: EventOnGenerate}
 			gp.Timestamp = now()
@@ -82,7 +98,7 @@ func (s *Sink) Emit(e event.Event) {
 			return RunCompletePayload{
 				Event:      EventOnRunComplete,
 				Timestamp:  now(),
-				TotalCases: s.totalSent,
+				TotalCases: int(s.totalSent.Load()),
 				OutputDir:  s.outputDir,
 			}
 		})
@@ -108,7 +124,7 @@ func (s *Sink) dispatch(evtName EventName, payloadFn func() any) {
 			continue
 		}
 		if err := e.s.send(ctx, payload); err != nil {
-			fmt.Printf("warning: webhook %s delivery failed: %v\n", evtName, err)
+			fmt.Fprintf(os.Stderr, "warning: webhook %s delivery failed: %v\n", evtName, err)
 		}
 	}
 }
