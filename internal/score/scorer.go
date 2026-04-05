@@ -6,11 +6,12 @@ package score
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 )
 
-// opKey is the canonical key for a test operation (first step method + path).
+// opKey is the canonical key for a spec operation (method + path from CaseSource.SpecPath, or from the first step as fallback).
 type opKey struct{ method, path string }
 
 // securityTechniques are the technique names that count towards security coverage.
@@ -70,11 +71,14 @@ func Compute(cases []schema.TestCase) Report {
 		}
 	}
 
-	// Group cases by the primary operation (method + path of the first step).
+	// Group cases by the canonical spec operation key derived from CaseSource.SpecPath.
+	// Using SpecPath (e.g. "DELETE /api/tokens/{id}") rather than the step's actual
+	// path prevents OWASP-injected attack payloads (SQLi, XSS, path traversal,
+	// BOLA placeholders) from inflating the distinct-operation count.
 	opCases := make(map[opKey][]schema.TestCase)
 	for _, c := range cases {
-		if len(c.Steps) > 0 {
-			k := opKey{c.Steps[0].Method, c.Steps[0].Path}
+		k := canonicalOpKey(c)
+		if k.method != "" {
 			opCases[k] = append(opCases[k], c)
 		}
 	}
@@ -246,4 +250,25 @@ func buildSuggestions(secScore int, opsMissingBoundary []opKey) []Suggestion {
 		p++
 	}
 	return out
+}
+
+// canonicalOpKey returns the operation key for a test case using CaseSource.SpecPath
+// when available, falling back to the first step's method+path.
+//
+// CaseSource.SpecPath has the format "METHOD /path [field.subfield...]" — we take
+// only the first two whitespace-separated tokens (method + path). This means OWASP
+// cases that inject attack payloads into step paths (SQLi, XSS, path traversal,
+// {{other_resource_id}}) are still grouped under their original spec operation,
+// preventing artificial inflation of the distinct-operation count.
+func canonicalOpKey(c schema.TestCase) opKey {
+	if c.Source.SpecPath != "" {
+		parts := strings.Fields(c.Source.SpecPath)
+		if len(parts) >= 2 {
+			return opKey{method: parts[0], path: parts[1]}
+		}
+	}
+	if len(c.Steps) > 0 {
+		return opKey{method: c.Steps[0].Method, path: c.Steps[0].Path}
+	}
+	return opKey{}
 }

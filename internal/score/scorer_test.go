@@ -20,8 +20,31 @@ func makeCase(method, path, technique string, assertions int) schema.TestCase {
 		})
 	}
 	return schema.TestCase{
-		Source: schema.CaseSource{Technique: technique},
-		Steps:  []schema.Step{step},
+		Source: schema.CaseSource{
+			Technique: technique,
+			SpecPath:  method + " " + path,
+		},
+		Steps: []schema.Step{step},
+	}
+}
+
+// makeCaseWithSpecPath creates a case where the step path differs from the spec path
+// (as OWASP techniques do when injecting attack payloads).
+func makeCaseWithSpecPath(specMethod, specPath, stepMethod, stepPath, technique string, assertions int) schema.TestCase {
+	step := schema.Step{Method: stepMethod, Path: stepPath}
+	for i := 0; i < assertions; i++ {
+		step.Assertions = append(step.Assertions, schema.Assertion{
+			Target:   "status_code",
+			Operator: schema.OperatorEq,
+			Expected: 200,
+		})
+	}
+	return schema.TestCase{
+		Source: schema.CaseSource{
+			Technique: technique,
+			SpecPath:  specMethod + " " + specPath,
+		},
+		Steps: []schema.Step{step},
 	}
 }
 
@@ -172,4 +195,38 @@ func TestCompute_DimensionOrder(t *testing.T) {
 	assert.Equal(t, "Boundary Coverage", r.Dimensions[1].Name)
 	assert.Equal(t, "Security Coverage", r.Dimensions[2].Name)
 	assert.Equal(t, "Executability", r.Dimensions[3].Name)
+}
+
+// TestCompute_OWASPInjectedPathsDoNotInflateOpCount is a regression test for the
+// bug where OWASP techniques inject attack payloads into step paths (SQLi, XSS,
+// path traversal, {{other_resource_id}}), causing the scorer to treat each injected
+// URL as a new distinct "operation" instead of grouping under the original spec op.
+func TestCompute_OWASPInjectedPathsDoNotInflateOpCount(t *testing.T) {
+	cases := []schema.TestCase{
+		// One real spec operation: DELETE /api/tokens/{id}
+		makeCase("DELETE", "/api/tokens/{id}", "equivalence_partitioning", 1),
+		// OWASP cases for the same operation — step paths are injected, spec_path is canonical.
+		makeCaseWithSpecPath("DELETE", "/api/tokens/{id}", "DELETE", "/api/tokens/%27+OR+1%3D1--", "owasp_api_top10", 1),
+		makeCaseWithSpecPath("DELETE", "/api/tokens/{id}", "DELETE", "/api/tokens/%22%3E%3Cscript%3E", "owasp_api_top10", 1),
+		makeCaseWithSpecPath("DELETE", "/api/tokens/{id}", "DELETE", "/api/tokens/{{other_resource_id}}", "owasp_api_top10", 1),
+		// OPTIONS CORS preflight for same path
+		makeCaseWithSpecPath("OPTIONS", "/api/tokens/{id}", "OPTIONS", "/api/tokens/{id}", "owasp_api_top10", 1),
+	}
+	r := Compute(cases)
+	// Without the fix: TotalOps would be 5 (one per unique step path).
+	// With the fix: TotalOps should be 2 (DELETE + OPTIONS are distinct spec_path methods).
+	assert.Equal(t, 2, r.TotalOps, "OWASP injected paths must not inflate op count beyond the distinct spec operations (DELETE + OPTIONS)")
+}
+
+// TestCompute_CanonicalOpKey_FallbackToStepWhenSpecPathEmpty verifies that cases
+// with an empty SpecPath still group correctly by step method+path.
+func TestCompute_CanonicalOpKey_FallbackToStepWhenSpecPathEmpty(t *testing.T) {
+	c := schema.TestCase{
+		Source: schema.CaseSource{Technique: "equivalence_partitioning"}, // SpecPath intentionally empty
+		Steps: []schema.Step{
+			{Method: "GET", Path: "/fallback"},
+		},
+	}
+	r := Compute([]schema.TestCase{c})
+	assert.Equal(t, 1, r.TotalOps)
 }

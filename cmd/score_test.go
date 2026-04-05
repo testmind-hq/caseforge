@@ -27,7 +27,7 @@ func writeScoreTestIndex(t *testing.T, dir string) {
 				"tags": []string{},
 				"source": map[string]any{
 					"technique": "equivalence_partitioning",
-					"spec_path": "/pets GET",
+					"spec_path": "GET /pets",
 					"rationale": "eq test",
 				},
 				"steps": []map[string]any{
@@ -46,7 +46,7 @@ func writeScoreTestIndex(t *testing.T, dir string) {
 				"tags": []string{},
 				"source": map[string]any{
 					"technique": "boundary_value",
-					"spec_path": "/pets GET",
+					"spec_path": "GET /pets",
 					"rationale": "bv test",
 				},
 				"steps": []map[string]any{
@@ -65,7 +65,7 @@ func writeScoreTestIndex(t *testing.T, dir string) {
 				"tags": []string{},
 				"source": map[string]any{
 					"technique": "owasp_api_top10",
-					"spec_path": "/pets POST",
+					"spec_path": "POST /pets",
 					"rationale": "security test",
 				},
 				"steps": []map[string]any{
@@ -172,7 +172,7 @@ func TestScoreCommand_OutputContainsSuggestions(t *testing.T) {
 				"tags": []string{},
 				"source": map[string]any{
 					"technique": "equivalence_partitioning",
-					"spec_path": "/orders POST",
+					"spec_path": "POST /orders",
 					"rationale": "eq",
 				},
 				"steps": []map[string]any{
