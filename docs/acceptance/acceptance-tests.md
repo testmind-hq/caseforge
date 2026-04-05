@@ -163,6 +163,10 @@
 | AT-113 | TUI shows completed operations list (scrolls last 12 rows) | `go test ./internal/tui/... -run TestProgressModel_ViewShows\|TestProgressModel_ViewScrolls\|TestProgressModel_WindowSize\|TestProgressModel_OperationDone` | All TUI enhanced tests pass | ✅ PASS |
 | AT-114 | Checkpoint Manager saves / loads / deletes state.json | `go test ./internal/checkpoint/... -v` | All 8 checkpoint tests pass | ✅ PASS |
 | AT-115 | gen --resume flag and --operations/--technique/--format tab completion registered | `go test ./cmd/... -run TestGenResume\|TestGenCompletion` | All gen UX tests pass | ✅ PASS |
+| AT-116 | `score` command registered | `caseforge --help` | `score` listed | ✅ PASS |
+| AT-117 | `score` scores test cases across four dimensions | `go test ./cmd/... -run TestScoreCommand_TerminalOutput` | Output contains `Overall:`, `Coverage Breadth`, `Boundary Coverage`, `Security Coverage`, `Executability` | ✅ PASS |
+| AT-118 | `score --format json` outputs valid JSON report | `go test ./cmd/... -run TestScoreCommand_JSONOutput` | Valid JSON with `overall`, `dimensions`, `total_cases` fields | ✅ PASS |
+| AT-119 | `score` generates improvement suggestions for missing security/boundary cases | `go test ./cmd/... -run TestScoreCommand_OutputContainsSuggestions` | Output contains `Suggestions` and `owasp` | ✅ PASS |
 
 ---
 
@@ -377,7 +381,8 @@
 | run | 5 | 5 | 0 |
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
-| **Total** | **90** | **90** | **0** |
+| score | 4 | 4 | 0 |
+| **Total** | **94** | **94** | **0** |
 
 ---
 

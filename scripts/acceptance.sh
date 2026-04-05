@@ -1070,6 +1070,19 @@ run "AT-114" "Checkpoint Manager saves / loads / deletes .state.json" \
 run "AT-115" "gen --resume flag and --operations/--technique/--format tab completion registered" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenResume|TestGenCompletion' -count=1 2>&1 | grep -E '(PASS|FAIL|ok)')"
 
+# AT-116–AT-119: score command
+contains "AT-116" "score command registered" "score" \
+  "$BIN --help"
+
+run "AT-117" "score scores test cases across four dimensions" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestScoreCommand_TerminalOutput' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-118" "score --format json outputs valid JSON report" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestScoreCommand_JSONOutput' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-119" "score generates improvement suggestions for missing security/boundary cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestScoreCommand_OutputContainsSuggestions' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
