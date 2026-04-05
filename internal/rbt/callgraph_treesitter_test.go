@@ -2,7 +2,6 @@
 package rbt
 
 import (
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -11,21 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func requireTreeSitter(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("tree-sitter"); err != nil {
-		t.Skip("tree-sitter not installed")
-	}
-}
-
 func callgraphFixtureDir() string {
 	_, file, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(file), "testdata", "callgraph")
 }
 
 func TestTreeSitterCallGraphBuilder_ExtractFuncs_Go(t *testing.T) {
-	requireTreeSitter(t)
-
 	builder := NewTreeSitterCallGraphBuilder()
 	handlerPath := filepath.Join(callgraphFixtureDir(), "handler.go")
 

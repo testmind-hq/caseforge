@@ -94,9 +94,6 @@ func (idx *Indexer) RunHybrid(llmParser *LLMParser) error {
 func (idx *Indexer) runTreeSitterPhase(files []ChangedFile) ([]RouteMapping, map[string][]RouteMapping) {
 	routeFileMappings := make(map[string][]RouteMapping)
 	ts := NewTreeSitterParser()
-	if !ts.IsAvailable() {
-		return nil, routeFileMappings
-	}
 	mappings, err := ts.ExtractRoutes(context.Background(), idx.SrcDir, files)
 	if err != nil {
 		return nil, routeFileMappings
