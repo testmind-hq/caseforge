@@ -9,12 +9,9 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -308,11 +305,22 @@ func TestGen_Resume_SkipsAlreadyCompletedOperations(t *testing.T) {
 	resumedCases := readCases(t, outDir)
 	assert.NotEmpty(t, resumedCases)
 
-	// The resumed run must not re-generate createUser cases from scratch.
-	// Because createUser was skipped, its cases come only from the prior run's
-	// index.json. Total case count should stay roughly the same (not double).
-	assert.LessOrEqual(t, len(resumedCases), len(fullCases)*2,
-		"resume must not double-generate cases for already-completed operations")
+	// Count createUser (POST /users) cases from each run by canonical SpecPath.
+	// Because createUser was skipped, its cases in the resumed run are preserved
+	// verbatim from index.json — the count must equal the baseline, not grow.
+	countBySpecPath := func(cases []schema.TestCase, prefix string) int {
+		n := 0
+		for _, c := range cases {
+			if strings.HasPrefix(c.Source.SpecPath, prefix) {
+				n++
+			}
+		}
+		return n
+	}
+	baselineCreateUser := countBySpecPath(fullCases, "POST /users")
+	resumedCreateUser := countBySpecPath(resumedCases, "POST /users")
+	assert.Equal(t, baselineCreateUser, resumedCreateUser,
+		"createUser cases must be identical in count: skip must preserve prior cases, not re-generate them")
 }
 
 // TestGen_Resume_FreshRunWhenSpecHashChanges verifies that if the spec hash
@@ -338,15 +346,18 @@ func TestGen_Resume_FreshRunWhenSpecHashChanges(t *testing.T) {
 	require.NoError(t, runGen(genCmd, nil))
 
 	// All 3 operations must have been processed (fresh run ignores stale checkpoint).
+	// Use SpecPath for canonical operation identity — OWASP cases inject attack
+	// payloads into step paths, making Steps[0].Path unreliable.
 	cases := readCases(t, outDir)
 	ops := map[string]bool{}
 	for _, c := range cases {
-		if len(c.Steps) > 0 {
-			ops[c.Steps[0].Method+" "+c.Steps[0].Path] = true
+		parts := strings.Fields(c.Source.SpecPath)
+		if len(parts) >= 2 {
+			ops[parts[0]+" "+parts[1]] = true
 		}
 	}
-	assert.True(t, ops["POST /users"] || ops["GET /users/{id}"] || ops["DELETE /users/{id}"],
-		"fresh run must generate cases for all operations")
+	assert.True(t, ops["POST /users"] && ops["GET /users/{id}"] && ops["DELETE /users/{id}"],
+		"fresh run must generate cases for all 3 operations, not just one")
 
 	// Checkpoint must be cleaned up on successful completion.
 	assert.NoFileExists(t, filepath.Join(outDir, ".state.json"))
@@ -402,32 +413,6 @@ func TestGen_CombinedFlags_OperationsAndTechnique(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────
-// helpers used in resume tests
-// ─────────────────────────────────────────────────────────
-
-// writeMinimalIndex writes a minimal index.json to dir so --resume can load
-// prior cases for skipped operations.
-func writeMinimalIndex(t *testing.T, dir string, cases []schema.TestCase) {
-	t.Helper()
-	type indexJSON struct {
-		Schema      string            `json:"$schema"`
-		Version     string            `json:"version"`
-		GeneratedAt time.Time         `json:"generated_at"`
-		Meta        map[string]any    `json:"meta"`
-		TestCases   []schema.TestCase `json:"test_cases"`
-	}
-	idx := indexJSON{
-		Schema:      "https://caseforge.dev/schema/v1/index.json",
-		Version:     "1",
-		GeneratedAt: time.Now(),
-		Meta:        map[string]any{},
-		TestCases:   cases,
-	}
-	data, _ := json.MarshalIndent(idx, "", "  ")
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.json"), data, 0644))
-}
-
 // validateHurlFilesExist asserts that at least one .hurl file was rendered.
 func validateHurlFilesExist(t *testing.T, outDir string) {
 	t.Helper()
@@ -468,6 +453,3 @@ func TestGen_Format_HurlRendersFile(t *testing.T) {
 	validateHurlFilesExist(t, outDir)
 }
 
-// Ensure writeMinimalIndex is used (suppress unused warning if resume tests
-// call ckptMgr.Save directly instead).
-var _ = fmt.Sprintf
