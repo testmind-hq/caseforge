@@ -4,11 +4,14 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"github.com/testmind-hq/caseforge/internal/checkpoint"
 	"github.com/testmind-hq/caseforge/internal/config"
 	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
@@ -35,7 +38,24 @@ var (
 	genPriority    string
 	genOperations  string
 	genConcurrency int
+	genResume      bool
 )
+
+// allTechniqueNames is the canonical list used for --technique completion.
+var allTechniqueNames = []string{
+	"equivalence_partitioning",
+	"boundary_value",
+	"decision_table",
+	"state_transition",
+	"idempotent",
+	"pairwise",
+	"classification_tree",
+	"orthogonal_array",
+	"owasp_api_top10",
+	"examples",
+	"chain",
+	"owasp_api_top10_spec",
+}
 
 func init() {
 	rootCmd.AddCommand(genCmd)
@@ -47,7 +67,42 @@ func init() {
 	genCmd.Flags().StringVar(&genPriority, "priority", "", "Filter output by minimum priority: P0|P1|P2|P3 (P0 = highest)")
 	genCmd.Flags().StringVar(&genOperations, "operations", "", "Comma-separated operationIds to process (default: all)")
 	genCmd.Flags().IntVar(&genConcurrency, "concurrency", 1, "Number of operations processed concurrently (default 1)")
+	genCmd.Flags().BoolVar(&genResume, "resume", false, "Resume an interrupted run; skips completed operations. Cases for skipped ops are taken from the last complete run's output.")
 	_ = genCmd.MarkFlagRequired("spec")
+
+	// Dynamic completion: --operations reads the spec and suggests operationIds.
+	_ = genCmd.RegisterFlagCompletionFunc("operations", func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		specFile, _ := cmd.Flags().GetString("spec")
+		if specFile == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		ps, err := spec.NewLoader().Load(specFile)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var ids []string
+		for _, op := range ps.Operations {
+			if op.OperationID != "" {
+				ids = append(ids, op.OperationID)
+			}
+		}
+		return ids, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Dynamic completion: --technique returns all known technique names.
+	_ = genCmd.RegisterFlagCompletionFunc("technique", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return allTechniqueNames, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Dynamic completion: --format returns all valid formats.
+	_ = genCmd.RegisterFlagCompletionFunc("format", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"hurl", "markdown", "csv", "postman", "k6"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Dynamic completion: --priority returns valid priority levels.
+	_ = genCmd.RegisterFlagCompletionFunc("priority", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"P0", "P1", "P2", "P3"}, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 // priorityRank maps P0..P3 to a numeric rank where lower = higher priority.
@@ -116,8 +171,78 @@ func runGen(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Checkpoint / resume logic.
+	// HashFile fails for URL specs — if the hash is empty, disable checkpointing
+	// for this run to avoid false hash matches on resume.
+	specHash, hashErr := writer.HashFile(genSpec)
+	if hashErr != nil && genResume {
+		fmt.Fprintln(os.Stderr, "warning: cannot hash spec (URL or unreadable file) — --resume disabled for this run")
+		genResume = false
+	}
+
+	ckptMgr := checkpoint.NewManager(genOutput)
+	var ckptState *checkpoint.State
+	var resumedCases []schema.TestCase
+
+	if genResume {
+		ckptState, err = ckptMgr.Load()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not load checkpoint: %v\n", err)
+			ckptState = nil
+		}
+		if ckptState != nil {
+			if ckptState.SpecHash != specHash {
+				fmt.Fprintln(os.Stderr, "warning: spec changed since last run — starting fresh (checkpoint discarded)")
+				ckptState = nil
+				_ = ckptMgr.Delete()
+			} else {
+				// Load previously generated cases from index.json.
+				// Note: these are cases from the last *complete* run. Cases generated
+				// during the interrupted run itself are not preserved because index.json
+				// is only written on successful completion.
+				resumedCases = loadExistingCases(genOutput)
+				// Filter out already-completed operations.
+				var remaining []*spec.Operation
+				for _, op := range parsedSpec.Operations {
+					key := checkpoint.OperationKey(op.Method, op.Path)
+					if !ckptState.Completed[key] {
+						remaining = append(remaining, op)
+					}
+				}
+				skipped := len(parsedSpec.Operations) - len(remaining)
+				if skipped > 0 {
+					fmt.Fprintf(os.Stderr, "↩ Resuming: skipping %d already-completed operation(s)\n", skipped)
+					if len(resumedCases) == 0 {
+						fmt.Fprintln(os.Stderr, "warning: no prior output found — skipped operations will not appear in output")
+					}
+				}
+				parsedSpec.Operations = remaining
+			}
+		}
+	}
+
+	if ckptState == nil {
+		ckptState = checkpoint.NewState(specHash)
+	}
+
 	// Set up event bus
 	bus := event.NewBus()
+
+	// Subscribe a checkpoint sink that persists state after each operation.
+	// A mutex guards ckptState.Completed to prevent data races when
+	// --concurrency > 1 causes concurrent EventOperationDone deliveries.
+	var ckptMu sync.Mutex
+	bus.Subscribe(event.SinkFunc(func(e event.Event) {
+		if e.Type != event.EventOperationDone {
+			return
+		}
+		if p, ok := e.Payload.(event.OperationDonePayload); ok {
+			ckptMu.Lock()
+			ckptState.Completed[checkpoint.OperationKey(p.Method, p.Path)] = true
+			ckptMu.Unlock()
+			_ = ckptMgr.Save(ckptState) // best-effort; ignore write errors
+		}
+	}))
 
 	// Wire TUI if stderr is a terminal
 	var tuiDone <-chan struct{}
@@ -156,17 +281,20 @@ func runGen(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "warning: --technique %q matched no known technique names\n", genTechnique)
 	}
 
-	// Generate test cases
+	// Generate test cases for remaining operations
 	engine := methodology.NewEngine(provider, selectedTechniques...)
 	for _, st := range selectedSpec {
 		engine.AddSpecTechnique(st)
 	}
 	engine.SetSink(bus)
 	engine.SetConcurrency(genConcurrency)
-	cases, err := engine.Generate(parsedSpec)
+	newCases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)
 	}
+
+	// Merge resumed cases with newly generated cases
+	cases := append(resumedCases, newCases...)
 
 	// --priority: keep cases whose priority is at least as high as the requested threshold.
 	if genPriority != "" {
@@ -174,7 +302,6 @@ func runGen(cmd *cobra.Command, args []string) error {
 	}
 
 	// Write index.json
-	specHash, _ := writer.HashFile(genSpec)
 	w := writer.NewJSONSchemaWriter()
 	if err := w.Write(cases, genOutput, writer.WriteOptions{
 		SpecHash:         specHash,
@@ -209,8 +336,27 @@ func runGen(cmd *cobra.Command, args []string) error {
 		<-tuiDone
 	}
 
+	// Remove checkpoint on successful completion
+	_ = ckptMgr.Delete()
+
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
 	return nil
+}
+
+// loadExistingCases reads previously generated cases from index.json in outputDir.
+// Returns nil if the file does not exist. Logs a warning if the file exists but
+// cannot be parsed, so the user knows prior output is not being carried forward.
+func loadExistingCases(outputDir string) []schema.TestCase {
+	indexPath := filepath.Join(outputDir, "index.json")
+	r := writer.NewJSONSchemaWriter()
+	cases, err := r.Read(indexPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "warning: could not read existing cases from %s: %v\n", indexPath, err)
+		}
+		return nil
+	}
+	return cases
 }
 
 // filterTechniques returns the subsets of per-operation and spec techniques

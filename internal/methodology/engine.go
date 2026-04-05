@@ -152,7 +152,12 @@ func (e *Engine) generateOne(op *spec.Operation) ([]schema.TestCase, error) {
 		}
 		cases = append(cases, c...)
 	}
-	e.emit(event.Event{Type: event.EventOperationDone, Payload: op.Path})
+	e.emit(event.Event{Type: event.EventOperationDone, Payload: event.OperationDonePayload{
+		OperationID: op.OperationID,
+		Method:      op.Method,
+		Path:        op.Path,
+		CaseCount:   len(cases),
+	}})
 	return cases, nil
 }
 
