@@ -2,13 +2,14 @@
 package rbt
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	gotreesitter "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter/grammars"
 )
 
 var langByExt = map[string]string{
@@ -22,6 +23,19 @@ var langByExt = map[string]string{
 	".rs":   "rust",
 }
 
+// langConstructors maps lang name to its gotreesitter Language constructor.
+// Shared by parser_treesitter.go and callgraph_treesitter.go.
+var langConstructors = map[string]func() *gotreesitter.Language{
+	"go":         grammars.GoLanguage,
+	"python":     grammars.PythonLanguage,
+	"typescript": grammars.TypescriptLanguage,
+	"tsx":        grammars.TsxLanguage,
+	"javascript": grammars.JavascriptLanguage,
+	"java":       grammars.JavaLanguage,
+	"ruby":       grammars.RubyLanguage,
+	"rust":       grammars.RustLanguage,
+}
+
 type treeSitterResult struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`
@@ -32,16 +46,7 @@ type TreeSitterParser struct{}
 
 func NewTreeSitterParser() *TreeSitterParser { return &TreeSitterParser{} }
 
-func (p *TreeSitterParser) IsAvailable() bool {
-	_, err := exec.LookPath("tree-sitter")
-	return err == nil
-}
-
-func (p *TreeSitterParser) ExtractRoutes(ctx context.Context, srcDir string, files []ChangedFile) ([]RouteMapping, error) {
-	if !p.IsAvailable() {
-		return nil, nil
-	}
-
+func (p *TreeSitterParser) ExtractRoutes(_ context.Context, _ string, files []ChangedFile) ([]RouteMapping, error) {
 	var mappings []RouteMapping
 	for _, f := range files {
 		ext := strings.ToLower(filepath.Ext(f.Path))
@@ -72,95 +77,59 @@ func runTreeSitterQuery(filePath, lang string) ([]treeSitterResult, error) {
 	if query == "" {
 		return nil, nil
 	}
-
-	queryFile, err := os.CreateTemp("", "caseforge-ts-*.scm")
-	if err != nil {
-		return nil, err
+	langFn, ok := langConstructors[lang]
+	if !ok {
+		return nil, nil
 	}
-	defer os.Remove(queryFile.Name())
-	if _, err := queryFile.WriteString(query); err != nil {
-		return nil, err
-	}
-	queryFile.Close()
 
-	out, err := runTreeSitterCmd(filePath, queryFile.Name())
+	src, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	return parseTSSexprOutput(out), nil
-}
-
-// runTreeSitterCmd runs tree-sitter query and returns raw stdout as a string.
-func runTreeSitterCmd(filePath, queryFile string) (string, error) {
-	cmd := exec.Command("tree-sitter", "query", queryFile, filePath)
-	out, err := cmd.Output()
+	l := langFn()
+	parser := gotreesitter.NewParser(l)
+	tree, err := parser.Parse(src)
 	if err != nil {
-		return "", fmt.Errorf("tree-sitter query: %w", err)
+		return nil, fmt.Errorf("tree-sitter parse: %w", err)
 	}
-	return string(out), nil
-}
 
-func parseTSSexprOutput(output string) []treeSitterResult {
+	q, err := gotreesitter.NewQuery(query, l)
+	if err != nil {
+		return nil, fmt.Errorf("tree-sitter query: %w", err)
+	}
+
 	var results []treeSitterResult
-	var current treeSitterResult
-	hasMethod, hasPath := false, false
-
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "Match:") {
-			if hasMethod && hasPath {
-				results = append(results, current)
+	for _, match := range q.Execute(tree) {
+		var cur treeSitterResult
+		hasMethod, hasPath := false, false
+		for _, cap := range match.Captures {
+			text := cap.Text(src)
+			switch cap.Name {
+			case "method":
+				cur.Method = text
+				hasMethod = true
+			case "path":
+				// interpreted_string_literal and Python string nodes include
+				// surrounding quotes; string_fragment (TS/JS) does not.
+				cur.Path = stripQuotes(text)
+				cur.Line = int(cap.Node.StartPoint().Row)
+				hasPath = true
 			}
-			current = treeSitterResult{}
-			hasMethod, hasPath = false, false
-			continue
 		}
-		if strings.HasPrefix(line, "@method:") {
-			current.Method = extractQuotedValue(line)
-			hasMethod = true
-		}
-		if strings.HasPrefix(line, "@path:") {
-			current.Path = extractQuotedValue(line)
-			lineNum := extractLineNum(line)
-			if lineNum > 0 {
-				current.Line = lineNum
-			}
-			hasPath = true
+		if hasMethod && hasPath {
+			results = append(results, cur)
 		}
 	}
-	if hasMethod && hasPath {
-		results = append(results, current)
-	}
-	return results
+	return results, nil
 }
 
-func extractQuotedValue(line string) string {
-	start := strings.Index(line, `"`)
-	if start == -1 {
-		return ""
+// stripQuotes removes a single layer of surrounding double or single quotes.
+func stripQuotes(s string) string {
+	if len(s) >= 2 && ((s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'')) {
+		return s[1 : len(s)-1]
 	}
-	end := strings.Index(line[start+1:], `"`)
-	if end == -1 {
-		return ""
-	}
-	return line[start+1 : start+1+end]
-}
-
-func extractLineNum(line string) int {
-	start := strings.Index(line, "[")
-	if start == -1 {
-		return 0
-	}
-	rest := line[start+1:]
-	end := strings.Index(rest, ",")
-	if end == -1 {
-		return 0
-	}
-	var n int
-	fmt.Sscanf(strings.TrimSpace(rest[:end]), "%d", &n)
-	return n
+	return s
 }
 
 func routeQueryForLang(lang string) string {
@@ -191,4 +160,3 @@ func routeQueryForLang(lang string) string {
 		return ""
 	}
 }
-

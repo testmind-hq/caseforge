@@ -201,8 +201,3 @@ func TestTreeSitterParser_NotInstalled_ReturnsEmpty(t *testing.T) {
 	assert.Empty(t, mappings)
 }
 
-func TestTreeSitterParser_IsAvailable_ChecksPath(t *testing.T) {
-	t.Setenv("PATH", t.TempDir())
-	parser := NewTreeSitterParser()
-	assert.False(t, parser.IsAvailable())
-}

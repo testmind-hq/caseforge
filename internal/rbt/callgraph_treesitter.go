@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	gotreesitter "github.com/odvcencio/gotreesitter"
 )
 
-// TreeSitterCallGraphBuilder uses the tree-sitter CLI to extract function
+// TreeSitterCallGraphBuilder uses the gotreesitter library to extract function
 // definitions and call edges from source files.
 type TreeSitterCallGraphBuilder struct{}
 
@@ -16,8 +18,8 @@ func NewTreeSitterCallGraphBuilder() *TreeSitterCallGraphBuilder {
 }
 
 // ExtractFuncs returns function definitions and call edges for filePath.
-// Returns empty slices (no error) if tree-sitter is not installed, the file
-// does not exist, or the language is unsupported.
+// Returns empty slices (no error) if the file does not exist or the language
+// is unsupported.
 func (b *TreeSitterCallGraphBuilder) ExtractFuncs(filePath string) ([]CallNode, []CallEdge, error) {
 	if _, err := os.Stat(filePath); err != nil {
 		return nil, nil, nil
@@ -27,10 +29,11 @@ func (b *TreeSitterCallGraphBuilder) ExtractFuncs(filePath string) ([]CallNode, 
 	if !ok {
 		return nil, nil, nil
 	}
-	ts := NewTreeSitterParser()
-	if !ts.IsAvailable() {
+	langFn, ok := langConstructors[lang]
+	if !ok {
 		return nil, nil, nil
 	}
+	l := langFn()
 
 	defQuery := callGraphDefQueryForLang(lang)
 	callQuery := callGraphCallQueryForLang(lang)
@@ -39,7 +42,7 @@ func (b *TreeSitterCallGraphBuilder) ExtractFuncs(filePath string) ([]CallNode, 
 	}
 
 	// Extract function definitions with line numbers.
-	defResults, err := runCallGraphQuery(filePath, defQuery)
+	defResults, err := runCallGraphQuery(filePath, defQuery, l)
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -52,7 +55,7 @@ func (b *TreeSitterCallGraphBuilder) ExtractFuncs(filePath string) ([]CallNode, 
 	}
 
 	// Extract call sites with line numbers.
-	callResults, err := runCallGraphQuery(filePath, callQuery)
+	callResults, err := runCallGraphQuery(filePath, callQuery, l)
 	if err != nil {
 		return defs, nil, nil
 	}
@@ -78,42 +81,32 @@ type captureResult struct {
 	line int
 }
 
-// runCallGraphQuery runs a tree-sitter query and extracts (name, line) pairs.
-func runCallGraphQuery(filePath, query string) ([]captureResult, error) {
-	queryFile, err := os.CreateTemp("", "caseforge-cg-*.scm")
+// runCallGraphQuery parses filePath and runs query against it, returning
+// (name, line) pairs for every capture in every match.
+func runCallGraphQuery(filePath, query string, l *gotreesitter.Language) ([]captureResult, error) {
+	src, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
-	defer os.Remove(queryFile.Name())
-	if _, err := queryFile.WriteString(query); err != nil {
-		return nil, err
-	}
-	queryFile.Close()
-
-	out, err := runTreeSitterCmd(filePath, queryFile.Name())
+	parser := gotreesitter.NewParser(l)
+	tree, err := parser.Parse(src)
 	if err != nil {
-		return nil, nil // tree-sitter error treated as no results
+		return nil, nil
 	}
-	return parseCallGraphOutput(out), nil
-}
-
-// parseCallGraphOutput parses tree-sitter query output for any capture name.
-// Expects lines like: `  @def: "FuncName" [row, col] - [row, col]`
-func parseCallGraphOutput(output string) []captureResult {
+	q, err := gotreesitter.NewQuery(query, l)
+	if err != nil {
+		return nil, nil
+	}
 	var results []captureResult
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		// Any capture annotation line starts with "@"
-		if !strings.HasPrefix(line, "@") {
-			continue
-		}
-		name := extractQuotedValue(line)
-		lineNum := extractLineNum(line)
-		if name != "" {
-			results = append(results, captureResult{name, lineNum})
+	for _, match := range q.Execute(tree) {
+		for _, cap := range match.Captures {
+			results = append(results, captureResult{
+				name: cap.Text(src),
+				line: int(cap.Node.StartPoint().Row),
+			})
 		}
 	}
-	return results
+	return results, nil
 }
 
 // nearestFunc returns the name of the function whose startLine is the largest
