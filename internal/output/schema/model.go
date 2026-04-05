@@ -74,7 +74,7 @@ type Assertion struct {
 
 type CaseSource struct {
 	Technique string `json:"technique"` // e.g. "equivalence_partitioning"
-	SpecPath  string `json:"spec_path"` // e.g. "/users POST requestBody.properties.email"
+	SpecPath  string `json:"spec_path"` // e.g. "POST /users requestBody.properties.email"
 	Rationale string `json:"rationale"`
 }
 

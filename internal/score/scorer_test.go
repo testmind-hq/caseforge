@@ -215,7 +215,7 @@ func TestCompute_OWASPInjectedPathsDoNotInflateOpCount(t *testing.T) {
 	r := Compute(cases)
 	// Without the fix: TotalOps would be 5 (one per unique step path).
 	// With the fix: TotalOps should be 2 (DELETE + OPTIONS are distinct spec_path methods).
-	assert.LessOrEqual(t, r.TotalOps, 2, "OWASP injected paths must not inflate op count beyond the distinct spec operations")
+	assert.Equal(t, 2, r.TotalOps, "OWASP injected paths must not inflate op count beyond the distinct spec operations (DELETE + OPTIONS)")
 }
 
 // TestCompute_CanonicalOpKey_FallbackToStepWhenSpecPathEmpty verifies that cases

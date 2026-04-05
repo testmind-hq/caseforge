@@ -11,7 +11,7 @@ import (
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 )
 
-// opKey is the canonical key for a test operation (first step method + path).
+// opKey is the canonical key for a spec operation (method + path from CaseSource.SpecPath, or from the first step as fallback).
 type opKey struct{ method, path string }
 
 // securityTechniques are the technique names that count towards security coverage.
