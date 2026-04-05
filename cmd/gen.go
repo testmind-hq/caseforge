@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -231,6 +232,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 	// Subscribe a checkpoint sink that persists state after each operation.
 	// A mutex guards ckptState.Completed to prevent data races when
 	// --concurrency > 1 causes concurrent EventOperationDone deliveries.
+	// ckptMu serialises writes to ckptState.Completed and the Clone call.
+	// Save receives a snapshot so json.MarshalIndent never races with a concurrent
+	// map write from another goroutine (safe with --concurrency > 1).
 	var ckptMu sync.Mutex
 	bus.Subscribe(event.SinkFunc(func(e event.Event) {
 		if e.Type != event.EventOperationDone {
@@ -239,8 +243,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 		if p, ok := e.Payload.(event.OperationDonePayload); ok {
 			ckptMu.Lock()
 			ckptState.Completed[checkpoint.OperationKey(p.Method, p.Path)] = true
+			snap := ckptState.Clone()
 			ckptMu.Unlock()
-			_ = ckptMgr.Save(ckptState) // best-effort; ignore write errors
+			_ = ckptMgr.Save(snap) // best-effort; ignore write errors
 		}
 	}))
 
@@ -351,7 +356,7 @@ func loadExistingCases(outputDir string) []schema.TestCase {
 	r := writer.NewJSONSchemaWriter()
 	cases, err := r.Read(indexPath)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "warning: could not read existing cases from %s: %v\n", indexPath, err)
 		}
 		return nil
