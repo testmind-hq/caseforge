@@ -208,6 +208,30 @@ caseforge lint --spec openapi.yaml
 --algo string       Go 调用图算法：rta | vta（默认：rta）
 ```
 
+### `caseforge ask`
+
+```
+--output string   输出目录（默认：./cases）
+--format string   hurl | markdown | csv | postman | k6（默认：hurl）
+```
+
+### `caseforge suite create`
+
+```
+--id string       套件 ID（必填）
+--title string    套件标题（必填）
+--kind string     sequential | chain（默认：sequential）
+--cases string    要包含的用例 ID，逗号分隔
+--output string   输出文件路径（默认：suite.json）
+```
+
+### `caseforge suite validate`
+
+```
+--suite string    suite.json 文件路径（必填）
+--cases string    包含 index.json 的 cases 目录
+```
+
 ### `caseforge explore`
 
 ```
@@ -295,9 +319,10 @@ webhooks:
 | 状态转换 | `state_transition` |
 | 配对测试（IPOG） | `pairwise` |
 | 幂等性 | `idempotency` |
-| OWASP 安全 | `owasp` |
+| OWASP API Top 10 | `owasp_api_top10` |
 | 分类树（MBT） | `classification_tree` |
 | 正交数组 | `orthogonal_array` |
+| 示例提取 | `example_extraction` |
 
 ---
 

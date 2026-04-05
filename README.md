@@ -208,6 +208,30 @@ caseforge lint --spec openapi.yaml
 --algo string       Go call graph algorithm: rta | vta (default: rta)
 ```
 
+### `caseforge ask`
+
+```
+--output string   Output directory (default: ./cases)
+--format string   hurl | markdown | csv | postman | k6 (default: hurl)
+```
+
+### `caseforge suite create`
+
+```
+--id string       Suite ID (required)
+--title string    Suite title (required)
+--kind string     sequential | chain (default: sequential)
+--cases string    Comma-separated case IDs to include
+--output string   Output file path (default: suite.json)
+```
+
+### `caseforge suite validate`
+
+```
+--suite string    Path to suite.json (required)
+--cases string    Cases directory containing index.json
+```
+
 ### `caseforge explore`
 
 ```
@@ -325,9 +349,10 @@ X-CaseForge-Signature-256: sha256=<hex>
 | State Transition | `state_transition` |
 | Pairwise (IPOG) | `pairwise` |
 | Idempotency | `idempotency` |
-| OWASP Security | `owasp` |
+| OWASP API Top 10 | `owasp_api_top10` |
 | Classification Tree (MBT) | `classification_tree` |
 | Orthogonal Array | `orthogonal_array` |
+| Example Extraction | `example_extraction` |
 
 ---
 

@@ -72,8 +72,8 @@ caseforge lint --spec openapi.yaml
 --technique string    Comma-separated techniques to run:
                         equivalence_partitioning, boundary_value,
                         decision_table, state_transition, pairwise,
-                        idempotency, owasp, classification_tree,
-                        orthogonal_array
+                        idempotency, owasp_api_top10, classification_tree,
+                        orthogonal_array, example_extraction
 --priority string     Minimum priority to include: P0 | P1 | P2 | P3
 --operations string   Comma-separated operationIds (default: all)
 --concurrency int     Parallel operations (default: 1)
@@ -89,7 +89,7 @@ caseforge lint --spec openapi.yaml
 - **State Transition** — one case per state transition (requires AI annotation)
 - **Pairwise (IPOG)** — covering array for 4+ independent parameters
 - **Idempotency** — duplicate request case for write operations
-- **OWASP Security** — injection (SQLi, XSS, path traversal), auth bypass, CORS
+- **OWASP API Top 10** — injection (SQLi, XSS, path traversal), auth bypass, CORS (`owasp_api_top10`)
 - **Classification Tree (MBT)** — structured classification of valid/invalid inputs
 - **Orthogonal Array** — strength-2 orthogonal arrays for large parameter spaces
 
