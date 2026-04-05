@@ -1,0 +1,2379 @@
+openapi: 3.0.0
+info:
+  title: Speculo API
+  version: 0.1.0
+  description: Self-hosted internal API documentation platform with MCP support
+  contact:
+    name: Speculo
+    url: https://github.com/yuchou87/speculo
+servers:
+  - url: /
+tags:
+  - name: Auth
+    description: Authentication and account management
+  - name: MCP Tokens
+    description: MCP token lifecycle management
+  - name: Upload
+    description: OpenAPI spec upload and indexing
+  - name: Catalog
+    description: Service and branch discovery
+  - name: Specs
+    description: Raw OpenAPI spec access
+  - name: Search
+    description: Full-text endpoint search
+  - name: Admin
+    description: Team, user, and grant management (super_admin / team_owner)
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT or MCP Token
+  schemas: {}
+  parameters: {}
+paths:
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags:
+        - Auth
+      summary: Create a new user account (admin only)
+      description: Create a new user account. Requires an existing super_admin JWT.
+        The new account is assigned the guest role by default.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                required:
+                  - userId
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags:
+        - Auth
+      summary: Log in and receive a JWT
+      description: Authenticate with email and password and receive a signed JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  userId:
+                    type: string
+                  role:
+                    type: string
+                required:
+                  - token
+                  - userId
+                  - role
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags:
+        - Auth
+      summary: Log out
+      description: Clear the session cookie.
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+  /api/tokens:
+    get:
+      operationId: listTokens
+      tags:
+        - MCP Tokens
+      summary: List MCP tokens for the current user
+      description: Returns all MCP tokens belonging to the authenticated user.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Token list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        scope:
+                          type: string
+                          enum:
+                            - read
+                            - write
+                        prefix:
+                          type: string
+                        lastUsedAt:
+                          type: string
+                          nullable: true
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - scope
+                        - prefix
+                        - lastUsedAt
+                        - createdAt
+                required:
+                  - tokens
+    post:
+      operationId: createToken
+      tags:
+        - MCP Tokens
+      summary: Create an MCP token
+      description: Create a new MCP token. The full token value is returned once and
+        cannot be retrieved again.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                scope:
+                  type: string
+                  enum:
+                    - read
+                    - write
+              required:
+                - name
+                - scope
+      responses:
+        "200":
+          description: Token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  scope:
+                    type: string
+                    enum:
+                      - read
+                      - write
+                  prefix:
+                    type: string
+                  createdAt:
+                    type: string
+                  token:
+                    type: string
+                    description: Full token — shown once
+                required:
+                  - id
+                  - name
+                  - scope
+                  - prefix
+                  - createdAt
+                  - token
+  /api/tokens/{id}:
+    delete:
+      operationId: deleteToken
+      tags:
+        - MCP Tokens
+      summary: Revoke an MCP token
+      description: Revoke and permanently delete an MCP token.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/upload:
+    post:
+      operationId: uploadSpec
+      tags:
+        - Upload
+      summary: Upload an OpenAPI spec for a service
+      description: "Accepts multipart/form-data (with a `file` field) or
+        application/json (with `specContent` string). Auth: JWT or write-scope
+        MCP token."
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                service:
+                  type: string
+                  minLength: 1
+                branch:
+                  type: string
+                  minLength: 1
+                commitSha:
+                  type: string
+                specContent:
+                  type: string
+                  minLength: 1
+                  description: Raw OpenAPI YAML or JSON string
+              required:
+                - service
+                - branch
+                - specContent
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                service:
+                  type: string
+                branch:
+                  type: string
+                commit_sha:
+                  type: string
+                file:
+                  nullable: true
+                  description: OpenAPI file (.yaml, .yml, .json)
+              required:
+                - service
+                - branch
+      responses:
+        "200":
+          description: Spec uploaded and indexed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                  branch:
+                    type: string
+                  endpointCount:
+                    type: number
+                  wasConverted:
+                    type: boolean
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                  unchanged:
+                    type: boolean
+                    description: true when spec hash matches current latest — no write performed
+                required:
+                  - service
+                  - branch
+                  - endpointCount
+                  - wasConverted
+                  - warnings
+        "400":
+          description: Invalid spec or missing fields
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "409":
+          description: Concurrent upload conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/catalog:
+    get:
+      operationId: getCatalog
+      tags:
+        - Catalog
+      summary: List all services and their branches
+      description: Returns services accessible to the authenticated user with their
+        branches and team assignments.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Service catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                          nullable: true
+                        teamId:
+                          type: string
+                          nullable: true
+                        teamName:
+                          type: string
+                          nullable: true
+                        branches:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              branch:
+                                type: string
+                              endpointCount:
+                                type: number
+                              uploadedAt:
+                                type: string
+                            required:
+                              - branch
+                              - endpointCount
+                              - uploadedAt
+                      required:
+                        - id
+                        - name
+                        - displayName
+                        - teamId
+                        - teamName
+                        - branches
+                required:
+                  - services
+  /api/catalog/:serviceId:
+    delete:
+      operationId: deleteService
+      tags:
+        - Catalog
+      summary: Delete a service and all its specs (super_admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: serviceId
+          in: path
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/specs/{service}/{branch}/openapi.json:
+    get:
+      operationId: getSpec
+      tags:
+        - Specs
+      summary: Get the raw OpenAPI JSON for a service branch
+      description: Returns the latest normalized OpenAPI 3.x document for the given
+        service and branch.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: service
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: branch
+          in: path
+      responses:
+        "200":
+          description: OpenAPI document
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  nullable: true
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/search:
+    get:
+      operationId: searchEndpoints
+      tags:
+        - Search
+      summary: Search endpoints across accessible services
+      description: Full-text search across endpoint paths, summaries, and
+        operationIds. Results are scoped to services the authenticated user can
+        access. Returns up to 10 results.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            description: Search query
+          required: true
+          name: q
+          in: query
+        - schema:
+            type: string
+            description: Filter by service name
+          required: false
+          name: service
+          in: query
+        - schema:
+            type: string
+            description: Filter by branch
+          required: false
+          name: branch
+          in: query
+      responses:
+        "200":
+          description: Search results (max 10)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        method:
+                          type: string
+                        path:
+                          type: string
+                        summary:
+                          type: string
+                          nullable: true
+                        operationId:
+                          type: string
+                          nullable: true
+                        tags:
+                          type: array
+                          nullable: true
+                          items:
+                            type: string
+                        serviceName:
+                          type: string
+                        branch:
+                          type: string
+                      required:
+                        - method
+                        - path
+                        - summary
+                        - operationId
+                        - tags
+                        - serviceName
+                        - branch
+                required:
+                  - results
+        "400":
+          description: Missing query parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/teams:
+    get:
+      operationId: listTeams
+      tags:
+        - Admin
+      summary: List all teams
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Team list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                          nullable: true
+                        description:
+                          type: string
+                          nullable: true
+                        isDefault:
+                          type: boolean
+                        isDeletable:
+                          type: boolean
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - displayName
+                        - description
+                        - isDefault
+                        - isDeletable
+                        - createdAt
+                required:
+                  - teams
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    post:
+      operationId: createTeam
+      tags:
+        - Admin
+      summary: Create a team
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                displayName:
+                  type: string
+                description:
+                  type: string
+              required:
+                - name
+      responses:
+        "200":
+          description: Team created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  displayName:
+                    type: string
+                    nullable: true
+                  description:
+                    type: string
+                    nullable: true
+                  isDefault:
+                    type: boolean
+                  isDeletable:
+                    type: boolean
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - displayName
+                  - description
+                  - isDefault
+                  - isDeletable
+                  - createdAt
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "409":
+          description: Name taken
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/teams/{id}:
+    put:
+      operationId: updateTeam
+      tags:
+        - Admin
+      summary: Rename a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                description:
+                  type: string
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  displayName:
+                    type: string
+                    nullable: true
+                  description:
+                    type: string
+                    nullable: true
+                  isDefault:
+                    type: boolean
+                  isDeletable:
+                    type: boolean
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - displayName
+                  - description
+                  - isDefault
+                  - isDeletable
+                  - createdAt
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    delete:
+      operationId: deleteTeam
+      tags:
+        - Admin
+      summary: Delete a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/teams/{id}/members:
+    get:
+      operationId: listTeamMembers
+      tags:
+        - Admin
+      summary: List team members
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        userId:
+                          type: string
+                        email:
+                          type: string
+                        role:
+                          type: string
+                          enum:
+                            - owner
+                            - member
+                        joinedAt:
+                          type: string
+                      required:
+                        - id
+                        - userId
+                        - email
+                        - role
+                        - joinedAt
+                required:
+                  - members
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    post:
+      operationId: addTeamMember
+      tags:
+        - Admin
+      summary: Add a user to a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                role:
+                  type: string
+                  enum:
+                    - owner
+                    - member
+                  default: member
+              required:
+                - userId
+      responses:
+        "200":
+          description: Added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "400":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "409":
+          description: Already member
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/teams/{id}/members/{userId}:
+    put:
+      operationId: updateTeamMemberRole
+      tags:
+        - Admin
+      summary: Update team member role
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: userId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum:
+                    - owner
+                    - member
+              required:
+                - role
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    delete:
+      operationId: removeTeamMember
+      tags:
+        - Admin
+      summary: Remove a user from a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: userId
+          in: path
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/teams/{id}/services:
+    get:
+      operationId: listTeamServices
+      tags:
+        - Admin
+      summary: List services belonging to a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                          nullable: true
+                      required:
+                        - id
+                        - name
+                        - displayName
+                required:
+                  - services
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/services/{serviceId}/team:
+    put:
+      operationId: assignServiceTeam
+      tags:
+        - Admin
+      summary: Assign a service to a team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: serviceId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamId:
+                  type: string
+                  nullable: true
+              required:
+                - teamId
+      responses:
+        "200":
+          description: Assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/teams/{id}/grants:
+    get:
+      operationId: listTeamGrants
+      tags:
+        - Admin
+      summary: List cross-team grants for a team (as owner or grantee)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Grants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outgoing:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ownerTeamId:
+                          type: string
+                        serviceId:
+                          type: string
+                        serviceName:
+                          type: string
+                        branches:
+                          type: array
+                          nullable: true
+                          items:
+                            type: string
+                        granteeTeamId:
+                          type: string
+                          nullable: true
+                        granteeUserId:
+                          type: string
+                          nullable: true
+                        grantedBy:
+                          type: string
+                        expiresAt:
+                          type: string
+                          nullable: true
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - ownerTeamId
+                        - serviceId
+                        - serviceName
+                        - branches
+                        - granteeTeamId
+                        - granteeUserId
+                        - grantedBy
+                        - expiresAt
+                        - createdAt
+                  incoming:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        ownerTeamId:
+                          type: string
+                        serviceId:
+                          type: string
+                        serviceName:
+                          type: string
+                        branches:
+                          type: array
+                          nullable: true
+                          items:
+                            type: string
+                        granteeTeamId:
+                          type: string
+                          nullable: true
+                        granteeUserId:
+                          type: string
+                          nullable: true
+                        grantedBy:
+                          type: string
+                        expiresAt:
+                          type: string
+                          nullable: true
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - ownerTeamId
+                        - serviceId
+                        - serviceName
+                        - branches
+                        - granteeTeamId
+                        - granteeUserId
+                        - grantedBy
+                        - expiresAt
+                        - createdAt
+                required:
+                  - outgoing
+                  - incoming
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    post:
+      operationId: createGrant
+      tags:
+        - Admin
+      summary: Create a cross-team grant
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                serviceId:
+                  type: string
+                branches:
+                  type: array
+                  items:
+                    type: string
+                granteeTeamId:
+                  type: string
+                granteeUserId:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+              required:
+                - serviceId
+      responses:
+        "200":
+          description: Grant created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                required:
+                  - id
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/grants/{id}:
+    delete:
+      operationId: deleteGrant
+      tags:
+        - Admin
+      summary: Revoke a cross-team grant
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/users:
+    get:
+      operationId: listUsers
+      tags:
+        - Admin
+      summary: List all users
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        role:
+                          type: string
+                        isActive:
+                          type: boolean
+                        createdAt:
+                          type: string
+                        teams:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              role:
+                                type: string
+                            required:
+                              - id
+                              - name
+                              - role
+                      required:
+                        - id
+                        - email
+                        - role
+                        - isActive
+                        - createdAt
+                        - teams
+                required:
+                  - users
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/users/{id}:
+    put:
+      operationId: updateUser
+      tags:
+        - Admin
+      summary: Update user (role or active status)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum:
+                    - super_admin
+                    - team_owner
+                    - team_member
+                    - guest
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    delete:
+      operationId: deleteUser
+      tags:
+        - Admin
+      summary: Delete a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/me:
+    get:
+      operationId: getMe
+      tags:
+        - Auth
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+                  role:
+                    type: string
+                  teams:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                          nullable: true
+                        role:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - displayName
+                        - role
+                required:
+                  - id
+                  - email
+                  - role
+                  - teams
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags:
+        - Admin
+      summary: List audit log entries (super_admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - login
+              - spec_uploaded
+              - spec_updated
+              - service_deleted
+              - grant_created
+              - grant_revoked
+              - token_created
+              - token_revoked
+              - user_created
+              - user_disabled
+              - team_created
+          required: false
+          name: action
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: userId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: string
+            default: "1"
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: string
+            default: "50"
+          required: false
+          name: pageSize
+          in: query
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        userId:
+                          type: string
+                          nullable: true
+                        userEmail:
+                          type: string
+                          nullable: true
+                        action:
+                          type: string
+                        targetId:
+                          type: string
+                          nullable: true
+                        targetName:
+                          type: string
+                          nullable: true
+                        meta:
+                          type: string
+                          nullable: true
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - userId
+                        - userEmail
+                        - action
+                        - targetId
+                        - targetName
+                        - meta
+                        - createdAt
+                  total:
+                    type: number
+                  page:
+                    type: number
+                  pageSize:
+                    type: number
+                required:
+                  - logs
+                  - total
+                  - page
+                  - pageSize
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/diff:
+    get:
+      operationId: diffSpecs
+      tags:
+        - Specs
+      summary: Diff two spec versions by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: from
+          in: query
+        - schema:
+            type: string
+          required: true
+          name: to
+          in: query
+      responses:
+        "200":
+          description: Diff result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  added:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        method:
+                          type: string
+                        path:
+                          type: string
+                        operationId:
+                          type: string
+                        summary:
+                          type: string
+                      required:
+                        - method
+                        - path
+                  removed:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        method:
+                          type: string
+                        path:
+                          type: string
+                        operationId:
+                          type: string
+                        summary:
+                          type: string
+                      required:
+                        - method
+                        - path
+                  modified:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        before:
+                          type: object
+                          properties:
+                            method:
+                              type: string
+                            path:
+                              type: string
+                            operationId:
+                              type: string
+                            summary:
+                              type: string
+                          required:
+                            - method
+                            - path
+                        after:
+                          type: object
+                          properties:
+                            method:
+                              type: string
+                            path:
+                              type: string
+                            operationId:
+                              type: string
+                            summary:
+                              type: string
+                          required:
+                            - method
+                            - path
+                      required:
+                        - before
+                        - after
+                required:
+                  - added
+                  - removed
+                  - modified
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Version not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "500":
+          description: Invalid spec content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/specs/:service/versions:
+    get:
+      operationId: listSpecVersions
+      tags:
+        - Specs
+      summary: List retained spec versions for a service branch
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: service
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: branch
+          in: query
+      responses:
+        "200":
+          description: Version list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        branch:
+                          type: string
+                        commitSha:
+                          type: string
+                          nullable: true
+                        isLatest:
+                          type: boolean
+                        endpointCount:
+                          type: number
+                        uploadedAt:
+                          type: string
+                      required:
+                        - id
+                        - branch
+                        - commitSha
+                        - isLatest
+                        - endpointCount
+                        - uploadedAt
+                required:
+                  - versions
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/webhooks:
+    get:
+      operationId: listWebhooks
+      tags:
+        - Admin
+      summary: List webhook configs (super_admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Webhook configs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        teamId:
+                          type: string
+                          nullable: true
+                        url:
+                          type: string
+                        providerType:
+                          type: string
+                        events:
+                          type: array
+                          items:
+                            type: string
+                        isActive:
+                          type: boolean
+                        createdBy:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - teamId
+                        - url
+                        - providerType
+                        - events
+                        - isActive
+                        - createdBy
+                        - createdAt
+                required:
+                  - webhooks
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    post:
+      operationId: createWebhook
+      tags:
+        - Admin
+      summary: Create a webhook config
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                teamId:
+                  type: string
+                  format: uuid
+                url:
+                  type: string
+                  format: uri
+                providerType:
+                  type: string
+                events:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+              required:
+                - name
+                - url
+                - events
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  teamId:
+                    type: string
+                    nullable: true
+                  url:
+                    type: string
+                  providerType:
+                    type: string
+                  events:
+                    type: array
+                    items:
+                      type: string
+                  isActive:
+                    type: boolean
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - teamId
+                  - url
+                  - providerType
+                  - events
+                  - isActive
+                  - createdBy
+                  - createdAt
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/webhooks/:id:
+    patch:
+      operationId: updateWebhook
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  teamId:
+                    type: string
+                    nullable: true
+                  url:
+                    type: string
+                  providerType:
+                    type: string
+                  events:
+                    type: array
+                    items:
+                      type: string
+                  isActive:
+                    type: boolean
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - teamId
+                  - url
+                  - providerType
+                  - events
+                  - isActive
+                  - createdBy
+                  - createdAt
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    delete:
+      operationId: deleteWebhook
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /api/admin/webhooks/:id/test:
+    post:
+      operationId: testWebhook
+      tags:
+        - Admin
+      summary: Send a test event to a webhook
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
