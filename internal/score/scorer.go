@@ -66,6 +66,7 @@ func Compute(cases []schema.TestCase) Report {
 				zero("Security Coverage"),
 				zero("Executability"),
 			},
+			Suggestions: []Suggestion{},
 		}
 	}
 
@@ -194,8 +195,7 @@ func computeSecurity(opCases map[opKey][]schema.TestCase, totalOps int) (int, st
 		}
 	}
 	score := covered * 100 / totalOps
-	pct := covered * 100 / totalOps
-	detail := fmt.Sprintf("%d/%d operations have security (OWASP) cases (%d%%)", covered, totalOps, pct)
+	detail := fmt.Sprintf("%d/%d operations have security (OWASP) cases (%d%%)", covered, totalOps, score)
 	return score, detail
 }
 
@@ -219,8 +219,9 @@ func computeExecutability(cases []schema.TestCase) (int, string) {
 }
 
 // buildSuggestions assembles improvement suggestions ordered by priority.
+// Returns an empty (non-nil) slice so JSON output is always "[]", never "null".
 func buildSuggestions(secScore int, opsMissingBoundary []opKey) []Suggestion {
-	var out []Suggestion
+	out := []Suggestion{}
 	p := 1
 	if secScore < 80 {
 		out = append(out, Suggestion{
@@ -234,17 +235,15 @@ func buildSuggestions(secScore int, opsMissingBoundary []opKey) []Suggestion {
 		if i >= 3 {
 			break
 		}
+		// Note: --operations accepts operationId values from the spec, which are
+		// not stored in index.json. The suggestion therefore omits --operations and
+		// lets the user target the operation manually via --spec filtering.
 		out = append(out, Suggestion{
 			Priority: p,
 			Message:  fmt.Sprintf("%s %s is missing boundary/equivalence test cases", op.method, op.path),
-			Command:  fmt.Sprintf("caseforge gen --technique boundary_value,equivalence_partitioning --operations %s", operationID(op.method, op.path)),
+			Command:  "caseforge gen --technique boundary_value,equivalence_partitioning",
 		})
 		p++
 	}
 	return out
-}
-
-// operationID returns a shell-friendly representation of an operation.
-func operationID(method, path string) string {
-	return method + path
 }

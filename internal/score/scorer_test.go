@@ -94,20 +94,14 @@ func TestCompute_NoBoundaryCases_GeneratesSuggestion(t *testing.T) {
 	r := Compute(cases)
 	boundary := r.Dimensions[1]
 	assert.Equal(t, 0, boundary.Score)
-	// Should have boundary suggestions
-	msgs := make([]string, len(r.Suggestions))
-	for i, s := range r.Suggestions {
-		msgs[i] = s.Message
-	}
-	found := false
+	// Should have boundary improvement suggestions (one per missing-boundary op)
+	boundaryMsgs := 0
 	for _, s := range r.Suggestions {
-		if s.Message != "" {
-			found = true
-			break
+		if s.Message != "" && s.Command == "caseforge gen --technique boundary_value,equivalence_partitioning" {
+			boundaryMsgs++
 		}
 	}
-	assert.True(t, found)
-	_ = msgs
+	assert.GreaterOrEqual(t, boundaryMsgs, 1)
 }
 
 func TestCompute_NoAssertions_ExecZero(t *testing.T) {
@@ -151,6 +145,25 @@ func TestCompute_BreadthLowWhenSingleTechnique(t *testing.T) {
 	breadth := r.Dimensions[0]
 	// avg 1 technique/op → score = 1*25 = 25
 	assert.Equal(t, 25, breadth.Score)
+}
+
+func TestCompute_SuggestionsNeverNullInJSON(t *testing.T) {
+	// Full-coverage case: no suggestions generated.
+	// Verify JSON encodes "suggestions":[] not "suggestions":null.
+	cases := []schema.TestCase{
+		makeCase("GET", "/a", "equivalence_partitioning", 1),
+		makeCase("GET", "/a", "boundary_value", 1),
+		makeCase("GET", "/a", "owasp_api_top10", 1),
+		makeCase("GET", "/a", "pairwise", 1),
+	}
+	r := Compute(cases)
+	assert.NotNil(t, r.Suggestions, "Suggestions must be non-nil slice")
+	// Zero suggestions when coverage is perfect.
+	assert.Empty(t, r.Suggestions)
+
+	// Empty-cases path must also produce non-nil slice.
+	r2 := Compute(nil)
+	assert.NotNil(t, r2.Suggestions)
 }
 
 func TestCompute_DimensionOrder(t *testing.T) {
