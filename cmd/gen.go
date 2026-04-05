@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-isatty"
@@ -66,7 +67,7 @@ func init() {
 	genCmd.Flags().StringVar(&genPriority, "priority", "", "Filter output by minimum priority: P0|P1|P2|P3 (P0 = highest)")
 	genCmd.Flags().StringVar(&genOperations, "operations", "", "Comma-separated operationIds to process (default: all)")
 	genCmd.Flags().IntVar(&genConcurrency, "concurrency", 1, "Number of operations processed concurrently (default 1)")
-	genCmd.Flags().BoolVar(&genResume, "resume", false, "Resume a previously interrupted generation run")
+	genCmd.Flags().BoolVar(&genResume, "resume", false, "Resume an interrupted run; skips completed operations. Cases for skipped ops are taken from the last complete run's output.")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -170,8 +171,15 @@ func runGen(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Checkpoint / resume logic
-	specHash, _ := writer.HashFile(genSpec)
+	// Checkpoint / resume logic.
+	// HashFile fails for URL specs — if the hash is empty, disable checkpointing
+	// for this run to avoid false hash matches on resume.
+	specHash, hashErr := writer.HashFile(genSpec)
+	if hashErr != nil && genResume {
+		fmt.Fprintln(os.Stderr, "warning: cannot hash spec (URL or unreadable file) — --resume disabled for this run")
+		genResume = false
+	}
+
 	ckptMgr := checkpoint.NewManager(genOutput)
 	var ckptState *checkpoint.State
 	var resumedCases []schema.TestCase
@@ -189,6 +197,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 				_ = ckptMgr.Delete()
 			} else {
 				// Load previously generated cases from index.json.
+				// Note: these are cases from the last *complete* run. Cases generated
+				// during the interrupted run itself are not preserved because index.json
+				// is only written on successful completion.
 				resumedCases = loadExistingCases(genOutput)
 				// Filter out already-completed operations.
 				var remaining []*spec.Operation
@@ -201,6 +212,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 				skipped := len(parsedSpec.Operations) - len(remaining)
 				if skipped > 0 {
 					fmt.Fprintf(os.Stderr, "↩ Resuming: skipping %d already-completed operation(s)\n", skipped)
+					if len(resumedCases) == 0 {
+						fmt.Fprintln(os.Stderr, "warning: no prior output found — skipped operations will not appear in output")
+					}
 				}
 				parsedSpec.Operations = remaining
 			}
@@ -215,12 +229,17 @@ func runGen(cmd *cobra.Command, args []string) error {
 	bus := event.NewBus()
 
 	// Subscribe a checkpoint sink that persists state after each operation.
+	// A mutex guards ckptState.Completed to prevent data races when
+	// --concurrency > 1 causes concurrent EventOperationDone deliveries.
+	var ckptMu sync.Mutex
 	bus.Subscribe(event.SinkFunc(func(e event.Event) {
 		if e.Type != event.EventOperationDone {
 			return
 		}
 		if p, ok := e.Payload.(event.OperationDonePayload); ok {
+			ckptMu.Lock()
 			ckptState.Completed[checkpoint.OperationKey(p.Method, p.Path)] = true
+			ckptMu.Unlock()
 			_ = ckptMgr.Save(ckptState) // best-effort; ignore write errors
 		}
 	}))
@@ -325,11 +344,16 @@ func runGen(cmd *cobra.Command, args []string) error {
 }
 
 // loadExistingCases reads previously generated cases from index.json in outputDir.
-// Returns an empty slice if the file does not exist or cannot be parsed.
+// Returns nil if the file does not exist. Logs a warning if the file exists but
+// cannot be parsed, so the user knows prior output is not being carried forward.
 func loadExistingCases(outputDir string) []schema.TestCase {
+	indexPath := filepath.Join(outputDir, "index.json")
 	r := writer.NewJSONSchemaWriter()
-	cases, err := r.Read(filepath.Join(outputDir, "index.json"))
+	cases, err := r.Read(indexPath)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "warning: could not read existing cases from %s: %v\n", indexPath, err)
+		}
 		return nil
 	}
 	return cases

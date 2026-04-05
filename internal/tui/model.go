@@ -36,7 +36,6 @@ type ProgressModel struct {
 	done     int
 	finished bool
 	rows     []opRow
-	width    int
 }
 
 // NewProgressModel creates a model that expects `total` operations to complete.
@@ -65,8 +64,6 @@ func (m ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.finished = true
 			return m, tea.Quit
 		}
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit

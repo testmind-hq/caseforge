@@ -81,10 +81,12 @@ func TestProgressModel_ViewScrollsToLast12Rows(t *testing.T) {
 }
 
 func TestProgressModel_WindowSizeMsg(t *testing.T) {
+	// WindowSizeMsg must be handled without panic and not change done/total.
 	m := NewProgressModel(3)
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	pm := updated.(ProgressModel)
-	assert.Equal(t, 120, pm.width)
+	assert.Equal(t, 0, pm.done)
+	assert.Equal(t, 3, pm.total)
 }
 
 func TestProgressModel_OperationDone_NoPayload(t *testing.T) {
