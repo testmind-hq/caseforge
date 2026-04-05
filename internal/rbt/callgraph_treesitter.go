@@ -2,6 +2,7 @@
 package rbt
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,8 +42,14 @@ func (b *TreeSitterCallGraphBuilder) ExtractFuncs(filePath string) ([]CallNode, 
 		return nil, nil, nil
 	}
 
+	// Read and parse the file once; share src and tree across both queries.
+	src, tree, err := parseFile(filePath, l)
+	if err != nil {
+		return nil, nil, nil
+	}
+
 	// Extract function definitions with line numbers.
-	defResults, err := runCallGraphQuery(filePath, defQuery, l)
+	defResults, err := runCallGraphQuery(src, tree, defQuery, l)
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -55,7 +62,7 @@ func (b *TreeSitterCallGraphBuilder) ExtractFuncs(filePath string) ([]CallNode, 
 	}
 
 	// Extract call sites with line numbers.
-	callResults, err := runCallGraphQuery(filePath, callQuery, l)
+	callResults, err := runCallGraphQuery(src, tree, callQuery, l)
 	if err != nil {
 		return defs, nil, nil
 	}
@@ -81,18 +88,23 @@ type captureResult struct {
 	line int
 }
 
-// runCallGraphQuery parses filePath and runs query against it, returning
-// (name, line) pairs for every capture in every match.
-func runCallGraphQuery(filePath, query string, l *gotreesitter.Language) ([]captureResult, error) {
+// parseFile reads filePath and parses it with l, returning the source bytes
+// and parsed tree. Returns an error if reading or parsing fails.
+func parseFile(filePath string, l *gotreesitter.Language) ([]byte, *gotreesitter.Tree, error) {
 	src, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
-	parser := gotreesitter.NewParser(l)
-	tree, err := parser.Parse(src)
+	tree, err := gotreesitter.NewParser(l).Parse(src)
 	if err != nil {
-		return nil, nil
+		return nil, nil, fmt.Errorf("tree-sitter parse %s: %w", filePath, err)
 	}
+	return src, tree, nil
+}
+
+// runCallGraphQuery runs query against an already-parsed tree, returning
+// (name, line) pairs for every capture in every match.
+func runCallGraphQuery(src []byte, tree *gotreesitter.Tree, query string, l *gotreesitter.Language) ([]captureResult, error) {
 	q, err := gotreesitter.NewQuery(query, l)
 	if err != nil {
 		return nil, nil

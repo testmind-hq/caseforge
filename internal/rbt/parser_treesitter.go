@@ -25,6 +25,10 @@ var langByExt = map[string]string{
 
 // langConstructors maps lang name to its gotreesitter Language constructor.
 // Shared by parser_treesitter.go and callgraph_treesitter.go.
+//
+// Note: "ruby" is listed here so the grammar is available for future use.
+// Ruby callgraph queries are not yet defined (callGraphDefQueryForLang returns
+// ""), so ExtractFuncs gracefully no-ops for Ruby files.
 var langConstructors = map[string]func() *gotreesitter.Language{
 	"go":         grammars.GoLanguage,
 	"python":     grammars.PythonLanguage,
@@ -32,7 +36,7 @@ var langConstructors = map[string]func() *gotreesitter.Language{
 	"tsx":        grammars.TsxLanguage,
 	"javascript": grammars.JavascriptLanguage,
 	"java":       grammars.JavaLanguage,
-	"ruby":       grammars.RubyLanguage,
+	"ruby":       grammars.RubyLanguage, // route queries only; callgraph not yet implemented
 	"rust":       grammars.RustLanguage,
 }
 

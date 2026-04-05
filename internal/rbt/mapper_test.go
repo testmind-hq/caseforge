@@ -192,10 +192,9 @@ func TestLLMParser_UnavailableProvider_ReturnsEmpty(t *testing.T) {
 
 // ── TreeSitterParser tests ────────────────────────────────────────────────────
 
-func TestTreeSitterParser_NotInstalled_ReturnsEmpty(t *testing.T) {
-	t.Setenv("PATH", t.TempDir())
+func TestTreeSitterParser_NonexistentFile_ReturnsEmpty(t *testing.T) {
 	parser := NewTreeSitterParser()
-	files := []ChangedFile{{Path: "handler.go"}}
+	files := []ChangedFile{{Path: "/nonexistent/handler.go"}}
 	mappings, err := parser.ExtractRoutes(context.Background(), ".", files)
 	require.NoError(t, err)
 	assert.Empty(t, mappings)
