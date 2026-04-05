@@ -167,6 +167,7 @@
 | AT-117 | `score` scores test cases across four dimensions | `go test ./cmd/... -run TestScoreCommand_TerminalOutput` | Output contains `Overall:`, `Coverage Breadth`, `Boundary Coverage`, `Security Coverage`, `Executability` | ✅ PASS |
 | AT-118 | `score --format json` outputs valid JSON report | `go test ./cmd/... -run TestScoreCommand_JSONOutput` | Valid JSON with `overall`, `dimensions`, `total_cases` fields | ✅ PASS |
 | AT-119 | `score` generates improvement suggestions for missing security/boundary cases | `go test ./cmd/... -run TestScoreCommand_OutputContainsSuggestions` | Output contains `Suggestions` and `owasp` | ✅ PASS |
+| AT-120 | gen flag behavioral tests (--no-ai, --technique, --priority, --operations, --resume) | `go test ./cmd/... -run 'TestGen_NoAI\|TestGen_Technique\|TestGen_Priority\|TestGen_Operations\|TestGen_Resume\|TestGen_CombinedFlags\|TestGen_Format'` | All 19 gen e2e behavioral tests pass | ✅ PASS |
 
 ---
 

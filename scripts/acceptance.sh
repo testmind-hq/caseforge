@@ -1083,6 +1083,10 @@ run "AT-118" "score --format json outputs valid JSON report" \
 run "AT-119" "score generates improvement suggestions for missing security/boundary cases" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestScoreCommand_OutputContainsSuggestions' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+# AT-120: gen flag behavioral tests
+run "AT-120" "gen flag behavioral tests (--no-ai, --technique, --priority, --operations, --resume)" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_NoAI|TestGen_Technique|TestGen_Priority|TestGen_Operations|TestGen_Resume|TestGen_CombinedFlags|TestGen_Format' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
