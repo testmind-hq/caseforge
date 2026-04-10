@@ -36,6 +36,16 @@ type Response struct {
 	Headers     map[string]string // key=header name, value=schema type ("string", "integer", etc.)
 }
 
+// SpecLink represents an OpenAPI 3.0 link declared on a response.
+// It expresses that a parameter of another operation can be populated
+// from a value in this response — a machine-readable producer→consumer edge.
+type SpecLink struct {
+	Name         string            // link object name (e.g. "GetUserById")
+	OperationID  string            // target operationId (e.g. "getUser")
+	Parameters   map[string]string // paramName → "$response.body#/fieldPath" or literal
+	ResponseCode string            // response code this link appears on (e.g. "201")
+}
+
 type Schema struct {
 	Type        string
 	Format      string

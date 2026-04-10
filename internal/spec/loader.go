@@ -34,6 +34,7 @@ type Operation struct {
 	Tags         []string
 	Security     []string            // names of security schemes declared on this operation
 	SemanticInfo *SemanticAnnotation // filled by LLM pre-processing
+	Links        []SpecLink          // OpenAPI 3.0 links declared in responses
 }
 
 type SemanticAnnotation struct {

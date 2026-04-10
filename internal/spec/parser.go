@@ -4,6 +4,7 @@ package spec
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -91,6 +92,39 @@ func convertOperation(method, path string, op *openapi3.Operation) *Operation {
 			o.Responses[code] = convertResponse(resp.Value)
 		}
 	}
+	// Parse OpenAPI 3.0 Links from each response
+	for code, resp := range op.Responses.Map() {
+		if resp.Value == nil {
+			continue
+		}
+		linkNames := make([]string, 0, len(resp.Value.Links))
+		for name := range resp.Value.Links {
+			linkNames = append(linkNames, name)
+		}
+		sort.Strings(linkNames)
+		for _, linkName := range linkNames {
+			linkRef := resp.Value.Links[linkName]
+			if linkRef == nil || linkRef.Value == nil || linkRef.Value.OperationID == "" {
+				continue
+			}
+			sl := SpecLink{
+				Name:         linkName,
+				OperationID:  linkRef.Value.OperationID,
+				ResponseCode: code,
+				Parameters:   make(map[string]string),
+			}
+			for paramName, paramExpr := range linkRef.Value.Parameters {
+				if s, ok := paramExpr.(string); ok {
+					sl.Parameters[paramName] = s
+				}
+			}
+			o.Links = append(o.Links, sl)
+		}
+	}
+	// Sort links for determinism
+	sort.Slice(o.Links, func(i, j int) bool {
+		return o.Links[i].Name < o.Links[j].Name
+	})
 	return o
 }
 
