@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
@@ -325,6 +326,7 @@ func (t *PairwiseTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 		return nil, nil
 	}
 	rows := IPOGt(params, t.tupleLevel)
+	rows = filterConstrainedCombinations(rows, params, op)
 	var cases []schema.TestCase
 	for i, row := range rows {
 		queryParams := map[string]any{}
@@ -370,6 +372,78 @@ func extractPairwiseParams(op *spec.Operation) []PairwiseParam {
 		}
 	}
 	return params
+}
+
+// filterConstrainedCombinations removes rows where a dependent parameter has an
+// active (non-zero/non-false) value while its controlling parameter is disabled.
+// If filtering would remove ALL rows, the original rows are returned unchanged.
+func filterConstrainedCombinations(rows [][]any, params []PairwiseParam, op *spec.Operation) [][]any {
+	groups := detectParamGroups(op)
+	if len(groups) == 0 {
+		return rows
+	}
+
+	// Build column index: param name → column index
+	colIdx := make(map[string]int, len(params))
+	for i, p := range params {
+		colIdx[p.Name] = i
+	}
+
+	var filtered [][]any
+	for _, row := range rows {
+		feasible := true
+		for _, g := range groups {
+			ctrlCol, ok := colIdx[g.controller]
+			if !ok {
+				continue
+			}
+			if isDisabled(row[ctrlCol]) {
+				for _, dep := range g.controlled {
+					depCol, ok := colIdx[dep]
+					if !ok {
+						continue
+					}
+					if isActiveValue(row[depCol]) {
+						feasible = false
+						break
+					}
+				}
+			}
+			if !feasible {
+				break
+			}
+		}
+		if feasible {
+			filtered = append(filtered, row)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return rows // never filter everything out
+	}
+	return filtered
+}
+
+// isDisabled returns true for values that represent "off": false, "false", "", 0, "none", "no".
+func isDisabled(v any) bool {
+	switch val := v.(type) {
+	case bool:
+		return !val
+	case string:
+		lower := strings.ToLower(val)
+		return lower == "false" || lower == "" || lower == "none" || lower == "no"
+	case int, int64, float64:
+		return fmt.Sprintf("%v", val) == "0"
+	}
+	return false
+}
+
+// isActiveValue returns true when a value is non-nil, non-false, non-empty.
+func isActiveValue(v any) bool {
+	if v == nil {
+		return false
+	}
+	return !isDisabled(v)
 }
 
 func buildPathWithQuery(path string, params map[string]any) string {

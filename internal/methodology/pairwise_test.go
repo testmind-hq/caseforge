@@ -171,6 +171,61 @@ func TestPairwiseTechnique_TupleLevel3_GeneratesMoreCases(t *testing.T) {
 	}
 }
 
+func TestPairwise_FiltersInfeasibleCombinations(t *testing.T) {
+	op := &spec.Operation{
+		Method: "GET", Path: "/items",
+		Parameters: []*spec.Parameter{
+			{Name: "sort", In: "query", Schema: &spec.Schema{Type: "boolean"}},
+			{Name: "sort_field", In: "query", Schema: &spec.Schema{Enum: []any{"name", "date"}}},
+			{Name: "sort_order", In: "query", Schema: &spec.Schema{Enum: []any{"asc", "desc"}}},
+			{Name: "format", In: "query", Schema: &spec.Schema{Enum: []any{"json", "csv"}}},
+		},
+		Responses: map[string]*spec.Response{"200": {}},
+	}
+
+	tech := NewPairwiseTechnique()
+	cases, err := tech.Generate(op)
+	require.NoError(t, err)
+
+	// No case should have sort=false AND sort_field=<active value>
+	for _, tc := range cases {
+		path := tc.Steps[0].Path
+		hasSortFalse := strings.Contains(path, "sort=false")
+		hasSortField := strings.Contains(path, "sort_field=")
+		assert.False(t, hasSortFalse && hasSortField,
+			"infeasible combination: sort=false with sort_field present in %q", path)
+	}
+}
+
+func TestFilterConstrainedCombinations_RemovesInfeasible(t *testing.T) {
+	params := []PairwiseParam{
+		{Name: "sort", Values: []any{true, false}},
+		{Name: "sort_field", Values: []any{"name", "date"}},
+		{Name: "format", Values: []any{"json", "csv"}},
+	}
+
+	// All rows including infeasible ones
+	rows := [][]any{
+		{true, "name", "json"},  // feasible: sort=true, sort_field=name
+		{false, "date", "csv"},  // infeasible: sort=false, sort_field=date
+		{true, "date", "csv"},   // feasible
+		{false, "name", "json"}, // infeasible: sort=false, sort_field=name
+	}
+
+	op := &spec.Operation{
+		Method: "GET", Path: "/items",
+		Parameters: []*spec.Parameter{
+			{Name: "sort", In: "query", Schema: &spec.Schema{Type: "boolean"}},
+			{Name: "sort_field", In: "query", Schema: &spec.Schema{Enum: []any{"name", "date"}}},
+			{Name: "format", In: "query", Schema: &spec.Schema{Enum: []any{"json", "csv"}}},
+		},
+		Responses: map[string]*spec.Response{"200": {}},
+	}
+
+	filtered := filterConstrainedCombinations(rows, params, op)
+	assert.Len(t, filtered, 2, "expected only 2 feasible rows")
+}
+
 func TestBuildPathWithQueryURLEncodesValues(t *testing.T) {
 	path := buildPathWithQuery("/search", map[string]any{
 		"q":      "hello world",
