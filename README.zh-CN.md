@@ -103,6 +103,7 @@ caseforge lint --spec openapi.yaml
 
 | 命令 | 描述 |
 |------|------|
+| `chain` | 基于依赖图用 BFS 生成多步链式用例 |
 | `watch` | 监听规范文件变更，自动重新生成 |
 | `suite create` | 创建测试套件编排文件 `suite.json` |
 | `suite validate` | 验证 `suite.json` 与 `index.json` 的一致性 |
@@ -141,6 +142,7 @@ caseforge lint --spec openapi.yaml
 --resume              从上次中断处继续，跳过已完成的操作
 --tuple-level int     N 路覆盖级别（2=两两，3=三路，默认 2）
 --seed int            确定性生成的随机种子（0=随机）
+--max-cases-per-op int  按优先级限制每个操作最多生成的用例数（0 = 不限）
 ```
 
 ### `caseforge run`
@@ -232,6 +234,15 @@ caseforge lint --spec openapi.yaml
 ```
 --suite string    suite.json 文件路径（必填）
 --cases string    包含 index.json 的 cases 目录
+```
+
+### `caseforge chain`
+
+```
+--spec string     OpenAPI 规范文件路径或 URL（必填）
+--depth int       最大链深度 1..4（默认：2）
+--output string   输出目录（默认：./chains）
+--format string   hurl | markdown | csv | postman | k6（默认：hurl）
 ```
 
 ### `caseforge explore`
@@ -328,6 +339,8 @@ webhooks:
 | 孤立负向测试 | `isolated_negative` |
 | Schema 违规测试 | `schema_violation` |
 | 变量无关性 | `variable_irrelevance` |
+| 变异测试 | `mutation` |
+| Auth 链 | `auth_chain` |
 
 ---
 
