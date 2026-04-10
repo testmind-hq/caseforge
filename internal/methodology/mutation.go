@@ -4,6 +4,7 @@ package methodology
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,8 +46,12 @@ func (t *MutationTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 
 	base := buildValidBody(t.gen, op)
 
+	// Sort field names for deterministic output
+	fieldNames := slices.Sorted(maps.Keys(s.Properties))
+
 	var cases []schema.TestCase
-	for fieldName, fieldSchema := range s.Properties {
+	for _, fieldName := range fieldNames {
+		fieldSchema := s.Properties[fieldName]
 		for _, m := range mutationsForSchema(fieldSchema) {
 			if t.maxCases > 0 && len(cases) >= t.maxCases {
 				return cases, nil

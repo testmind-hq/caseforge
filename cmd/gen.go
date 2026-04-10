@@ -63,6 +63,8 @@ var allTechniqueNames = []string{
 	"isolated_negative",
 	"schema_violation",
 	"variable_irrelevance",
+	"mutation",
+	"auth_chain",
 }
 
 func init() {
@@ -301,10 +303,12 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIsolatedNegativeTechnique(),
 		methodology.NewSchemaViolationTechnique(),
 		methodology.NewVariableIrrelevanceTechnique(),
+		methodology.NewMutationTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),
 		methodology.NewSecuritySpecTechnique(),
+		methodology.NewAuthChainTechnique(),
 	}
 	selectedTechniques, selectedSpec := filterTechniques(allTechniques, allSpecTechniques, genTechnique)
 	if genTechnique != "" && len(selectedTechniques) == 0 && len(selectedSpec) == 0 {
