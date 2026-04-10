@@ -36,6 +36,8 @@ func resetGenGlobals(t *testing.T) func() {
 		genOperations = ""
 		genConcurrency = 1
 		genResume = false
+		genTupleLevel = 2
+		genSeed = 0
 	}
 }
 

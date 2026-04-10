@@ -1094,6 +1094,25 @@ run "AT-121" "webhook package unit tests (sender retry, HMAC signing, event filt
 run "AT-122" "gen fires on_generate and on_run_complete webhook events" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenWebhook' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+# AT-123–AT-128: Tcases-inspired techniques
+run "AT-123" "isolated_negative generates one-invalid-field cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_IsolatedNegative' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-124" "schema_violation generates comprehensive constraint cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_SchemaViolation' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-125" "variable_irrelevance detects dependency groups and generates NA cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_VariableIrrelevance' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-126" "pairwise --tuple-level 3 accepted and generates cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_TupleLevel3' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-127" "--seed produces deterministic output across runs" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_Seed_Deterministic' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-128" "pairwise filters infeasible cross-variable combinations" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPairwise_Filter' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
