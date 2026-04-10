@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -125,7 +126,7 @@ func TestChainCaseTeardownStepPresent(t *testing.T) {
 			hasTeardown = true
 			assert.Equal(t, "DELETE", s.Method)
 			assert.Contains(t, s.Path, "{{userId}}")
-			assert.Equal(t, []string{"step-setup", "step-test"}, s.DependsOn, "teardown must depend on both setup and test")
+			assert.Equal(t, []string{"step-test"}, s.DependsOn, "teardown must depend on test step")
 		}
 	}
 	assert.True(t, hasTeardown, "should have a teardown step when DELETE exists")
@@ -188,4 +189,111 @@ func TestChainTechniqueSourceAnnotation(t *testing.T) {
 
 	assert.Equal(t, "chain_crud", cases[0].Source.Technique)
 	assert.True(t, strings.HasPrefix(cases[0].Source.SpecPath, "/users"))
+}
+
+func crudSpecWithUpdate() *spec.ParsedSpec {
+	return &spec.ParsedSpec{
+		Operations: []*spec.Operation{
+			{
+				OperationID: "createUser", Method: "POST", Path: "/users",
+				Tags: []string{"users"},
+				RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{
+							"name":  {Type: "string"},
+							"email": {Type: "string"},
+						},
+					}},
+				}},
+				Responses: map[string]*spec.Response{"201": {
+					Headers: map[string]string{},
+					Content: map[string]*spec.MediaType{"application/json": {Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{"id": {Type: "integer"}},
+					}}},
+				}},
+			},
+			{
+				OperationID: "updateUser", Method: "PUT", Path: "/users/{userId}",
+				Parameters: []*spec.Parameter{{Name: "userId", In: "path", Required: true}},
+				RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{
+						Type: "object",
+						Properties: map[string]*spec.Schema{"name": {Type: "string"}},
+					}},
+				}},
+				Responses: map[string]*spec.Response{"200": {}},
+			},
+			{
+				OperationID: "getUser", Method: "GET", Path: "/users/{userId}",
+				Parameters: []*spec.Parameter{{Name: "userId", In: "path", Required: true}},
+				Responses:  map[string]*spec.Response{"200": {}},
+			},
+			{
+				OperationID: "deleteUser", Method: "DELETE", Path: "/users/{userId}",
+				Parameters: []*spec.Parameter{{Name: "userId", In: "path", Required: true}},
+				Responses:  map[string]*spec.Response{"204": {}},
+			},
+		},
+	}
+}
+
+func TestChainTechnique_NStepChain_WithUpdate(t *testing.T) {
+	ct := NewChainTechnique()
+	cases, err := ct.Generate(crudSpecWithUpdate())
+	require.NoError(t, err)
+	require.NotEmpty(t, cases)
+
+	tc := cases[0]
+	assert.Equal(t, "chain", tc.Kind)
+	// Expect: setup(POST) + update(PUT) + test(GET) + teardown(DELETE) = 4 steps
+	assert.Equal(t, 4, len(tc.Steps))
+
+	types := make([]string, len(tc.Steps))
+	for i, s := range tc.Steps {
+		types[i] = s.Type
+	}
+	assert.Equal(t, []string{"setup", "update", "test", "teardown"}, types)
+}
+
+func TestChainTechnique_UpdateStepUsesCapture(t *testing.T) {
+	ct := NewChainTechnique()
+	cases, err := ct.Generate(crudSpecWithUpdate())
+	require.NoError(t, err)
+	require.NotEmpty(t, cases)
+
+	var updateStep *schema.Step
+	for i := range cases[0].Steps {
+		if cases[0].Steps[i].Type == "update" {
+			updateStep = &cases[0].Steps[i]
+		}
+	}
+	require.NotNil(t, updateStep, "should have an update step")
+	assert.Contains(t, updateStep.Path, "{{userId}}", "update path must use captured variable")
+	assert.Contains(t, updateStep.DependsOn, "step-setup", "update step must depend on setup")
+}
+
+func TestChainTechnique_LocationHeaderCapture(t *testing.T) {
+	ps := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{
+			OperationID: "createItem", Method: "POST", Path: "/items",
+			Responses: map[string]*spec.Response{"201": {
+				Headers: map[string]string{"Location": "string"},
+			}},
+		},
+		{
+			OperationID: "getItem", Method: "GET", Path: "/items/{itemId}",
+			Responses: map[string]*spec.Response{"200": {}},
+		},
+	}}
+	ct := NewChainTechnique()
+	cases, err := ct.Generate(ps)
+	require.NoError(t, err)
+	require.NotEmpty(t, cases)
+
+	setup := cases[0].Steps[0]
+	require.NotEmpty(t, setup.Captures)
+	assert.Equal(t, "header Location", setup.Captures[0].From,
+		"should prefer Location header capture when documented in spec")
 }

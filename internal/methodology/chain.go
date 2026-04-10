@@ -49,6 +49,7 @@ func (t *ChainTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error)
 type chainGroup struct {
 	create *spec.Operation // POST /collection
 	read   *spec.Operation // GET /collection/{id}
+	update *spec.Operation // PUT or PATCH /collection/{id} (optional)
 	delete *spec.Operation // DELETE /collection/{id} (optional)
 }
 
@@ -71,6 +72,13 @@ func groupByResource(ops []*spec.Operation) map[string]*chainGroup {
 			switch op.Method {
 			case "GET":
 				g.read = op
+			case "PUT", "PATCH":
+				if g.update == nil {
+					g.update = op
+				}
+				if op.Method == "PUT" {
+					g.update = op // PUT wins over PATCH
+				}
 			case "DELETE":
 				g.delete = op
 			}
@@ -148,11 +156,11 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) sche
 	id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 	captureName := captureVarName(g.read.Path)
 	idField := findIDField(g.create)
+	captureFrom := inferCaptureFrom(g.create, idField)
 
 	var steps []schema.Step
 
 	// Step 1: setup — POST to create the resource
-	// buildValidBody is defined in internal/methodology/helpers.go (same package)
 	setupBody := buildValidBody(t.gen, g.create)
 	var setupBodyAny any
 	if setupBody != nil {
@@ -171,29 +179,59 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) sche
 		Headers:    setupHeaders,
 		Body:       setupBodyAny,
 		Assertions: assertpkg.BasicAssertions(g.create),
-		Captures: []schema.Capture{
-			{Name: captureName, From: fmt.Sprintf("jsonpath $.%s", idField)},
-		},
+		Captures:   []schema.Capture{{Name: captureName, From: captureFrom}},
 	})
 
-	// Step 2: test — GET the created resource
+	// Step 2 (optional): update — PUT/PATCH the created resource
+	if g.update != nil {
+		updateParamName := captureVarName(g.update.Path)
+		updatePath := strings.ReplaceAll(g.update.Path,
+			fmt.Sprintf("{%s}", updateParamName),
+			fmt.Sprintf("{{%s}}", captureName))
+		updateBody := buildValidBody(t.gen, g.update)
+		var updateBodyAny any
+		if updateBody != nil {
+			updateBodyAny = updateBody
+		}
+		updateHeaders := map[string]string{}
+		if updateBodyAny != nil {
+			updateHeaders["Content-Type"] = "application/json"
+		}
+		steps = append(steps, schema.Step{
+			ID:         "step-update",
+			Title:      fmt.Sprintf("update %s", resourcePath),
+			Type:       "update",
+			Method:     g.update.Method,
+			Path:       updatePath,
+			Headers:    updateHeaders,
+			Body:       updateBodyAny,
+			Assertions: assertpkg.BasicAssertions(g.update),
+			DependsOn:  []string{"step-setup"},
+		})
+	}
+
+	// Step 3: test — GET the created/updated resource
 	readPath := strings.ReplaceAll(g.read.Path,
 		fmt.Sprintf("{%s}", captureName),
 		fmt.Sprintf("{{%s}}", captureName))
+	var testDeps []string
+	if g.update != nil {
+		testDeps = []string{"step-update"}
+	} else {
+		testDeps = []string{"step-setup"}
+	}
 	steps = append(steps, schema.Step{
 		ID:         "step-test",
 		Title:      fmt.Sprintf("read %s by id", resourcePath),
 		Type:       "test",
 		Method:     g.read.Method,
 		Path:       readPath,
-		DependsOn:  []string{"step-setup"},
+		DependsOn:  testDeps,
 		Assertions: assertpkg.BasicAssertions(g.read),
 	})
 
-	// Step 3: teardown — DELETE (optional)
+	// Step 4 (optional): teardown — DELETE
 	if g.delete != nil {
-		// The DELETE path may use a different param name than the GET path,
-		// so derive the actual OpenAPI param name from the DELETE path independently.
 		deleteParamName := captureVarName(g.delete.Path)
 		deletePath := strings.ReplaceAll(g.delete.Path,
 			fmt.Sprintf("{%s}", deleteParamName),
@@ -204,26 +242,33 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) sche
 			Type:       "teardown",
 			Method:     g.delete.Method,
 			Path:       deletePath,
-			DependsOn:  []string{"step-setup", "step-test"},
+			DependsOn:  []string{"step-test"},
 			Assertions: assertpkg.BasicAssertions(g.delete),
 		})
 	}
 
-	tc := schema.TestCase{
-		Schema:  schema.SchemaBaseURL,
-		Version: "1",
-		ID:      id,
-		Title:   fmt.Sprintf("CRUD chain: %s", resourcePath),
-		Kind:    "chain",
+	stepDesc := "create → read"
+	if g.update != nil {
+		stepDesc = "create → update → read"
+	}
+	if g.delete != nil {
+		stepDesc += " → delete"
+	}
+
+	return schema.TestCase{
+		Schema:   schema.SchemaBaseURL,
+		Version:  "1",
+		ID:       id,
+		Title:    fmt.Sprintf("CRUD chain: %s", resourcePath),
+		Kind:     "chain",
 		Priority: "P1",
-		Tags:    g.create.Tags,
+		Tags:     g.create.Tags,
 		Source: schema.CaseSource{
 			Technique: "chain_crud",
 			SpecPath:  resourcePath,
-			Rationale: fmt.Sprintf("CRUD lifecycle: create → read → delete for %s", resourcePath),
+			Rationale: fmt.Sprintf("CRUD lifecycle: %s for %s", stepDesc, resourcePath),
 		},
 		Steps:       steps,
 		GeneratedAt: time.Now(),
 	}
-	return tc
 }

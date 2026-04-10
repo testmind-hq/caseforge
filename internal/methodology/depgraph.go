@@ -57,24 +57,12 @@ func BuildDepGraph(ops []*spec.Operation) *DepGraph {
 		seen[key] = true
 
 		paramName := captureVarName(op.Path)
-		// Compute capture and idField together so they stay in sync
-		var captureFrom string
-		var idField string
-		if resp, ok := creator.Responses["201"]; ok {
-			if _, hasLoc := resp.Headers["Location"]; hasLoc {
-				captureFrom = "header Location"
-				idField = findIDField(creator)
-			}
+		// Determine idField: prefer nested path (e.g. "data.id") when present
+		idField := findIDField(creator)
+		if nested := findNestedIDPath(creator); nested != "" {
+			idField = nested
 		}
-		if captureFrom == "" {
-			if nested := findNestedIDPath(creator); nested != "" {
-				idField = nested
-				captureFrom = fmt.Sprintf("jsonpath $.%s", nested)
-			} else {
-				idField = findIDField(creator)
-				captureFrom = fmt.Sprintf("jsonpath $.%s", idField)
-			}
-		}
+		captureFrom := inferCaptureFrom(creator, findIDField(creator))
 		edges = append(edges, DepEdge{
 			Creator:     creator,
 			Consumer:    op,
@@ -91,6 +79,20 @@ func BuildDepGraph(ops []*spec.Operation) *DepGraph {
 		return ki < kj
 	})
 	return &DepGraph{Edges: edges}
+}
+
+// inferCaptureFrom decides the capture expression for a creator operation.
+// Prefers Location header (REST 201 convention) when documented; falls back to jsonpath.
+func inferCaptureFrom(creator *spec.Operation, idField string) string {
+	if resp, ok := creator.Responses["201"]; ok {
+		if _, hasLoc := resp.Headers["Location"]; hasLoc {
+			return "header Location"
+		}
+	}
+	if nested := findNestedIDPath(creator); nested != "" {
+		return fmt.Sprintf("jsonpath $.%s", nested)
+	}
+	return fmt.Sprintf("jsonpath $.%s", idField)
 }
 
 // findNestedIDPath returns a dotted path like "data.id" when the response body
