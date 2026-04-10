@@ -170,6 +170,12 @@
 | AT-120 | gen flag behavioral tests (--no-ai, --technique, --priority, --operations, --resume) | `go test ./cmd/... -run 'TestGen_NoAI\|TestGen_Technique\|TestGen_Priority\|TestGen_Operations\|TestGen_Resume\|TestGen_CombinedFlags\|TestGen_Format'` | All 19 gen e2e behavioral tests pass | ✅ PASS |
 | AT-121 | webhook package unit tests (sender retry, HMAC signing, event filtering) | `go test ./internal/webhook/... -v` | All 14 webhook unit tests pass | ✅ PASS |
 | AT-122 | gen fires on_generate and on_run_complete webhook events | `go test ./cmd/... -run 'TestGenWebhook'` | All 4 webhook integration tests pass | ✅ PASS |
+| AT-123 | isolated_negative generates one-invalid-field cases | `go test ./cmd/... -run 'TestGen_IsolatedNegative'` | All isolated_negative cases generated, technique field set | ✅ PASS |
+| AT-124 | schema_violation generates comprehensive constraint cases | `go test ./cmd/... -run 'TestGen_SchemaViolation'` | All schema_violation cases generated with 422 assertions | ✅ PASS |
+| AT-125 | variable_irrelevance detects dependency groups and generates NA cases | `go test ./cmd/... -run 'TestGen_VariableIrrelevance'` | No error even when technique doesn't apply | ✅ PASS |
+| AT-126 | pairwise --tuple-level 3 generates 3-way combinations | `go test ./cmd/... -run 'TestGen_TupleLevel3'` | --tuple-level=3 accepted without error | ✅ PASS |
+| AT-127 | --seed produces deterministic output across runs | `go test ./cmd/... -run 'TestGen_Seed_Deterministic'` | Same seed produces same number of cases | ✅ PASS |
+| AT-128 | pairwise filters infeasible cross-variable combinations | `go test ./internal/methodology/... -run 'TestPairwise_Filter'` | Infeasible sort=false+sort_field combinations removed | ✅ PASS |
 
 ---
 

@@ -139,6 +139,8 @@ caseforge lint --spec openapi.yaml
 --operations string   只处理指定的 operationId（逗号分隔，默认全部）
 --concurrency int     并发处理的操作数量（默认：1）
 --resume              从上次中断处继续，跳过已完成的操作
+--tuple-level int     N 路覆盖级别（2=两两，3=三路，默认 2）
+--seed int            确定性生成的随机种子（0=随机）
 ```
 
 ### `caseforge run`
@@ -323,6 +325,9 @@ webhooks:
 | 分类树（MBT） | `classification_tree` |
 | 正交数组 | `orthogonal_array` |
 | 示例提取 | `example_extraction` |
+| 孤立负向测试 | `isolated_negative` |
+| Schema 违规测试 | `schema_violation` |
+| 变量无关性 | `variable_irrelevance` |
 
 ---
 

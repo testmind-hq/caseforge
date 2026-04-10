@@ -139,6 +139,8 @@ caseforge lint --spec openapi.yaml
 --operations string   Comma-separated operationIds to process (default: all)
 --concurrency int     Operations processed in parallel (default: 1)
 --resume              Resume an interrupted run; skip completed operations
+--tuple-level int     N-way coverage level for pairwise (2=pairwise, 3=3-way, default 2)
+--seed int            Seed for deterministic generation (0 = random)
 ```
 
 ### `caseforge run`
@@ -353,6 +355,9 @@ X-CaseForge-Signature-256: sha256=<hex>
 | Classification Tree (MBT) | `classification_tree` |
 | Orthogonal Array | `orthogonal_array` |
 | Example Extraction | `example_extraction` |
+| Isolated Negative | `isolated_negative` |
+| Schema Violation | `schema_violation` |
+| Variable Irrelevance | `variable_irrelevance` |
 
 ---
 
