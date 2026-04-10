@@ -41,6 +41,8 @@ var (
 	genOperations  string
 	genConcurrency int
 	genResume      bool
+	genTupleLevel  int
+	genSeed        int64
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -70,6 +72,8 @@ func init() {
 	genCmd.Flags().StringVar(&genOperations, "operations", "", "Comma-separated operationIds to process (default: all)")
 	genCmd.Flags().IntVar(&genConcurrency, "concurrency", 1, "Number of operations processed concurrently (default 1)")
 	genCmd.Flags().BoolVar(&genResume, "resume", false, "Resume an interrupted run; skips completed operations. Cases for skipped ops are taken from the last complete run's output.")
+	genCmd.Flags().IntVar(&genTupleLevel, "tuple-level", 2, "N-way coverage level for pairwise technique (2=pairwise, 3=3-way, max 4)")
+	genCmd.Flags().Int64Var(&genSeed, "seed", 0, "Seed for deterministic generation (0 = random)")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -135,6 +139,11 @@ func runGen(cmd *cobra.Command, args []string) error {
 	// Validate --concurrency
 	if genConcurrency < 1 {
 		return fmt.Errorf("invalid --concurrency %d: must be ≥ 1", genConcurrency)
+	}
+
+	// Validate --tuple-level
+	if genTupleLevel < 2 || genTupleLevel > 4 {
+		return fmt.Errorf("invalid --tuple-level %d: must be between 2 and 4", genTupleLevel)
 	}
 
 	// Resolve LLM provider
@@ -279,7 +288,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewDecisionTechnique(),
 		methodology.NewStateTechnique(),
 		methodology.NewIdempotentTechnique(),
-		methodology.NewPairwiseTechnique(),
+		methodology.NewPairwiseTechniqueWithLevel(genTupleLevel),
 		methodology.NewClassificationTreeTechnique(),
 		methodology.NewOrthogonalArrayTechnique(),
 		methodology.NewSecurityTechnique(),
@@ -301,6 +310,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 	}
 	engine.SetSink(bus)
 	engine.SetConcurrency(genConcurrency)
+	if genSeed != 0 {
+		engine.SetSeed(genSeed)
+	}
 	newCases, err := engine.Generate(parsedSpec)
 	if err != nil {
 		return fmt.Errorf("generating test cases: %w", err)

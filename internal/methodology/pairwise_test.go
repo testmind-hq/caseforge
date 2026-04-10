@@ -85,6 +85,92 @@ func TestPairwiseGeneratesTestCases(t *testing.T) {
 	}
 }
 
+func TestIPOGt_Level3_CoversAllTriples(t *testing.T) {
+	params := []PairwiseParam{
+		{Name: "a", Values: []any{"a1", "a2"}},
+		{Name: "b", Values: []any{"b1", "b2"}},
+		{Name: "c", Values: []any{"c1", "c2"}},
+		{Name: "d", Values: []any{"d1", "d2"}},
+	}
+
+	rows := IPOGt(params, 3)
+	require.NotEmpty(t, rows)
+
+	// Verify all triples are covered
+	covered := make(map[[6]any]bool) // (colA, colB, colC, valA, valB, valC)
+
+	for _, row := range rows {
+		for i := 0; i < len(params)-2; i++ {
+			for j := i + 1; j < len(params)-1; j++ {
+				for k := j + 1; k < len(params); k++ {
+					key := [6]any{i, j, k, row[i], row[j], row[k]}
+					covered[key] = true
+				}
+			}
+		}
+	}
+
+	// Check all expected triples are covered
+	for i := 0; i < len(params)-2; i++ {
+		for j := i + 1; j < len(params)-1; j++ {
+			for k := j + 1; k < len(params); k++ {
+				for _, va := range params[i].Values {
+					for _, vb := range params[j].Values {
+						for _, vc := range params[k].Values {
+							key := [6]any{i, j, k, va, vb, vc}
+							assert.True(t, covered[key],
+								"triple (%d=%v, %d=%v, %d=%v) not covered",
+								i, va, j, vb, k, vc)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestIPOGt_Level2_MatchesIPOG(t *testing.T) {
+	params := []PairwiseParam{
+		{Name: "x", Values: []any{1, 2}},
+		{Name: "y", Values: []any{"a", "b"}},
+		{Name: "z", Values: []any{true, false}},
+	}
+	rows2 := IPOG(params)
+	rowsT := IPOGt(params, 2)
+	// Both should cover the same pairs; row counts may differ slightly
+	assert.Equal(t, len(rows2), len(rowsT),
+		"IPOGt(t=2) should produce same number of rows as IPOG")
+}
+
+func TestPairwiseTechnique_TupleLevel3_GeneratesMoreCases(t *testing.T) {
+	op := &spec.Operation{
+		Method: "GET", Path: "/search",
+		Parameters: []*spec.Parameter{
+			{Name: "sort", In: "query", Schema: &spec.Schema{Type: "boolean"}},
+			{Name: "filter", In: "query", Schema: &spec.Schema{Enum: []any{"all", "active"}}},
+			{Name: "format", In: "query", Schema: &spec.Schema{Enum: []any{"json", "csv"}}},
+			{Name: "lang", In: "query", Schema: &spec.Schema{Enum: []any{"en", "zh"}}},
+		},
+		Responses: map[string]*spec.Response{"200": {}},
+	}
+
+	tech2 := NewPairwiseTechniqueWithLevel(2)
+	tech3 := NewPairwiseTechniqueWithLevel(3)
+
+	cases2, err := tech2.Generate(op)
+	require.NoError(t, err)
+	cases3, err := tech3.Generate(op)
+	require.NoError(t, err)
+
+	// 3-way must produce at least as many cases as 2-way
+	assert.GreaterOrEqual(t, len(cases3), len(cases2))
+
+	// All cases must cite correct technique
+	for _, tc := range cases3 {
+		assert.Equal(t, "pairwise", tc.Source.Technique)
+	}
+}
+
 func TestBuildPathWithQueryURLEncodesValues(t *testing.T) {
 	path := buildPathWithQuery("/search", map[string]any{
 		"q":      "hello world",

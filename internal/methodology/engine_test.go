@@ -219,6 +219,43 @@ func TestEngineConcurrentProducesSameResults(t *testing.T) {
 	assert.Equal(t, serialSet, parallelSet, "concurrent and serial must produce equivalent cases")
 }
 
+func TestEngine_SeedProducesIdenticalOutput(t *testing.T) {
+	op := &spec.Operation{
+		OperationID: "listItems",
+		Method:      "GET",
+		Path:        "/items",
+		Parameters: []*spec.Parameter{
+			{Name: "sort", In: "query", Schema: &spec.Schema{Type: "boolean"}},
+			{Name: "filter", In: "query", Schema: &spec.Schema{Enum: []any{"all", "active", "archived"}}},
+			{Name: "format", In: "query", Schema: &spec.Schema{Enum: []any{"json", "csv"}}},
+			{Name: "lang", In: "query", Schema: &spec.Schema{Enum: []any{"en", "zh"}}},
+		},
+		Responses: map[string]*spec.Response{"200": {}},
+	}
+	ps := &spec.ParsedSpec{Operations: []*spec.Operation{op}}
+
+	run := func(seed int64) []schema.TestCase {
+		e := NewEngine(&llm.NoopProvider{}, NewPairwiseTechnique())
+		e.SetSeed(seed)
+		cases, err := e.Generate(ps)
+		require.NoError(t, err)
+		return cases
+	}
+
+	cases1 := run(42)
+	cases2 := run(42)
+	cases3 := run(99) // different seed
+
+	require.Equal(t, len(cases1), len(cases2), "same seed must produce same number of cases")
+	for i := range cases1 {
+		assert.Equal(t, cases1[i].Steps[0].Path, cases2[i].Steps[0].Path,
+			"same seed must produce identical paths at index %d", i)
+	}
+
+	// Different seed may (not guaranteed) produce different order
+	_ = cases3 // just ensure it doesn't panic
+}
+
 // mockSpecTechnique is a test double for SpecTechnique.
 type mockSpecTechnique struct {
 	onGenerate func(*spec.ParsedSpec) ([]schema.TestCase, error)

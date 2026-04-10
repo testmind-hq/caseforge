@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	gofakeit "github.com/brianvoe/gofakeit/v7"
 	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
@@ -28,12 +29,19 @@ type SpecTechnique interface {
 	Generate(s *spec.ParsedSpec) ([]schema.TestCase, error)
 }
 
+// Seedable is an optional interface techniques can implement to receive a
+// deterministic seed for reproducible combination ordering.
+type Seedable interface {
+	SetSeed(seed int64)
+}
+
 type Engine struct {
 	techniques     []Technique
 	specTechniques []SpecTechnique
 	llm            llm.LLMProvider
 	sink           event.Sink
-	concurrency    int // 0 or 1 = serial; >1 = parallel worker pool
+	concurrency    int   // 0 or 1 = serial; >1 = parallel worker pool
+	seed           int64 // 0 = random
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
@@ -54,6 +62,18 @@ func (e *Engine) AddSpecTechnique(t SpecTechnique) {
 // SetSink registers an event sink for progress events.
 func (e *Engine) SetSink(s event.Sink) {
 	e.sink = s
+}
+
+// SetSeed seeds the global data generator and all Seedable techniques for
+// deterministic output. Call before Generate.
+func (e *Engine) SetSeed(seed int64) {
+	e.seed = seed
+	gofakeit.Seed(seed)
+	for _, t := range e.techniques {
+		if s, ok := t.(Seedable); ok {
+			s.SetSeed(seed)
+		}
+	}
 }
 
 func (e *Engine) emit(ev event.Event) {
