@@ -101,6 +101,45 @@ func TestBuildDepGraph_NoEdgesWithoutPost(t *testing.T) {
 	assert.Empty(t, g.Edges)
 }
 
+func TestBuildDepGraph_NestedIDPath(t *testing.T) {
+	ops := []*spec.Operation{
+		{
+			OperationID: "createOrder",
+			Method:      "POST",
+			Path:        "/orders",
+			Responses: map[string]*spec.Response{
+				"201": {
+					Headers: map[string]string{},
+					Content: map[string]*spec.MediaType{
+						"application/json": {Schema: &spec.Schema{
+							Type: "object",
+							Properties: map[string]*spec.Schema{
+								"data": {
+									Type: "object",
+									Properties: map[string]*spec.Schema{
+										"id":     {Type: "string"},
+										"status": {Type: "string"},
+									},
+								},
+							},
+						}},
+					},
+				},
+			},
+		},
+		{
+			OperationID: "getOrder",
+			Method:      "GET",
+			Path:        "/orders/{orderId}",
+			Responses:   map[string]*spec.Response{"200": {}},
+		},
+	}
+	g := BuildDepGraph(ops)
+	require.Len(t, g.Edges, 1)
+	assert.Equal(t, "jsonpath $.data.id", g.Edges[0].CaptureFrom)
+	assert.Equal(t, "data.id", g.Edges[0].IDField, "IDField must match CaptureFrom nested path")
+}
+
 func TestBuildDepGraph_Deterministic(t *testing.T) {
 	ops := crudOps()
 	g1 := BuildDepGraph(ops)
