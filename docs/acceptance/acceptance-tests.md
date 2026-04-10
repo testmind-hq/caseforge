@@ -176,6 +176,15 @@
 | AT-126 | pairwise --tuple-level 3 generates 3-way combinations | `go test ./cmd/... -run 'TestGen_TupleLevel3'` | --tuple-level=3 accepted without error | ✅ PASS |
 | AT-127 | --seed produces deterministic output across runs | `go test ./cmd/... -run 'TestGen_Seed_Deterministic'` | Same seed produces same number of cases | ✅ PASS |
 | AT-128 | pairwise filters infeasible cross-variable combinations | `go test ./internal/methodology/... -run 'TestPairwise_Filter'` | Infeasible sort=false+sort_field combinations removed | ✅ PASS |
+| AT-129 | mutation technique generates per-field invalid-value cases | `go test ./internal/methodology/... -run 'TestMutationTechnique'` | All 4 mutation tests pass | ✅ PASS |
+| AT-130 | auth_chain technique generates login→token→use chain cases | `go test ./internal/methodology/... -run 'TestAuthChainTechnique'` | All 6 auth_chain tests pass | ✅ PASS |
+| AT-131 | engine maxCasesPerOp ceiling truncates by priority | `go test ./internal/methodology/... -run 'TestEngine_MaxCasesPerOp'` | Ceiling enforced, P0 prioritized | ✅ PASS |
+| AT-132 | chain command registers and has required flags | `go test ./cmd/... -run 'TestChainCommand_IsRegistered\|TestChainCommand_HasRequiredFlags'` | chain command present with spec/depth/output flags | ✅ PASS |
+| AT-133 | chain depth-2 generates multi-step chain cases | `go test ./cmd/... -run 'TestChainCommand_GeneratesChainCases'` | chain cases with ≥2 steps generated | ✅ PASS |
+| AT-134 | chain depth-1 generates single-op cases | `go test ./cmd/... -run 'TestChainCommand_Depth1_SingleOpCases'` | Each case has exactly 1 step | ✅ PASS |
+| AT-135 | chain invalid depth exits non-zero | `go test ./cmd/... -run 'TestChainCommand'` | Error returned for depth 0 | ✅ PASS |
+| AT-136 | N-step chain includes update step when PUT present | `go test ./internal/methodology/... -run 'TestChainTechnique_NStepChain'` | 4-step chain: setup→update→test→teardown | ✅ PASS |
+| AT-137 | gen registers mutation and auth_chain techniques without error | `go test ./cmd/... -run 'TestGen_Seed_DeterministicOutput'` | Deterministic output with new techniques | ✅ PASS |
 
 ---
 

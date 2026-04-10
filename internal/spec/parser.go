@@ -136,10 +136,24 @@ func convertResponse(r *openapi3.Response) *Response {
 	if r.Description != nil {
 		desc = *r.Description
 	}
-	resp := &Response{Description: desc, Content: make(map[string]*MediaType)}
+	resp := &Response{
+		Description: desc,
+		Content:     make(map[string]*MediaType),
+		Headers:     make(map[string]string),
+	}
 	for ct, mt := range r.Content {
 		if mt.Schema != nil && mt.Schema.Value != nil {
 			resp.Content[ct] = &MediaType{Schema: convertSchema(mt.Schema.Value)}
+		}
+	}
+	for name, hRef := range r.Headers {
+		if hRef.Value != nil && hRef.Value.Schema != nil && hRef.Value.Schema.Value != nil {
+			s := hRef.Value.Schema.Value
+			typ := ""
+			if s.Type != nil && len(*s.Type) > 0 {
+				typ = (*s.Type)[0]
+			}
+			resp.Headers[name] = typ
 		}
 	}
 	return resp

@@ -39,10 +39,11 @@ var (
 	genTechnique   string
 	genPriority    string
 	genOperations  string
-	genConcurrency int
-	genResume      bool
-	genTupleLevel  int
-	genSeed        int64
+	genConcurrency    int
+	genResume         bool
+	genTupleLevel     int
+	genSeed           int64
+	genMaxCasesPerOp  int
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -62,6 +63,8 @@ var allTechniqueNames = []string{
 	"isolated_negative",
 	"schema_violation",
 	"variable_irrelevance",
+	"mutation",
+	"auth_chain",
 }
 
 func init() {
@@ -77,6 +80,7 @@ func init() {
 	genCmd.Flags().BoolVar(&genResume, "resume", false, "Resume an interrupted run; skips completed operations. Cases for skipped ops are taken from the last complete run's output.")
 	genCmd.Flags().IntVar(&genTupleLevel, "tuple-level", 2, "N-way coverage level for pairwise technique (2=pairwise, 3=3-way, max 4)")
 	genCmd.Flags().Int64Var(&genSeed, "seed", 0, "Seed for deterministic generation (0 = random)")
+	genCmd.Flags().IntVar(&genMaxCasesPerOp, "max-cases-per-op", 0, "Maximum test cases per operation (0 = unlimited, P0 cases take priority)")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -299,10 +303,12 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewIsolatedNegativeTechnique(),
 		methodology.NewSchemaViolationTechnique(),
 		methodology.NewVariableIrrelevanceTechnique(),
+		methodology.NewMutationTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),
 		methodology.NewSecuritySpecTechnique(),
+		methodology.NewAuthChainTechnique(),
 	}
 	selectedTechniques, selectedSpec := filterTechniques(allTechniques, allSpecTechniques, genTechnique)
 	if genTechnique != "" && len(selectedTechniques) == 0 && len(selectedSpec) == 0 {
@@ -318,6 +324,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 	engine.SetConcurrency(genConcurrency)
 	if genSeed != 0 {
 		engine.SetSeed(genSeed)
+	}
+	if genMaxCasesPerOp > 0 {
+		engine.SetMaxCasesPerOp(genMaxCasesPerOp)
 	}
 	newCases, err := engine.Generate(parsedSpec)
 	if err != nil {

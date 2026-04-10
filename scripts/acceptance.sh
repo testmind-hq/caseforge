@@ -1113,6 +1113,33 @@ run "AT-127" "--seed produces deterministic output across runs" \
 run "AT-128" "pairwise filters infeasible cross-variable combinations" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPairwise_Filter' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-129" "mutation technique generates per-field invalid-value cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestMutationTechnique' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-130" "auth_chain technique generates login→token→use chain cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestAuthChainTechnique' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-131" "engine maxCasesPerOp ceiling truncates by priority" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestEngine_MaxCasesPerOp' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-132" "chain command registers and has required flags" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_IsRegistered|TestChainCommand_HasRequiredFlags' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-133" "chain depth-2 generates multi-step chain cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_GeneratesChainCases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-134" "chain depth-1 generates single-op cases" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_Depth1_SingleOpCases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-135" "chain invalid depth exits non-zero" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-136" "N-step chain includes update step when PUT present" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestChainTechnique_NStepChain' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-137" "gen registers mutation and auth_chain techniques without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_Seed_DeterministicOutput' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

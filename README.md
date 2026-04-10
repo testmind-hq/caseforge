@@ -103,6 +103,7 @@ caseforge lint --spec openapi.yaml
 
 | Command | Description |
 |---------|-------------|
+| `chain` | Generate multi-step chain cases via BFS over the dependency graph |
 | `watch` | Watch a spec file and regenerate cases on change |
 | `suite create` | Create a `suite.json` orchestration file |
 | `suite validate` | Validate a `suite.json` against its `index.json` |
@@ -141,6 +142,7 @@ caseforge lint --spec openapi.yaml
 --resume              Resume an interrupted run; skip completed operations
 --tuple-level int     N-way coverage level for pairwise (2=pairwise, 3=3-way, default 2)
 --seed int            Seed for deterministic generation (0 = random)
+--max-cases-per-op int  Cap cases per operation by priority (0 = unlimited)
 ```
 
 ### `caseforge run`
@@ -232,6 +234,15 @@ caseforge lint --spec openapi.yaml
 ```
 --suite string    Path to suite.json (required)
 --cases string    Cases directory containing index.json
+```
+
+### `caseforge chain`
+
+```
+--spec string     OpenAPI spec file or URL (required)
+--depth int       Maximum chain depth 1..4 (default: 2)
+--output string   Output directory (default: ./chains)
+--format string   hurl | markdown | csv | postman | k6 (default: hurl)
 ```
 
 ### `caseforge explore`
@@ -358,6 +369,8 @@ X-CaseForge-Signature-256: sha256=<hex>
 | Isolated Negative | `isolated_negative` |
 | Schema Violation | `schema_violation` |
 | Variable Irrelevance | `variable_irrelevance` |
+| Mutation | `mutation` |
+| Auth Chain | `auth_chain` |
 
 ---
 
