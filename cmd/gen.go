@@ -59,6 +59,9 @@ var allTechniqueNames = []string{
 	"examples",
 	"chain",
 	"owasp_api_top10_spec",
+	"isolated_negative",
+	"schema_violation",
+	"variable_irrelevance",
 }
 
 func init() {
@@ -293,6 +296,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewOrthogonalArrayTechnique(),
 		methodology.NewSecurityTechnique(),
 		methodology.NewExampleTechnique(),
+		methodology.NewIsolatedNegativeTechnique(),
+		methodology.NewSchemaViolationTechnique(),
+		methodology.NewVariableIrrelevanceTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),
