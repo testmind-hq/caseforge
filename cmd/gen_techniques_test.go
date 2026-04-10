@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -88,6 +89,19 @@ func TestGen_Seed_DeterministicOutput(t *testing.T) {
 	cases2 := readCases(t, dir2)
 
 	require.Equal(t, len(cases1), len(cases2), "same seed must produce same number of cases")
+	// Collect the set of titles from both runs; operation processing order can vary
+	// between runs (Go map iteration over spec paths), so we compare as sorted sets.
+	titles1 := make([]string, len(cases1))
+	titles2 := make([]string, len(cases2))
+	for i, tc := range cases1 {
+		titles1[i] = tc.Title
+	}
+	for i, tc := range cases2 {
+		titles2[i] = tc.Title
+	}
+	sort.Strings(titles1)
+	sort.Strings(titles2)
+	assert.Equal(t, titles1, titles2, "same seed must produce the same set of case titles")
 }
 
 func TestGen_TupleLevelInvalid_ReturnsError(t *testing.T) {

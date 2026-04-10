@@ -3,7 +3,6 @@ package methodology
 
 import (
 	"fmt"
-	"math/rand"
 	"net/url"
 	"sort"
 	"strings"
@@ -294,8 +293,7 @@ func cartesianProductParams(params []PairwiseParam) [][]any {
 }
 
 type PairwiseTechnique struct {
-	tupleLevel int        // 2 = pairwise (default), 3 = 3-way, etc.
-	rng        *rand.Rand // non-nil when seed is set
+	tupleLevel int // 2 = pairwise (default), 3 = 3-way, etc.
 }
 
 func NewPairwiseTechnique() *PairwiseTechnique { return &PairwiseTechnique{tupleLevel: 2} }
@@ -306,11 +304,6 @@ func NewPairwiseTechniqueWithLevel(level int) *PairwiseTechnique {
 		level = 2
 	}
 	return &PairwiseTechnique{tupleLevel: level}
-}
-
-// SetSeed seeds the technique's internal RNG for deterministic combination ordering.
-func (t *PairwiseTechnique) SetSeed(seed int64) {
-	t.rng = rand.New(rand.NewSource(seed)) //nolint:gosec
 }
 
 func (t *PairwiseTechnique) Name() string { return "pairwise" }

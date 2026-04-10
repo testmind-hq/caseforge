@@ -2,6 +2,7 @@
 package methodology
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -143,15 +144,5 @@ func TestIsolatedNegative_AppliesToBodyWithProperties(t *testing.T) {
 }
 
 func containsString(s, sub string) bool {
-	return len(s) > 0 && len(sub) > 0 && (s == sub ||
-		len(s) >= len(sub) && (s[:len(sub)] == sub ||
-			s[len(s)-len(sub):] == sub ||
-			func() bool {
-				for i := 0; i+len(sub) <= len(s); i++ {
-					if s[i:i+len(sub)] == sub {
-						return true
-					}
-				}
-				return false
-			}()))
+	return strings.Contains(s, sub)
 }
