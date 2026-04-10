@@ -33,6 +33,7 @@ type Example struct {
 type Response struct {
 	Description string
 	Content     map[string]*MediaType
+	Headers     map[string]string // key=header name, value=schema type ("string", "integer", etc.)
 }
 
 type Schema struct {
