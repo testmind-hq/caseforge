@@ -136,7 +136,8 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int)
 			for _, edge := range g.Edges {
 				if edge.Creator.Path == seq.lastOpPath ||
 					strings.HasPrefix(seq.lastOpPath, edge.Creator.Path+"/") {
-					consumerStep := buildConsumerStep(edge, seq.captureName, gen, len(seq.steps))
+					prevID := seq.steps[len(seq.steps)-1].ID
+				consumerStep := buildConsumerStep(edge, seq.captureName, gen, len(seq.steps), prevID)
 					newSteps := append(append([]schema.Step{}, seq.steps...), consumerStep)
 					newSeq := sequence{
 						steps:       newSteps,
@@ -220,11 +221,14 @@ func buildEdgeSteps(edge methodology.DepEdge, gen *datagen.Generator) ([]schema.
 		Captures: []schema.Capture{{Name: captureName, From: edge.CaptureFrom}},
 	}
 
-	consumerStep := buildConsumerStep(edge, captureName, gen, 1)
+	consumerStep := buildConsumerStep(edge, captureName, gen, 1, "step-setup")
 	return []schema.Step{setupStep, consumerStep}, captureName
 }
 
-func buildConsumerStep(edge methodology.DepEdge, captureName string, gen *datagen.Generator, stepIdx int) schema.Step {
+// buildConsumerStep creates a step for the consumer side of a dep edge.
+// stepIdx is the 1-based position in the full step sequence (1 = first consumer).
+// prevStepID is the actual ID of the preceding step in the sequence.
+func buildConsumerStep(edge methodology.DepEdge, captureName string, gen *datagen.Generator, stepIdx int, prevStepID string) schema.Step {
 	paramName := edge.PathParam
 	path := strings.ReplaceAll(edge.Consumer.Path,
 		fmt.Sprintf("{%s}", paramName),
@@ -240,10 +244,6 @@ func buildConsumerStep(edge methodology.DepEdge, captureName string, gen *datage
 		headers["Content-Type"] = "application/json"
 	}
 
-	depID := "step-setup"
-	if stepIdx > 1 {
-		depID = fmt.Sprintf("step-%d", stepIdx)
-	}
 	id := fmt.Sprintf("step-%d", stepIdx+1)
 	if stepIdx == 1 {
 		id = "step-test"
@@ -258,7 +258,7 @@ func buildConsumerStep(edge methodology.DepEdge, captureName string, gen *datage
 		Headers:    headers,
 		Body:       bodyAny,
 		Assertions: assertpkg.BasicAssertions(edge.Consumer),
-		DependsOn:  []string{depID},
+		DependsOn:  []string{prevStepID},
 	}
 }
 

@@ -67,6 +67,11 @@ func (t *AuthChainTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, er
 
 	var cases []schema.TestCase
 	for _, op := range secured {
+		// Skip ops with unresolved path parameters — we have no creator to supply them.
+		if hasPathParams(op) {
+			continue
+		}
+
 		authStep := schema.Step{
 			ID:      "step-auth",
 			Title:   fmt.Sprintf("authenticate via %s %s", authOp.Method, authOp.Path),
@@ -86,7 +91,10 @@ func (t *AuthChainTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, er
 		testHeaders := map[string]string{
 			"Authorization": "Bearer {{authToken}}",
 		}
-		if op.RequestBody != nil {
+		testBody := buildValidBody(t.gen, op)
+		var testBodyAny any
+		if testBody != nil {
+			testBodyAny = testBody
 			testHeaders["Content-Type"] = "application/json"
 		}
 		testStep := schema.Step{
@@ -96,6 +104,7 @@ func (t *AuthChainTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, er
 			Method:     op.Method,
 			Path:       op.Path,
 			Headers:    testHeaders,
+			Body:       testBodyAny,
 			Assertions: assertpkg.BasicAssertions(op),
 			DependsOn:  []string{"step-auth"},
 		}
@@ -179,6 +188,16 @@ func findTokenField(op *spec.Operation) string {
 		}
 	}
 	return ""
+}
+
+// hasPathParams returns true when the operation has any path parameters.
+func hasPathParams(op *spec.Operation) bool {
+	for _, p := range op.Parameters {
+		if p.In == "path" {
+			return true
+		}
+	}
+	return false
 }
 
 // isSecuredOperation returns true when the operation requires authentication.
