@@ -265,3 +265,40 @@ func (m *mockSpecTechnique) Name() string { return "mock_spec" }
 func (m *mockSpecTechnique) Generate(s *spec.ParsedSpec) ([]schema.TestCase, error) {
 	return m.onGenerate(s)
 }
+
+func TestEngine_MaxCasesPerOp_TruncatesByPriority(t *testing.T) {
+	engine := NewEngine(&llm.NoopProvider{},
+		NewEquivalenceTechnique(),
+		NewBoundaryTechnique(),
+		NewIsolatedNegativeTechnique(),
+		NewSchemaViolationTechnique(),
+	)
+	engine.SetMaxCasesPerOp(2)
+
+	ps := &spec.ParsedSpec{
+		Operations: []*spec.Operation{{
+			OperationID: "createUser",
+			Method:      "POST",
+			Path:        "/users",
+			RequestBody: &spec.RequestBody{Content: map[string]*spec.MediaType{
+				"application/json": {Schema: &spec.Schema{
+					Type:     "object",
+					Required: []string{"email"},
+					Properties: map[string]*spec.Schema{
+						"email": {Type: "string", Format: "email"},
+						"age": {Type: "integer",
+							Minimum: func() *float64 { v := float64(18); return &v }(),
+							Maximum: func() *float64 { v := float64(120); return &v }(),
+						},
+					},
+				}},
+			}},
+			Responses: map[string]*spec.Response{"201": {Description: "Created"}},
+		}},
+	}
+
+	cases, err := engine.Generate(ps)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(cases), 2,
+		"engine must not produce more than maxCasesPerOp cases for a single operation")
+}

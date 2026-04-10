@@ -42,6 +42,7 @@ type Engine struct {
 	sink           event.Sink
 	concurrency    int   // 0 or 1 = serial; >1 = parallel worker pool
 	seed           int64 // 0 = random
+	maxCasesPerOp  int   // 0 = unlimited
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
@@ -57,6 +58,12 @@ func (e *Engine) SetConcurrency(n int) {
 // AddSpecTechnique registers a spec-level technique with the engine.
 func (e *Engine) AddSpecTechnique(t SpecTechnique) {
 	e.specTechniques = append(e.specTechniques, t)
+}
+
+// SetMaxCasesPerOp sets the maximum number of cases to produce per operation.
+// When > 0, cases are sorted by priority (P0 first) before truncation.
+func (e *Engine) SetMaxCasesPerOp(n int) {
+	e.maxCasesPerOp = n
 }
 
 // SetSink registers an event sink for progress events.
@@ -172,6 +179,7 @@ func (e *Engine) generateOne(op *spec.Operation) ([]schema.TestCase, error) {
 		}
 		cases = append(cases, c...)
 	}
+	cases = e.applyMaxCases(cases)
 	e.emit(event.Event{Type: event.EventOperationDone, Payload: event.OperationDonePayload{
 		OperationID: op.OperationID,
 		Method:      op.Method,
@@ -179,6 +187,29 @@ func (e *Engine) generateOne(op *spec.Operation) ([]schema.TestCase, error) {
 		CaseCount:   len(cases),
 	}})
 	return cases, nil
+}
+
+var priorityRank = map[string]int{"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+
+func (e *Engine) applyMaxCases(cases []schema.TestCase) []schema.TestCase {
+	if e.maxCasesPerOp <= 0 || len(cases) <= e.maxCasesPerOp {
+		return cases
+	}
+	// Stable insertion sort by priority (P0 highest)
+	sorted := make([]schema.TestCase, len(cases))
+	copy(sorted, cases)
+	for i := 1; i < len(sorted); i++ {
+		for j := i; j > 0; j-- {
+			ri := priorityRank[sorted[j].Priority]
+			rj := priorityRank[sorted[j-1].Priority]
+			if ri < rj {
+				sorted[j], sorted[j-1] = sorted[j-1], sorted[j]
+			} else {
+				break
+			}
+		}
+	}
+	return sorted[:e.maxCasesPerOp]
 }
 
 func (e *Engine) annotateOperations(ops []*spec.Operation) {
