@@ -3,6 +3,7 @@ package methodology
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,7 +47,7 @@ func (t *MutationTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 
 	var cases []schema.TestCase
 	for fieldName, fieldSchema := range s.Properties {
-		for _, m := range mutationsForField(fieldName, fieldSchema) {
+		for _, m := range mutationsForSchema(fieldSchema) {
 			if t.maxCases > 0 && len(cases) >= t.maxCases {
 				return cases, nil
 			}
@@ -91,8 +92,8 @@ type mutation struct {
 	desc  string
 }
 
-// mutationsForField returns the set of invalid values to try for a given field.
-func mutationsForField(fieldName string, s *spec.Schema) []mutation {
+// mutationsForSchema returns the set of invalid values to try for a given field schema.
+func mutationsForSchema(s *spec.Schema) []mutation {
 	ms := []mutation{
 		{value: nil, desc: "null value"},
 	}
@@ -144,8 +145,6 @@ func repeatChar(c byte, n int) string {
 
 func cloneMap(m map[string]any) map[string]any {
 	out := make(map[string]any, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
+	maps.Copy(out, m)
 	return out
 }
