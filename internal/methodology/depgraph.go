@@ -72,6 +72,46 @@ func BuildDepGraph(ops []*spec.Operation) *DepGraph {
 		})
 	}
 
+	// Pass 2: incorporate explicitly declared OpenAPI Links.
+	// Links provide authoritative producer→consumer relationships with exact parameter bindings,
+	// supplementing the path-heuristic approach above.
+	opsByID := make(map[string]*spec.Operation)
+	for _, op := range ops {
+		if op.OperationID != "" {
+			opsByID[op.OperationID] = op
+		}
+	}
+	for _, op := range ops {
+		for _, link := range op.Links {
+			consumer, ok := opsByID[link.OperationID]
+			if !ok {
+				continue
+			}
+			for paramName, paramExpr := range link.Parameters {
+				captureFrom := parseLinkExpression(paramExpr)
+				if captureFrom == "" {
+					continue
+				}
+				// idField: dotted path derived from the expression (e.g. "$response.body#/data/id" → "data.id")
+				path := strings.TrimPrefix(paramExpr, "$response.body#/")
+				idField := strings.ReplaceAll(path, "/", ".")
+
+				key := fmt.Sprintf("%s|%s|%s", op.Path, consumer.Method, consumer.Path)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				edges = append(edges, DepEdge{
+					Creator:     op,
+					Consumer:    consumer,
+					PathParam:   paramName,
+					IDField:     idField,
+					CaptureFrom: captureFrom,
+				})
+			}
+		}
+	}
+
 	// Sort for determinism
 	sort.Slice(edges, func(i, j int) bool {
 		ki := edges[i].Creator.Path + edges[i].Consumer.Method + edges[i].Consumer.Path
@@ -139,4 +179,18 @@ func findNestedIDPath(op *spec.Operation) string {
 		}
 	}
 	return ""
+}
+
+// parseLinkExpression converts an OpenAPI link runtime expression to a CaseForge capture expression.
+// "$response.body#/id"       → "jsonpath $.id"
+// "$response.body#/data/id"  → "jsonpath $.data.id"
+// Anything that is not a $response.body expression returns "" (caller should skip).
+func parseLinkExpression(expr string) string {
+	const prefix = "$response.body#/"
+	if !strings.HasPrefix(expr, prefix) {
+		return ""
+	}
+	path := strings.TrimPrefix(expr, prefix)
+	dotPath := strings.ReplaceAll(path, "/", ".")
+	return fmt.Sprintf("jsonpath $.%s", dotPath)
 }

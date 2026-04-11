@@ -140,6 +140,55 @@ func TestBuildDepGraph_NestedIDPath(t *testing.T) {
 	assert.Equal(t, "data.id", g.Edges[0].IDField, "IDField must match CaptureFrom nested path")
 }
 
+func TestBuildDepGraph_OpenAPILinks(t *testing.T) {
+	// createUser declares a Link to getUser with parameter userId from response body id
+	createOp := &spec.Operation{
+		OperationID: "createUser",
+		Method:      "POST",
+		Path:        "/users",
+		Responses: map[string]*spec.Response{
+			"201": {
+				Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{
+						Type:       "object",
+						Properties: map[string]*spec.Schema{"id": {Type: "integer"}},
+					}},
+				},
+			},
+		},
+		Links: []spec.SpecLink{
+			{
+				Name:         "GetUserById",
+				OperationID:  "getUser",
+				ResponseCode: "201",
+				Parameters:   map[string]string{"userId": "$response.body#/id"},
+			},
+		},
+	}
+	getOp := &spec.Operation{
+		OperationID: "getUser",
+		Method:      "GET",
+		Path:        "/users/{userId}",
+	}
+	g := BuildDepGraph([]*spec.Operation{createOp, getOp})
+	if len(g.Edges) == 0 {
+		t.Fatal("expected at least one edge from OpenAPI Link, got none")
+	}
+	edge := g.Edges[0]
+	if edge.Creator.OperationID != "createUser" {
+		t.Errorf("creator = %q, want createUser", edge.Creator.OperationID)
+	}
+	if edge.Consumer.OperationID != "getUser" {
+		t.Errorf("consumer = %q, want getUser", edge.Consumer.OperationID)
+	}
+	if edge.PathParam != "userId" {
+		t.Errorf("pathParam = %q, want userId", edge.PathParam)
+	}
+	if edge.CaptureFrom != "jsonpath $.id" {
+		t.Errorf("captureFrom = %q, want jsonpath $.id", edge.CaptureFrom)
+	}
+}
+
 func TestBuildDepGraph_Deterministic(t *testing.T) {
 	ops := crudOps()
 	g1 := BuildDepGraph(ops)

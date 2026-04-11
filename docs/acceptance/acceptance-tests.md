@@ -185,6 +185,8 @@
 | AT-135 | chain invalid depth exits non-zero | `go test ./cmd/... -run 'TestChainCommand'` | Error returned for depth 0 | ✅ PASS |
 | AT-136 | N-step chain includes update step when PUT present | `go test ./internal/methodology/... -run 'TestChainTechnique_NStepChain'` | 4-step chain: setup→update→test→teardown | ✅ PASS |
 | AT-137 | gen registers mutation and auth_chain techniques without error | `go test ./cmd/... -run 'TestGen_Seed_DeterministicOutput'` | Deterministic output with new techniques | ✅ PASS |
+| AT-138 | OpenAPI Links parsed into Operation.Links | `go test ./internal/spec/... -run 'TestParsedSpec_LinksPopulated'` | Links slice populated with name, operationId, parameters | ✅ PASS |
+| AT-139 | OpenAPI Links create dep-graph edges | `go test ./internal/methodology/... -run 'TestBuildDepGraph_OpenAPILinks'` | Edge with correct creator/consumer/pathParam/captureFrom | ✅ PASS |
 
 ---
 
@@ -400,7 +402,7 @@
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 4 | 4 | 0 |
-| **Total** | **94** | **94** | **0** |
+| **Total** | **96** | **96** | **0** |
 
 ---
 
