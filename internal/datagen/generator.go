@@ -18,6 +18,8 @@ const (
 type Generator struct {
 	// llm reserved for Phase 2 semantic data generation
 	llm any
+	// Pool holds observed real API values; takes priority over synthetic generation.
+	Pool *DataPool
 }
 
 func NewGenerator(llm any) *Generator {
@@ -34,6 +36,13 @@ func (g *Generator) Generate(s *spec.Schema, fieldName string) any {
 	// Tier 0: enum — always pick from enum
 	if len(s.Enum) > 0 {
 		return s.Enum[gofakeit.Number(0, len(s.Enum)-1)]
+	}
+
+	// Tier 0.5: pool — prefer real observed values for non-enum fields
+	if g.Pool != nil {
+		if val, ok := g.Pool.ValueFor(fieldName); ok {
+			return val
+		}
 	}
 
 	// Tier 1: format-aware

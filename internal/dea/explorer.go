@@ -3,6 +3,7 @@ package dea
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -16,7 +17,8 @@ type Explorer struct {
 	MaxProbes int
 	DryRun    bool // if true, seed hypotheses but skip HTTP execution
 
-	gen *datagen.Generator
+	gen  *datagen.Generator
+	pool *datagen.DataPool
 }
 
 // NewExplorer creates an Explorer with sensible defaults.
@@ -24,12 +26,17 @@ func NewExplorer(targetURL string, maxProbes int) *Explorer {
 	if maxProbes <= 0 {
 		maxProbes = 50
 	}
+	pool := datagen.NewDataPool()
 	return &Explorer{
 		TargetURL: targetURL,
 		MaxProbes: maxProbes,
 		gen:       datagen.NewGenerator(nil),
+		pool:      pool,
 	}
 }
+
+// DataPool returns the pool of field values observed from 2xx responses.
+func (e *Explorer) DataPool() *datagen.DataPool { return e.pool }
 
 // hypothesisCategory returns the expected RuleCategory for a hypothesis kind in dry-run mode.
 func hypothesisCategory(kind HypothesisKind) RuleCategory {
@@ -107,6 +114,11 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			confirmed := (expectedIs4xx && is4xx) || (expectedIs2xx && is2xx)
 			h.Resolve(ev, confirmed)
 
+			// Extract field values from 2xx responses into the data pool
+			if is2xx && ev.ActualBody != "" {
+				extractBodyToPool(e.pool, ev.ActualBody)
+			}
+
 			rule := InferRule(h)
 			if rule != nil {
 				report.Rules = append(report.Rules, *rule)
@@ -116,4 +128,19 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 
 	report.TotalProbes = probesRun
 	return report, nil
+}
+
+// extractBodyToPool does a shallow JSON parse of a response body and adds
+// all scalar field values (string, number, bool) to the pool.
+func extractBodyToPool(pool *datagen.DataPool, body string) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(body), &m); err != nil {
+		return // non-JSON or array body — skip
+	}
+	for k, v := range m {
+		switch v.(type) {
+		case string, float64, bool:
+			pool.Add(k, v)
+		}
+	}
 }
