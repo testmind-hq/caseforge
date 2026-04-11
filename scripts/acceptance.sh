@@ -1149,6 +1149,15 @@ run "AT-139" "OpenAPI Links create dep-graph edges" \
 run "AT-140" "BFS chain appends DELETE teardown for non-DELETE consumers" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_AddsTeardownForNonDeleteChains' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-141" "DataPool Add/ValueFor/Save/Load/Merge unit tests pass" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestDataPool' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-142" "explore --export-pool writes pool JSON in dry-run" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestExploreCommand_ExportPool_DryRun' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-143" "chain --data-pool loads pool without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_DataPool_Loaded' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

@@ -35,6 +35,7 @@ var (
 	chainOutput   string
 	chainDepth    int
 	chainFormat   string
+	chainDataPool string // path to DataPool JSON (from explore --export-pool)
 )
 
 func init() {
@@ -43,6 +44,7 @@ func init() {
 	chainCmd.Flags().StringVar(&chainOutput, "output", "./chains", "Output directory")
 	chainCmd.Flags().IntVar(&chainDepth, "depth", 2, "Maximum chain depth (1..4)")
 	chainCmd.Flags().StringVar(&chainFormat, "format", "hurl", "Output format: hurl|markdown|csv|postman|k6")
+	chainCmd.Flags().StringVar(&chainDataPool, "data-pool", "", "JSON data pool file (from explore --export-pool)")
 	_ = chainCmd.MarkFlagRequired("spec")
 }
 
@@ -58,7 +60,15 @@ func runChain(cmd *cobra.Command, args []string) error {
 	}
 
 	depGraph := methodology.BuildDepGraph(parsedSpec.Operations)
-	cases := bfsChainCases(parsedSpec.Operations, depGraph, chainDepth)
+	gen := datagen.NewGenerator(nil)
+	if chainDataPool != "" {
+		pool, err := datagen.LoadDataPool(chainDataPool)
+		if err != nil {
+			return fmt.Errorf("loading data pool: %w", err)
+		}
+		gen.Pool = pool
+	}
+	cases := bfsChainCases(parsedSpec.Operations, depGraph, chainDepth, gen)
 
 	if err := os.MkdirAll(chainOutput, 0755); err != nil {
 		return fmt.Errorf("creating output dir: %w", err)
@@ -93,8 +103,7 @@ func runChain(cmd *cobra.Command, args []string) error {
 
 // bfsChainCases generates all sequences of length 1..maxDepth using the dep graph.
 // Each sequence becomes a chain TestCase with steps connected by captures.
-func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int) []schema.TestCase {
-	gen := datagen.NewGenerator(nil)
+func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int, gen *datagen.Generator) []schema.TestCase {
 	var cases []schema.TestCase
 
 	// Depth 1: one case per operation (single-step)

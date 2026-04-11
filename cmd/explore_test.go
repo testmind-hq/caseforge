@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -71,4 +73,32 @@ func TestExploreCommand_MissingTargetWithoutDryRunReturnsError(t *testing.T) {
 	err := runExplore(cmd, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "target")
+}
+
+func TestExploreCommand_ExportPool_DryRun(t *testing.T) {
+	// explore --dry-run should still write an (empty) pool file when --export-pool is set
+	tmp := t.TempDir()
+	specFile := filepath.Join(tmp, "spec.yaml")
+	const specYAML = `
+openapi: "3.0.0"
+info: {title: T, version: "1"}
+paths:
+  /items:
+    post:
+      responses:
+        "201": {description: created}
+`
+	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
+	poolFile := filepath.Join(tmp, "pool.json")
+
+	rootCmd.SetArgs([]string{
+		"explore", "--spec", specFile, "--dry-run", "--export-pool", poolFile,
+	})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("explore: %v", err)
+	}
+	if _, err := os.Stat(poolFile); err != nil {
+		t.Errorf("pool file not written: %v", err)
+	}
 }

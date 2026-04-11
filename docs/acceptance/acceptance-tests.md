@@ -188,6 +188,9 @@
 | AT-138 | OpenAPI Links parsed into Operation.Links | `go test ./internal/spec/... -run 'TestParsedSpec_LinksPopulated'` | Links slice populated with name, operationId, parameters | ✅ PASS |
 | AT-139 | OpenAPI Links create dep-graph edges | `go test ./internal/methodology/... -run 'TestBuildDepGraph_OpenAPILinks'` | Edge with correct creator/consumer/pathParam/captureFrom | ✅ PASS |
 | AT-140 | BFS chain appends DELETE teardown for non-DELETE consumers | `go test ./cmd/... -run TestChainCommand_AddsTeardownForNonDeleteChains` | Chain case contains step with type=teardown | ✅ PASS |
+| AT-141 | DataPool Add/ValueFor/Save/Load/Merge unit tests pass | `go test ./internal/datagen/... -run TestDataPool` | All 5 DataPool tests pass | ✅ PASS |
+| AT-142 | explore --export-pool writes pool JSON in dry-run | `go test ./cmd/... -run TestExploreCommand_ExportPool_DryRun` | pool.json created | ✅ PASS |
+| AT-143 | chain --data-pool loads pool without error | `go test ./cmd/... -run TestChainCommand_DataPool_Loaded` | index.json produced, no error | ✅ PASS |
 
 ---
 
