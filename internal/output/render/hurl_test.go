@@ -79,6 +79,30 @@ func TestHurlRendererOutputContainsAssertions(t *testing.T) {
 	assert.True(t, strings.Contains(s, "HTTP 201") || strings.Contains(s, "status == 201"))
 }
 
+// TestHurlRendererStatusCodeRangeAssertions verifies that gte/lt status_code operators
+// render as Hurl [Asserts] block entries with `HTTP *` wildcard rather than a mis-matched
+// exact status line.
+func TestHurlRendererStatusCodeRangeAssertions(t *testing.T) {
+	r := NewHurlRenderer("{{base_url}}")
+	tc := schema.TestCase{
+		ID: "TC-idor", Title: "IDOR range check", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "GET", Path: "/users/99999",
+			Assertions: []schema.Assertion{
+				{Target: "status_code", Operator: "gte", Expected: 400},
+				{Target: "status_code", Operator: "lt", Expected: 500},
+			},
+		}},
+	}
+	content := r.renderCase(tc)
+	assert.Contains(t, content, "HTTP *")
+	assert.Contains(t, content, "status >= 400")
+	assert.Contains(t, content, "status < 500")
+	// Must not render a concrete status that conflicts with the range
+	assert.NotContains(t, content, "HTTP 200")
+	assert.NotContains(t, content, "HTTP 500")
+}
+
 // TestHurlSingleCaseAppendixBFormat verifies the Appendix B comment format for single cases.
 func TestHurlSingleCaseAppendixBFormat(t *testing.T) {
 	r := NewHurlRenderer("{{base_url}}")
