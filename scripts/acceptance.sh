@@ -1173,6 +1173,15 @@ run "AT-147" "explore --prioritize-uncovered dry-run reports probes" \
 run "AT-148" "explore --prioritize-uncovered flag accepted without error" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestExploreCommand_PrioritizeUncoveredFlag' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-149" "FilterSet unit tests pass" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestFilterSet' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-150" "gen --include-path filters operations" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestBuildFilterSet' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-151" "gen --exclude-tag flag accepted without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenCommand_HasFilterFlags' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

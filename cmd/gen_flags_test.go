@@ -120,3 +120,10 @@ func TestFilterByPriority_UnknownPriorityExcluded(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, "a", got[0].ID)
 }
+
+func TestGenCommand_HasFilterFlags(t *testing.T) {
+	assert.NotNil(t, genCmd.Flags().Lookup("include-path"), "--include-path flag required")
+	assert.NotNil(t, genCmd.Flags().Lookup("exclude-path"), "--exclude-path flag required")
+	assert.NotNil(t, genCmd.Flags().Lookup("include-tag"),  "--include-tag flag required")
+	assert.NotNil(t, genCmd.Flags().Lookup("exclude-tag"),  "--exclude-tag flag required")
+}

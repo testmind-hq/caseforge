@@ -196,6 +196,9 @@
 | AT-146 | chain --seed-postman loads collection without error | `go test ./cmd/... -run TestChainCommand_SeedPostman` | index.json produced | ✅ PASS |
 | AT-147 | explore --prioritize-uncovered dry-run reports probes | `go test ./internal/dea/... -run TestExplorer_PrioritizeUncovered_DryRun` | TotalProbes > 0 | ✅ PASS |
 | AT-148 | explore --prioritize-uncovered flag accepted without error | `go test ./cmd/... -run TestExploreCommand_PrioritizeUncoveredFlag` | No error returned | ✅ PASS |
+| AT-149 | FilterSet unit tests pass | `go test ./internal/spec/... -run TestFilterSet` | All FilterSet tests pass | ✅ PASS |
+| AT-150 | gen --include-path filters operations | `go test ./cmd/... -run TestBuildFilterSet` | buildFilterSet returns correct FilterSet | ✅ PASS |
+| AT-151 | gen --exclude-tag flag accepted without error | `go test ./cmd/... -run TestGenCommand_HasFilterFlags` | flags registered on genCmd | ✅ PASS |
 
 ---
 
