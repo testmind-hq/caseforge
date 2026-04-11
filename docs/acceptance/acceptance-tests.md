@@ -213,6 +213,8 @@
 | AT-163 | unicode_fuzzing generates 5 cases per string field | `go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Generate_ProducesExactly5PerStringField'` | PASS | ✅ PASS |
 | AT-164 | mass_assignment Applies for op with request body | `go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Applies_True'` | PASS | ✅ PASS |
 | AT-165 | mass_assignment generates 4 category cases | `go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Generate_ProducesExactly4Cases'` | PASS | ✅ PASS |
+| AT-166 | idor Applies for op with integer path param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Applies_IntPathParam'` | PASS | ✅ PASS |
+| AT-167 | idor generates 2 cases for integer ID param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases'` | PASS | ✅ PASS |
 
 ---
 
@@ -401,7 +403,7 @@
 ---
 
 
-## Summary (last run: 2026-04-04)
+## Summary (last run: 2026-04-11)
 
 | Category | Total | Pass | Fail |
 |----------|-------|------|------|
@@ -428,7 +430,8 @@
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 4 | 4 | 0 |
-| **Total** | **98** | **98** | **0** |
+| idor | 2 | 2 | 0 |
+| **Total** | **100** | **100** | **0** |
 
 ---
 

@@ -1224,6 +1224,12 @@ run "AT-164" "mass_assignment Applies for op with request body" \
 run "AT-165" "mass_assignment generates 4 category cases" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Generate_ProducesExactly4Cases' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-166" "idor Applies for op with integer path param" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestIDORTechnique_Applies_IntPathParam' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-167" "idor generates 2 cases for integer ID param" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

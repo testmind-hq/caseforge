@@ -29,6 +29,8 @@ const (
 	ScenarioMassAssignmentStatus    CoverageScenario = "MASS_ASSIGNMENT_STATUS"     // status manipulation via extra fields
 	ScenarioMassAssignmentFinancial CoverageScenario = "MASS_ASSIGNMENT_FINANCIAL"  // financial manipulation via extra fields
 	ScenarioMassAssignmentIdentity  CoverageScenario = "MASS_ASSIGNMENT_IDENTITY"   // ownership takeover via extra fields
+
+	ScenarioIDORParam CoverageScenario = "IDOR_PARAM" // IDOR: substitute ID param with alternative value
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -49,4 +51,5 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioMassAssignmentStatus,
 	ScenarioMassAssignmentFinancial,
 	ScenarioMassAssignmentIdentity,
+	ScenarioIDORParam,
 }
