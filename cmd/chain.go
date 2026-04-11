@@ -129,11 +129,15 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int)
 			if edge.Consumer.Method != "DELETE" {
 				if td := findTeardownEdge(g, edge.Creator.Path); td != nil {
 					lastID := steps[len(steps)-1].ID
+					// Derive the path-param name from the DELETE path itself to avoid a
+					// mismatch when td.PathParam is Link-derived and may differ from the
+					// capture variable name used in prior steps.
+					tdParamName := lastPathParam(td.Consumer.Path)
 					tdPath := strings.ReplaceAll(td.Consumer.Path,
-						fmt.Sprintf("{%s}", td.PathParam),
+						fmt.Sprintf("{%s}", tdParamName),
 						fmt.Sprintf("{{%s}}", captureName))
 					tdStep := schema.Step{
-						ID:    "step-teardown",
+						ID:    fmt.Sprintf("step-%d", len(steps)+1),
 						Title: fmt.Sprintf("teardown: %s %s", td.Consumer.Method, tdPath),
 						Type:  "teardown",
 						Method: td.Consumer.Method,
@@ -299,6 +303,17 @@ func chainCase(steps []schema.Step, resourcePath, technique string, depth int) s
 		Steps:       steps,
 		GeneratedAt: time.Now(),
 	}
+}
+
+// lastPathParam extracts the path-parameter name from the last segment of a path,
+// e.g. "/items/{itemId}" → "itemId". Returns "" if the last segment is not a parameter.
+func lastPathParam(path string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	last := parts[len(parts)-1]
+	if strings.HasPrefix(last, "{") && strings.HasSuffix(last, "}") {
+		return strings.Trim(last, "{}")
+	}
+	return ""
 }
 
 // findTeardownEdge returns the first DELETE edge from the given creator path, or nil.

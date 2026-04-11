@@ -176,7 +176,7 @@ paths:
 `
 	tmp := t.TempDir()
 	specFile := filepath.Join(tmp, "spec.yaml")
-	os.WriteFile(specFile, []byte(specYAML), 0644)
+	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
 
 	outDir := filepath.Join(tmp, "chains")
 	cmd := rootCmd
