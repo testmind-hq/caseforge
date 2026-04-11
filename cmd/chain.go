@@ -75,6 +75,9 @@ func runChain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		parsedSpec.Operations = opFilter.Apply(parsedSpec.Operations)
+		if len(parsedSpec.Operations) == 0 {
+			fmt.Fprintln(os.Stderr, "warning: --include-path/--exclude-path/--include-tag/--exclude-tag matched no operations")
+		}
 	}
 
 	depGraph := methodology.BuildDepGraph(parsedSpec.Operations)
