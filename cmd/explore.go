@@ -39,6 +39,11 @@ func init() {
 	exploreCmd.Flags().Bool("dry-run", false, "Seed hypotheses without executing HTTP probes")
 	exploreCmd.Flags().String("export-pool", "", "Write observed field values to a JSON data pool file (from 2xx responses)")
 	exploreCmd.Flags().Bool("prioritize-uncovered", false, "Two-pass probe scheduling: cover all ops in pass 1, focus budget on non-2xx ops in pass 2")
+	exploreCmd.Flags().Int("max-failures", 0, "Stop after discovering this many rules (0 = unlimited)")
+	exploreCmd.Flags().String("include-path", "", "Regex to include operations by path")
+	exploreCmd.Flags().String("exclude-path", "", "Regex to exclude operations by path")
+	exploreCmd.Flags().String("include-tag", "", "Comma-separated tags to include")
+	exploreCmd.Flags().String("exclude-tag", "", "Comma-separated tags to exclude")
 }
 
 func runExplore(cmd *cobra.Command, _ []string) error {
@@ -64,10 +69,28 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 	}
 	fmt.Fprintf(out, "✓ Loaded %d operations\n", len(parsedSpec.Operations))
 
+	includePath, _ := cmd.Flags().GetString("include-path")
+	excludePath, _ := cmd.Flags().GetString("exclude-path")
+	includeTag, _ := cmd.Flags().GetString("include-tag")
+	excludeTag, _ := cmd.Flags().GetString("exclude-tag")
+	opFilter := buildFilterSet(includePath, excludePath, includeTag, excludeTag)
+	if !opFilter.IsEmpty() {
+		if err := opFilter.Validate(); err != nil {
+			return err
+		}
+		parsedSpec.Operations = opFilter.Apply(parsedSpec.Operations)
+		if len(parsedSpec.Operations) == 0 {
+			fmt.Fprintln(os.Stderr, "warning: --include-path/--exclude-path/--include-tag/--exclude-tag matched no operations")
+		}
+	}
+
 	explorer := dea.NewExplorer(targetURL, maxProbes)
 	explorer.DryRun = dryRun
 	if prio, _ := cmd.Flags().GetBool("prioritize-uncovered"); prio {
 		explorer.PrioritizeUncovered = true
+	}
+	if maxFailures, _ := cmd.Flags().GetInt("max-failures"); maxFailures > 0 {
+		explorer.MaxFailures = maxFailures
 	}
 
 	if dryRun {

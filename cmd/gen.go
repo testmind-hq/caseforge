@@ -44,6 +44,10 @@ var (
 	genTupleLevel     int
 	genSeed           int64
 	genMaxCasesPerOp  int
+	genIncludePath string
+	genExcludePath string
+	genIncludeTag  string
+	genExcludeTag  string
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -65,6 +69,7 @@ var allTechniqueNames = []string{
 	"variable_irrelevance",
 	"mutation",
 	"auth_chain",
+	"constraint_mutation",
 }
 
 func init() {
@@ -81,6 +86,10 @@ func init() {
 	genCmd.Flags().IntVar(&genTupleLevel, "tuple-level", 2, "N-way coverage level for pairwise technique (2=pairwise, 3=3-way, max 4)")
 	genCmd.Flags().Int64Var(&genSeed, "seed", 0, "Seed for deterministic generation (0 = random)")
 	genCmd.Flags().IntVar(&genMaxCasesPerOp, "max-cases-per-op", 0, "Maximum test cases per operation (0 = unlimited, P0 cases take priority)")
+	genCmd.Flags().StringVar(&genIncludePath, "include-path", "", "Regex to include operations by path (e.g. '^/users'); partial match unless anchored")
+	genCmd.Flags().StringVar(&genExcludePath, "exclude-path", "", "Regex to exclude operations by path (e.g. '^/admin')")
+	genCmd.Flags().StringVar(&genIncludeTag, "include-tag", "", "Comma-separated OpenAPI tags to include (e.g. 'users,auth')")
+	genCmd.Flags().StringVar(&genExcludeTag, "exclude-tag", "", "Comma-separated OpenAPI tags to exclude (e.g. 'deprecated,internal')")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -186,6 +195,18 @@ func runGen(cmd *cobra.Command, args []string) error {
 		parsedSpec.Operations = filtered
 		if len(filtered) == 0 {
 			fmt.Fprintf(os.Stderr, "warning: --operations %q matched no operationIds in the spec\n", genOperations)
+		}
+	}
+
+	// Apply path/tag operation filters
+	opFilter := buildFilterSet(genIncludePath, genExcludePath, genIncludeTag, genExcludeTag)
+	if !opFilter.IsEmpty() {
+		if err := opFilter.Validate(); err != nil {
+			return err
+		}
+		parsedSpec.Operations = opFilter.Apply(parsedSpec.Operations)
+		if len(parsedSpec.Operations) == 0 {
+			fmt.Fprintln(os.Stderr, "warning: --include-path/--exclude-path/--include-tag/--exclude-tag matched no operations")
 		}
 	}
 
@@ -304,6 +325,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewSchemaViolationTechnique(),
 		methodology.NewVariableIrrelevanceTechnique(),
 		methodology.NewMutationTechnique(),
+		methodology.NewConstraintMutationTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

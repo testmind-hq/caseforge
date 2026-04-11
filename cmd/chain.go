@@ -37,6 +37,10 @@ var (
 	chainFormat      string
 	chainDataPool    string // path to DataPool JSON (from explore --export-pool)
 	chainSeedPostman string // path to Postman Collection v2.1 JSON
+	chainIncludePath string
+	chainExcludePath string
+	chainIncludeTag  string
+	chainExcludeTag  string
 )
 
 func init() {
@@ -47,6 +51,10 @@ func init() {
 	chainCmd.Flags().StringVar(&chainFormat, "format", "hurl", "Output format: hurl|markdown|csv|postman|k6")
 	chainCmd.Flags().StringVar(&chainDataPool, "data-pool", "", "JSON data pool file (from explore --export-pool)")
 	chainCmd.Flags().StringVar(&chainSeedPostman, "seed-postman", "", "Postman Collection v2.1 JSON file; extracts body field values as seed data")
+	chainCmd.Flags().StringVar(&chainIncludePath, "include-path", "", "Regex to include operations by path")
+	chainCmd.Flags().StringVar(&chainExcludePath, "exclude-path", "", "Regex to exclude operations by path")
+	chainCmd.Flags().StringVar(&chainIncludeTag, "include-tag", "", "Comma-separated tags to include")
+	chainCmd.Flags().StringVar(&chainExcludeTag, "exclude-tag", "", "Comma-separated tags to exclude")
 	_ = chainCmd.MarkFlagRequired("spec")
 }
 
@@ -59,6 +67,17 @@ func runChain(cmd *cobra.Command, args []string) error {
 	parsedSpec, err := loader.Load(chainSpecPath)
 	if err != nil {
 		return fmt.Errorf("loading spec: %w", err)
+	}
+
+	opFilter := buildFilterSet(chainIncludePath, chainExcludePath, chainIncludeTag, chainExcludeTag)
+	if !opFilter.IsEmpty() {
+		if err := opFilter.Validate(); err != nil {
+			return err
+		}
+		parsedSpec.Operations = opFilter.Apply(parsedSpec.Operations)
+		if len(parsedSpec.Operations) == 0 {
+			fmt.Fprintln(os.Stderr, "warning: --include-path/--exclude-path/--include-tag/--exclude-tag matched no operations")
+		}
 	}
 
 	depGraph := methodology.BuildDepGraph(parsedSpec.Operations)

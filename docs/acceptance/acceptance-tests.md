@@ -196,6 +196,17 @@
 | AT-146 | chain --seed-postman loads collection without error | `go test ./cmd/... -run TestChainCommand_SeedPostman` | index.json produced | ✅ PASS |
 | AT-147 | explore --prioritize-uncovered dry-run reports probes | `go test ./internal/dea/... -run TestExplorer_PrioritizeUncovered_DryRun` | TotalProbes > 0 | ✅ PASS |
 | AT-148 | explore --prioritize-uncovered flag accepted without error | `go test ./cmd/... -run TestExploreCommand_PrioritizeUncoveredFlag` | No error returned | ✅ PASS |
+| AT-149 | FilterSet unit tests pass | `go test ./internal/spec/... -run TestFilterSet` | All FilterSet tests pass | ✅ PASS |
+| AT-150 | gen --include-path filters operations | `go test ./cmd/... -run TestBuildFilterSet` | buildFilterSet returns correct FilterSet | ✅ PASS |
+| AT-151 | gen --exclude-tag flag accepted without error | `go test ./cmd/... -run TestGenCommand_HasFilterFlags` | flags registered on genCmd | ✅ PASS |
+| AT-152 | response_check unit tests pass | `go test ./internal/dea/... -run TestFindResponseSchema\|TestCheckResponseBody\|TestValidateProbeResponse` | All response check tests pass | ✅ PASS |
+| AT-153 | explore discovers response schema mismatch rule | `go test ./internal/dea/... -run TestExplorer_ResponseSchemaMismatch_ProducesRule` | DiscoveredRule with category response_schema_mismatch | ✅ PASS |
+| AT-154 | constraint_mutation generates null injection cases | `go test ./internal/methodology/... -run TestConstraintMutationTechnique_Generate_NullInjection` | null case present with status_code eq 422 | ✅ PASS |
+| AT-155 | constraint_mutation generates wrong-content-type case | `go test ./internal/methodology/... -run TestConstraintMutationTechnique_Generate_WrongContentType` | case with Content-Type: text/plain, expects 415 | ✅ PASS |
+| AT-156 | boundary_value cases carry named Scenario field | `go test ./internal/methodology/... -run TestBoundaryGeneratesMinMaxCases` | cases have non-empty Source.Scenario | ✅ PASS |
+| AT-157 | score Boundary Coverage detail shows scenario info | `go test ./internal/score/... -run TestBoundaryDetail_IncludesScenarioInfo` | detail contains covered scenario names | ✅ PASS |
+| AT-158 | explore --max-failures stops after N rules | `go test ./internal/dea/... -run TestExplorer_MaxFailures_StopsEarly` | len(Rules) ≤ MaxFailures | ✅ PASS |
+| AT-159 | explore deduplicates rules with same operation+category+fieldPath | `go test ./internal/dea/... -run TestExplorer_RuleDeduplication` | no duplicate (op, category, fieldPath) triplets in report | ✅ PASS |
 
 ---
 

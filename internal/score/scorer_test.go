@@ -303,6 +303,50 @@ func TestComputeStatusCoverage_MissingErrorPath(t *testing.T) {
 	}
 }
 
+func TestComputeScenarioCoverage_Empty(t *testing.T) {
+	covered, missing := computeScenarioCoverage(nil)
+	assert.Empty(t, covered)
+	assert.NotEmpty(t, missing) // all tracked scenarios are missing
+}
+
+func TestComputeScenarioCoverage_WithScenarios(t *testing.T) {
+	cases := []schema.TestCase{
+		{Source: schema.CaseSource{Scenario: "MISSING_REQUIRED"}},
+		{Source: schema.CaseSource{Scenario: "NULL_INJECTION"}},
+		{Source: schema.CaseSource{Scenario: "STRING_BELOW_MIN"}},
+	}
+	covered, missing := computeScenarioCoverage(cases)
+	assert.Contains(t, covered, "MISSING_REQUIRED")
+	assert.Contains(t, covered, "NULL_INJECTION")
+	assert.Contains(t, covered, "STRING_BELOW_MIN")
+	assert.NotContains(t, missing, "MISSING_REQUIRED")
+}
+
+func TestBoundaryDetail_IncludesScenarioInfo(t *testing.T) {
+	cases := []schema.TestCase{
+		{
+			Source: schema.CaseSource{
+				Technique: "boundary_value",
+				SpecPath:  "POST /pets requestBody.properties.name",
+				Scenario:  "STRING_BELOW_MIN",
+			},
+			Steps: []schema.Step{{
+				Assertions: []schema.Assertion{{Target: "status_code", Operator: "eq", Expected: 422}},
+			}},
+		},
+	}
+	report := Compute(cases)
+	var boundaryDim *Dimension
+	for i, d := range report.Dimensions {
+		if d.Name == "Boundary Coverage" {
+			boundaryDim = &report.Dimensions[i]
+			break
+		}
+	}
+	require.NotNil(t, boundaryDim)
+	assert.Contains(t, boundaryDim.Detail, "STRING_BELOW_MIN")
+}
+
 // TestCompute_CanonicalOpKey_FallbackToStepWhenSpecPathEmpty verifies that cases
 // with an empty SpecPath still group correctly by step method+path.
 func TestCompute_CanonicalOpKey_FallbackToStepWhenSpecPathEmpty(t *testing.T) {

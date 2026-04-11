@@ -165,8 +165,41 @@ func computeBoundary(opCases map[opKey][]schema.TestCase, totalOps int) (int, st
 		return missing[i].method < missing[j].method
 	})
 	score := covered * 100 / totalOps
+
+	// Flatten all cases for scenario analysis
+	var allCases []schema.TestCase
+	for _, cs := range opCases {
+		allCases = append(allCases, cs...)
+	}
+	coveredScen, missingScen := computeScenarioCoverage(allCases)
+
 	detail := fmt.Sprintf("%d/%d operations have boundary/equivalence cases", covered, totalOps)
+	if len(coveredScen) > 0 {
+		detail += fmt.Sprintf("; covered scenarios: %s", strings.Join(coveredScen, ", "))
+	}
+	if len(missingScen) > 0 {
+		detail += fmt.Sprintf("; missing scenarios: %s", strings.Join(missingScen, ", "))
+	}
 	return score, detail, missing
+}
+
+// computeScenarioCoverage collects all Scenario values from cases and returns
+// (covered, missing) lists relative to the tracked scenario set.
+func computeScenarioCoverage(cases []schema.TestCase) (covered, missing []string) {
+	seen := make(map[string]bool)
+	for _, c := range cases {
+		if c.Source.Scenario != "" {
+			seen[c.Source.Scenario] = true
+		}
+	}
+	for _, s := range trackedScenarios {
+		if seen[s] {
+			covered = append(covered, s)
+		} else {
+			missing = append(missing, s)
+		}
+	}
+	return
 }
 
 // computeSecurity returns the % of operations that have ≥ 1 security test case.
@@ -318,7 +351,7 @@ func buildSuggestions(secScore, statusScore int, opsMissingBoundary []opKey) []S
 		out = append(out, Suggestion{
 			Priority: p,
 			Message:  fmt.Sprintf("Add error-path cases (status coverage: %d/100)", statusScore),
-			Command:  "caseforge gen --technique mutation,isolated_negative",
+			Command:  "caseforge gen --technique mutation,isolated_negative,constraint_mutation",
 		})
 		p++
 	}

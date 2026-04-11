@@ -62,13 +62,14 @@ func (t *IsolatedNegativeTechnique) Generate(op *spec.Operation) ([]schema.TestC
 				Technique: "isolated_negative",
 				SpecPath:  specPath,
 				Rationale: fmt.Sprintf("isolated failure: only %q is absent; all other fields valid", req),
+				Scenario:  "MISSING_REQUIRED",
 			}
 			cases = append(cases, tc)
 		}
 
 		// One case per field with an easily-violated constraint
 		for fieldName, fieldSchema := range s.Properties {
-			invalid, reason := firstIsolatedInvalid(fieldSchema)
+			invalid, reason, scenario := firstIsolatedInvalid(fieldSchema)
 			if invalid == nil {
 				continue
 			}
@@ -85,6 +86,7 @@ func (t *IsolatedNegativeTechnique) Generate(op *spec.Operation) ([]schema.TestC
 				Technique: "isolated_negative",
 				SpecPath:  specPath,
 				Rationale: fmt.Sprintf("isolated failure: only %q is invalid (%s); all other fields valid", fieldName, reason),
+				Scenario:  scenario,
 			}
 			cases = append(cases, tc)
 		}
@@ -107,6 +109,7 @@ func (t *IsolatedNegativeTechnique) Generate(op *spec.Operation) ([]schema.TestC
 			Technique: "isolated_negative",
 			SpecPath:  specPath,
 			Rationale: fmt.Sprintf("isolated failure: required param %q is absent", p.Name),
+			Scenario:  "MISSING_REQUIRED",
 		}
 		cases = append(cases, tc)
 	}
@@ -114,47 +117,48 @@ func (t *IsolatedNegativeTechnique) Generate(op *spec.Operation) ([]schema.TestC
 	return cases, nil
 }
 
-// firstIsolatedInvalid returns the simplest invalid value for a schema and a short reason.
-// Returns (nil, "") when no violation is trivially constructable.
-func firstIsolatedInvalid(s *spec.Schema) (any, string) {
+// firstIsolatedInvalid returns the simplest invalid value for a schema, a short reason,
+// and a CoverageScenario label for the scorer.
+// Returns (nil, "", "") when no violation is trivially constructable.
+func firstIsolatedInvalid(s *spec.Schema) (any, string, string) {
 	if s == nil {
-		return nil, ""
+		return nil, "", ""
 	}
 	switch s.Type {
 	case "integer", "number":
 		if s.Minimum != nil {
 			v := *s.Minimum - 1
-			return v, fmt.Sprintf("below minimum (%.0f)", *s.Minimum)
+			return v, fmt.Sprintf("below minimum (%.0f)", *s.Minimum), "NUMBER_BELOW_MIN"
 		}
 		if s.Maximum != nil {
 			v := *s.Maximum + 1
-			return v, fmt.Sprintf("above maximum (%.0f)", *s.Maximum)
+			return v, fmt.Sprintf("above maximum (%.0f)", *s.Maximum), "NUMBER_ABOVE_MAX"
 		}
-		return "not_a_number", "wrong type (string for numeric)"
+		return "not_a_number", "wrong type (string for numeric)", "WRONG_TYPE"
 	case "string":
 		if s.MinLength != nil && *s.MinLength > 0 {
-			return "", fmt.Sprintf("empty string violates minLength %d", *s.MinLength)
+			return "", fmt.Sprintf("empty string violates minLength %d", *s.MinLength), "STRING_BELOW_MIN"
 		}
 		if len(s.Enum) > 0 {
-			return "__invalid_enum__", "value not in enum"
+			return "__invalid_enum__", "value not in enum", "ENUM_INVALID"
 		}
 		if s.Format == "email" {
-			return "not-an-email", "invalid email format"
+			return "not-an-email", "invalid email format", "WRONG_TYPE"
 		}
 	case "boolean":
-		return "not_a_boolean", "wrong type (string for boolean)"
+		return "not_a_boolean", "wrong type (string for boolean)", "WRONG_TYPE"
 	case "array":
 		if s.MinItems != nil && *s.MinItems > 0 {
-			return []any{}, fmt.Sprintf("empty array violates minItems %d", *s.MinItems)
+			return []any{}, fmt.Sprintf("empty array violates minItems %d", *s.MinItems), "ARRAY_MIN_ITEMS"
 		}
 	}
-	return nil, ""
+	return nil, "", ""
 }
 
 // hasConstrainedField returns true if any property has a constraint that can be violated.
 func hasConstrainedField(s *spec.Schema) bool {
 	for _, prop := range s.Properties {
-		if v, _ := firstIsolatedInvalid(prop); v != nil {
+		if v, _, _ := firstIsolatedInvalid(prop); v != nil {
 			return true
 		}
 	}

@@ -1173,6 +1173,39 @@ run "AT-147" "explore --prioritize-uncovered dry-run reports probes" \
 run "AT-148" "explore --prioritize-uncovered flag accepted without error" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestExploreCommand_PrioritizeUncoveredFlag' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-149" "FilterSet unit tests pass" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestFilterSet' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-150" "gen --include-path filters operations" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestBuildFilterSet' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-151" "gen --exclude-tag flag accepted without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenCommand_HasFilterFlags' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-152" "response_check unit tests pass" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestFindResponseSchema|TestCheckResponseBody|TestValidateProbeResponse' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-153" "explore discovers response schema mismatch rule" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_ResponseSchemaMismatch_ProducesRule' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-154" "constraint_mutation generates null injection cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestConstraintMutationTechnique_Generate_NullInjection' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-155" "constraint_mutation generates wrong-content-type case" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestConstraintMutationTechnique_Generate_WrongContentType' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-156" "boundary_value cases carry named Scenario field" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestBoundaryGeneratesMinMaxCases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-157" "score Boundary Coverage detail shows scenario info" \
+  "(cd $REPO_ROOT && go test ./internal/score/... -run 'TestBoundaryDetail_IncludesScenarioInfo' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-158" "explore --max-failures stops after N rules" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_MaxFailures_StopsEarly' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-159" "explore deduplicates rules with same operation+category+fieldPath" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_RuleDeduplication' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

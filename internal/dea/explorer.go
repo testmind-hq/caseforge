@@ -18,9 +18,19 @@ type Explorer struct {
 	MaxProbes           int
 	DryRun              bool // if true, seed hypotheses but skip HTTP execution
 	PrioritizeUncovered bool // if true, use two-pass scheduling: breadth first, then depth on non-2xx ops
+	MaxFailures         int  // stop exploration after this many rules discovered (0 = unlimited)
 
-	gen  *datagen.Generator
-	pool *datagen.DataPool
+	gen       *datagen.Generator
+	pool      *datagen.DataPool
+	seenRules map[ruleKey]bool
+}
+
+// ruleKey is the deduplication key for discovered rules within one exploration run.
+// Rules with the same (operation, category, fieldPath) are considered duplicates.
+type ruleKey struct {
+	operation string
+	category  RuleCategory
+	fieldPath string
 }
 
 // NewExplorer creates an Explorer with sensible defaults.
@@ -36,7 +46,22 @@ func NewExplorer(targetURL string, maxProbes int) *Explorer {
 		MaxProbes: maxProbes,
 		gen:       gen,
 		pool:      pool,
+		seenRules: make(map[ruleKey]bool),
 	}
+}
+
+// appendRule appends rule to report.Rules only if no rule with the same
+// (operation, category, fieldPath) key has been added in this run.
+// Returns true if the rule was appended, false if it was a duplicate.
+// Callers are responsible for checking MaxFailures after a true return.
+func (e *Explorer) appendRule(report *ExplorationReport, rule *DiscoveredRule) bool {
+	k := ruleKey{operation: rule.Operation, category: rule.Category, fieldPath: rule.FieldPath}
+	if e.seenRules[k] {
+		return false
+	}
+	e.seenRules[k] = true
+	report.Rules = append(report.Rules, *rule)
+	return true
 }
 
 // DataPool returns the pool of field values observed from 2xx responses.
@@ -60,6 +85,8 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 		TargetURL:  e.TargetURL,
 		ExploredAt: time.Now(),
 	}
+	// Reset deduplication state so each Explore() call starts fresh.
+	e.seenRules = make(map[ruleKey]bool)
 
 	if e.PrioritizeUncovered && !e.DryRun {
 		return e.exploreWithPriority(ctx, s, report)
@@ -101,7 +128,10 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 					Description: fmt.Sprintf("[DRY RUN] Planned probe: %s", h.Description),
 					Confidence:  ConfidenceLow,
 				}
-				report.Rules = append(report.Rules, *rule)
+				if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+					report.TotalProbes = probesRun
+					return report, nil
+				}
 				probesRun++ // count planned probes toward the cap in DryRun
 				continue
 			}
@@ -125,11 +155,20 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			// Extract field values from 2xx responses into the data pool
 			if is2xx && ev.ActualBody != "" {
 				extractBodyToPool(e.pool, ev.ActualBody)
+				if rule := validateProbeResponse(op, probe, ev); rule != nil {
+					if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+						report.TotalProbes = probesRun
+						return report, nil
+					}
+				}
 			}
 
 			rule := InferRule(h)
 			if rule != nil {
-				report.Rules = append(report.Rules, *rule)
+				if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+					report.TotalProbes = probesRun
+					return report, nil
+				}
 			}
 		}
 	}
@@ -179,10 +218,19 @@ func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, 
 			(!expectedIs4xx && states[i].got2xx)
 		h.Resolve(ev, confirmed)
 		if rule := InferRule(h); rule != nil {
-			report.Rules = append(report.Rules, *rule)
+			if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+				report.TotalProbes = probesRun
+				return report, nil
+			}
 		}
 		if states[i].got2xx && ev.ActualBody != "" {
 			extractBodyToPool(e.pool, ev.ActualBody)
+			if rule := validateProbeResponse(states[i].op, probe, ev); rule != nil {
+				if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+					report.TotalProbes = probesRun
+					return report, nil
+				}
+			}
 		}
 	}
 
@@ -208,10 +256,19 @@ func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, 
 			confirmed := (expectedIs4xx && ev.ActualStatus >= 400) || (!expectedIs4xx && is2xx)
 			h.Resolve(ev, confirmed)
 			if rule := InferRule(h); rule != nil {
-				report.Rules = append(report.Rules, *rule)
+				if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+					report.TotalProbes = probesRun
+					return report, nil
+				}
 			}
 			if is2xx && ev.ActualBody != "" {
 				extractBodyToPool(e.pool, ev.ActualBody)
+				if rule := validateProbeResponse(st.op, probe, ev); rule != nil {
+					if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+						report.TotalProbes = probesRun
+						return report, nil
+					}
+				}
 			}
 		}
 	}

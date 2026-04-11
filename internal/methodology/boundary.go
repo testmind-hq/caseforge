@@ -66,6 +66,7 @@ func (t *BoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase, err
 				Technique: "boundary_value",
 				SpecPath:  fmt.Sprintf("%s %s requestBody.properties.%s", op.Method, op.Path, fieldName),
 				Rationale: fmt.Sprintf("boundary value analysis: %s at %s", fieldName, b.label),
+				Scenario:  boundaryScenario(fieldSchema.Type, b.kind),
 			}
 			cases = append(cases, tc)
 		}
@@ -88,6 +89,35 @@ func hasRangeConstraints(op *spec.Operation) bool {
 
 func hasBoundary(s *spec.Schema) bool {
 	return s.Minimum != nil || s.Maximum != nil || s.MinLength != nil || s.MaxLength != nil
+}
+
+// boundaryScenario returns the CoverageScenario name for a (fieldType, BoundaryKind) pair.
+func boundaryScenario(fieldType string, kind datagen.BoundaryKind) string {
+	switch fieldType {
+	case "string":
+		switch kind {
+		case datagen.BoundaryMin:
+			return "STRING_MIN_LENGTH"
+		case datagen.BoundaryMinMinusOne:
+			return "STRING_BELOW_MIN"
+		case datagen.BoundaryMax:
+			return "STRING_MAX_LENGTH"
+		case datagen.BoundaryMaxPlusOne:
+			return "STRING_ABOVE_MAX"
+		}
+	case "integer", "number":
+		switch kind {
+		case datagen.BoundaryMin:
+			return "NUMBER_MIN"
+		case datagen.BoundaryMinMinusOne:
+			return "NUMBER_BELOW_MIN"
+		case datagen.BoundaryMax:
+			return "NUMBER_MAX"
+		case datagen.BoundaryMaxPlusOne:
+			return "NUMBER_ABOVE_MAX"
+		}
+	}
+	return ""
 }
 
 func copyMap(m map[string]any) map[string]any {
