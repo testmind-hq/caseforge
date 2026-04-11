@@ -109,7 +109,6 @@ func mutateField(body map[string]any, fieldName string, kind HypothesisKind, op 
 		}
 
 	case KindTypeCoercion:
-		s := fieldSchema(op, fieldName)
 		if s != nil {
 			switch s.Type {
 			case "string":

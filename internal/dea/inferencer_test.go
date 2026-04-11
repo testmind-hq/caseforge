@@ -409,3 +409,33 @@ func TestInferRule_MassAssignment_Confirmed(t *testing.T) {
 	assert.True(t, rule.Implicit)
 	assert.Contains(t, rule.Description, "Mass assignment")
 }
+
+func TestInferRule_UnicodeControl_Refuted(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindUnicodeControl,
+		Operation: "POST /users",
+		FieldPath: "requestBody.name",
+		Status:    StatusRefuted,
+		Evidence:  &Evidence{ActualStatus: 200},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.Equal(t, CategoryBehavior, rule.Category)
+	assert.True(t, rule.Implicit)
+	assert.Contains(t, rule.Description, "injection")
+}
+
+func TestInferRule_MassAssignment_Refuted(t *testing.T) {
+	h := &HypothesisNode{
+		Kind:      KindMassAssignment,
+		Operation: "POST /users",
+		FieldPath: "requestBody",
+		Status:    StatusRefuted,
+		Evidence:  &Evidence{ActualStatus: 400},
+	}
+	rule := InferRule(h)
+	require.NotNil(t, rule)
+	assert.Equal(t, CategoryFieldConstraint, rule.Category)
+	assert.False(t, rule.Implicit)
+	assert.Contains(t, rule.Description, "rejected")
+}
