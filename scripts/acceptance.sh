@@ -1218,6 +1218,12 @@ run "AT-162" "unicode_fuzzing Applies for op with string field" \
 run "AT-163" "unicode_fuzzing generates 5 cases per string field" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Generate_ProducesExactly5PerStringField' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-164" "mass_assignment Applies for op with request body" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Applies_True' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-165" "mass_assignment generates 4 category cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Generate_ProducesExactly4Cases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
