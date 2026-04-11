@@ -21,7 +21,7 @@ CaseForge reads your OpenAPI specification and generates structured, traceable t
 - **Spec linting** — validates OpenAPI specs with configurable severity thresholds and JSON output
 - **Spec diff** — classifies breaking vs non-breaking changes; auto-generates cases for breaking ops
 - **Risk-based testing** — detects which API operations are at risk from recent git changes via static analysis
-- **Test case scoring** — multi-dimensional quality scoring (breadth, boundary, security, execution, status coverage)
+- **Test case scoring** — multi-dimensional quality scoring with named coverage scenario tracking (breadth, boundary, security, execution, status coverage)
 - **Natural language input** — `ask` generates cases from a plain-text description
 - **Platform export** — exports to Allure, Xray, or TestRail
 - **Webhook push** — fires `on_generate` / `on_run_complete` events to configured endpoints
@@ -143,6 +143,10 @@ caseforge lint --spec openapi.yaml
 --tuple-level int     N-way coverage level for pairwise (2=pairwise, 3=3-way, default 2)
 --seed int            Seed for deterministic generation (0 = random)
 --max-cases-per-op int  Cap cases per operation by priority (0 = unlimited)
+--include-path string   Regex to include operations by path (e.g. '^/users')
+--exclude-path string   Regex to exclude operations by path (e.g. '^/admin')
+--include-tag string    Comma-separated OpenAPI tags to include (e.g. 'users,auth')
+--exclude-tag string    Comma-separated OpenAPI tags to exclude (e.g. 'deprecated')
 ```
 
 ### `caseforge run`
@@ -262,6 +266,11 @@ depth-2 chains where the consumer is not a DELETE operation.
 --export-pool string       Write observed 2xx response field values to a JSON data pool file
 --prioritize-uncovered     Two-pass scheduling: breadth-scan all ops in pass 1, then
                            focus remaining budget on operations that did not return 2xx
+--max-failures int         Stop after discovering this many rules (0 = unlimited)
+--include-path string      Regex to include operations by path (e.g. '^/users')
+--exclude-path string      Regex to exclude operations by path (e.g. '^/admin')
+--include-tag string       Comma-separated OpenAPI tags to include (e.g. 'users,auth')
+--exclude-tag string       Comma-separated OpenAPI tags to exclude (e.g. 'deprecated')
 ```
 
 The data pool written by `--export-pool` can be loaded into `caseforge chain`
