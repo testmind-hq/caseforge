@@ -248,10 +248,9 @@ func is2xxAssertion(a schema.Assertion) bool {
 	}
 	switch a.Operator {
 	case schema.OperatorLt:
-		return n <= 300
+		// "status_code lt 300" is the canonical happy-path assertion; n must be exactly 300.
+		return n == 300
 	case schema.OperatorEq:
-		return n >= 200 && n < 300
-	case schema.OperatorGte:
 		return n >= 200 && n < 300
 	}
 	return false

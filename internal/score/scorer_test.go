@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 )
 
@@ -188,10 +189,34 @@ func TestCompute_SuggestionsNeverNullInJSON(t *testing.T) {
 
 func TestCompute_DimensionOrder(t *testing.T) {
 	r := Compute([]schema.TestCase{makeCase("GET", "/x", "equivalence_partitioning", 1)})
+	require.Len(t, r.Dimensions, 5)
 	assert.Equal(t, "Coverage Breadth", r.Dimensions[0].Name)
 	assert.Equal(t, "Boundary Coverage", r.Dimensions[1].Name)
 	assert.Equal(t, "Security Coverage", r.Dimensions[2].Name)
 	assert.Equal(t, "Executability", r.Dimensions[3].Name)
+	assert.Equal(t, "Status Coverage", r.Dimensions[4].Name)
+}
+
+func TestIs2xxAssertion(t *testing.T) {
+	yes := func(op string, expected any) {
+		a := schema.Assertion{Target: "status_code", Operator: op, Expected: expected}
+		if !is2xxAssertion(a) {
+			t.Errorf("is2xxAssertion(%s %v) = false, want true", op, expected)
+		}
+	}
+	no := func(op string, expected any) {
+		a := schema.Assertion{Target: "status_code", Operator: op, Expected: expected}
+		if is2xxAssertion(a) {
+			t.Errorf("is2xxAssertion(%s %v) = true, want false", op, expected)
+		}
+	}
+	yes("lt", 300)
+	yes("eq", 200)
+	yes("eq", 201)
+	no("lt", 299) // lt 299 is not a 2xx-only assertion
+	no("lt", 301) // lt 301 includes 3xx
+	no("gte", 200) // gte 200 includes 3xx, 4xx, 5xx
+	no("gte", 400) // that's a 4xx assertion
 }
 
 // TestCompute_OWASPInjectedPathsDoNotInflateOpCount is a regression test for the
