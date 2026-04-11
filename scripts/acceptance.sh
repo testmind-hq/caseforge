@@ -1260,6 +1260,30 @@ run "AT-176" "schema ReadOnly field parsed from spec" \
 run "AT-177" "schema WriteOnly field parsed from spec" \
   "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestSemanticAnnotation_WriteOnly_Parsed' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-178" "field_boundary Applies for op with constrained fields" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary --output $WORKDIR/fb178 2>/dev/null && grep -q 'field_boundary' $WORKDIR/fb178/index.json)"
+
+run "AT-179" "field_boundary generates cases for constrained fields" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_4CasesPerConstrainedField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-180" "field_boundary generates nested field path cases" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary --output $WORKDIR/fb180 2>/dev/null && grep -q 'address.zip' $WORKDIR/fb180/index.json)"
+
+run "AT-181" "field_boundary valid cases expect 2xx assertions" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_ValidBoundaryExpects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-182" "required_omission Applies for op with required fields" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission --output $WORKDIR/ro182 2>/dev/null && grep -q 'required_omission' $WORKDIR/ro182/index.json)"
+
+run "AT-183" "required_omission generates one case per required field" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_OneCasePerRequiredField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-184" "required_omission case has field absent (REQUIRED_OMISSION scenario)" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission --output $WORKDIR/ro184 2>/dev/null && grep -q 'REQUIRED_OMISSION' $WORKDIR/ro184/index.json)"
+
+run "AT-185" "required_omission cases expect 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_Expects4xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

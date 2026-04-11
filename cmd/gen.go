@@ -75,6 +75,8 @@ var allTechniqueNames = []string{
 	"mass_assignment",
 	"idor",
 	"semantic_annotation",
+	"field_boundary",
+	"required_omission",
 }
 
 func init() {
@@ -336,6 +338,8 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewMassAssignmentTechnique(),
 		methodology.NewIDORTechnique(),
 		methodology.NewSemanticAnnotationTechnique(),
+		methodology.NewFieldBoundaryTechnique(),
+		methodology.NewRequiredOmissionTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

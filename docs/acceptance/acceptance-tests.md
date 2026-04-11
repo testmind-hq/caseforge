@@ -225,6 +225,14 @@
 | AT-175 | writeOnly read suppression case has jsonpath assertion | `go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_WriteOnlyCase_FieldAbsent' -count=1` | PASS | ✅ PASS |
 | AT-176 | schema ReadOnly field parsed from spec | `go test ./internal/spec/... -run 'TestSemanticAnnotation_ReadOnly_Parsed' -count=1` | PASS | ✅ PASS |
 | AT-177 | schema WriteOnly field parsed from spec | `go test ./internal/spec/... -run 'TestSemanticAnnotation_WriteOnly_Parsed' -count=1` | PASS | ✅ PASS |
+| AT-178 | field_boundary Applies for op with constrained fields | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary \| grep field_boundary` | output contains field_boundary | ✅ PASS |
+| AT-179 | field_boundary generates cases for constrained fields | `go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_4CasesPerConstrainedField' -count=1` | PASS | ✅ PASS |
+| AT-180 | field_boundary generates nested field path cases | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary \| grep address.zip` | output contains address.zip | ✅ PASS |
+| AT-181 | field_boundary valid cases expect 2xx assertions | `go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_ValidBoundaryExpects2xx' -count=1` | PASS | ✅ PASS |
+| AT-182 | required_omission Applies for op with required fields | `caseforge gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission \| grep required_omission` | output contains required_omission | ✅ PASS |
+| AT-183 | required_omission generates one case per required field | `go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_OneCasePerRequiredField' -count=1` | PASS | ✅ PASS |
+| AT-184 | required_omission case has field absent (REQUIRED_OMISSION scenario) | `caseforge gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission \| grep REQUIRED_OMISSION` | output contains REQUIRED_OMISSION | ✅ PASS |
+| AT-185 | required_omission cases expect 4xx | `go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_Expects4xx' -count=1` | PASS | ✅ PASS |
 
 ---
 

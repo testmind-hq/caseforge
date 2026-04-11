@@ -35,6 +35,10 @@ const (
 	ScenarioNullableAcceptance CoverageScenario = "NULLABLE_ACCEPTANCE" // nullable field accepts null value
 	ScenarioReadOnlyWrite      CoverageScenario = "READ_ONLY_WRITE"     // readOnly field rejected on write
 	ScenarioWriteOnlyRead      CoverageScenario = "WRITE_ONLY_READ"     // writeOnly field absent from read response
+
+	ScenarioFieldBoundaryValid   CoverageScenario = "FIELD_BOUNDARY_VALID"   // nested field at declared boundary (valid)
+	ScenarioFieldBoundaryInvalid CoverageScenario = "FIELD_BOUNDARY_INVALID" // nested field outside declared boundary (invalid)
+	ScenarioRequiredOmission     CoverageScenario = "REQUIRED_OMISSION"      // required field entirely absent from payload
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -59,4 +63,7 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioNullableAcceptance,
 	ScenarioReadOnlyWrite,
 	ScenarioWriteOnlyRead,
+	ScenarioFieldBoundaryValid,
+	ScenarioFieldBoundaryInvalid,
+	ScenarioRequiredOmission,
 }
