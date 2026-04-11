@@ -71,6 +71,7 @@ var allTechniqueNames = []string{
 	"auth_chain",
 	"constraint_mutation",
 	"type_coercion",
+	"unicode_fuzzing",
 }
 
 func init() {
@@ -328,6 +329,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewMutationTechnique(),
 		methodology.NewConstraintMutationTechnique(),
 		methodology.NewTypeCoercionTechnique(),
+		methodology.NewUnicodeFuzzingTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

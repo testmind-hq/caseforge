@@ -209,6 +209,8 @@
 | AT-159 | explore deduplicates rules with same operation+category+fieldPath | `go test ./internal/dea/... -run TestExplorer_RuleDeduplication` | no duplicate (op, category, fieldPath) triplets in report | ✅ PASS |
 | AT-160 | type_coercion Applies() for op with typed fields | `go test ./internal/methodology/... -run TestTypeCoercionTechnique_Applies_True` | PASS | ✅ PASS |
 | AT-161 | type_coercion generates WRONG_TYPE cases for all typed fields | `go test ./internal/methodology/... -run TestTypeCoercionTechnique_Generate_StringField` | PASS | ✅ PASS |
+| AT-162 | unicode_fuzzing Applies for op with string field | `go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Applies_True'` | PASS | ✅ PASS |
+| AT-163 | unicode_fuzzing generates 5 cases per string field | `go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Generate_ProducesExactly5PerStringField'` | PASS | ✅ PASS |
 
 ---
 

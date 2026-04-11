@@ -23,6 +23,7 @@ const (
 	ScenarioArrayMinItems    CoverageScenario = "ARRAY_MIN_ITEMS"    // array below minItems (invalid)
 	ScenarioArrayMaxItems    CoverageScenario = "ARRAY_MAX_ITEMS"    // array above maxItems (invalid)
 	ScenarioWrongContentType CoverageScenario = "WRONG_CONTENT_TYPE" // request with unsupported content-type
+	ScenarioUnicodeInjection CoverageScenario = "UNICODE_INJECTION"  // unicode/control-char injection
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -38,4 +39,5 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioArrayMinItems,
 	ScenarioArrayMaxItems,
 	ScenarioWrongContentType,
+	ScenarioUnicodeInjection,
 }
