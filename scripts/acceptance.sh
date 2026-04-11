@@ -1161,6 +1161,12 @@ run "AT-143" "chain --data-pool loads pool without error" \
 run "AT-144" "score includes Status Coverage dimension" \
   "(cd $REPO_ROOT && go test ./internal/score/... -run 'TestComputeStatusCoverage' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-145" "Postman collection parsing extracts body fields into DataPool" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestParsePostmanCollection' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-146" "chain --seed-postman loads collection without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_SeedPostman' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

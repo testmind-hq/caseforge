@@ -31,11 +31,12 @@ Depth 3: three-step chains (create → update → read, etc.).`,
 }
 
 var (
-	chainSpecPath string
-	chainOutput   string
-	chainDepth    int
-	chainFormat   string
-	chainDataPool string // path to DataPool JSON (from explore --export-pool)
+	chainSpecPath    string
+	chainOutput      string
+	chainDepth       int
+	chainFormat      string
+	chainDataPool    string // path to DataPool JSON (from explore --export-pool)
+	chainSeedPostman string // path to Postman Collection v2.1 JSON
 )
 
 func init() {
@@ -45,6 +46,7 @@ func init() {
 	chainCmd.Flags().IntVar(&chainDepth, "depth", 2, "Maximum chain depth (1..4)")
 	chainCmd.Flags().StringVar(&chainFormat, "format", "hurl", "Output format: hurl|markdown|csv|postman|k6")
 	chainCmd.Flags().StringVar(&chainDataPool, "data-pool", "", "JSON data pool file (from explore --export-pool)")
+	chainCmd.Flags().StringVar(&chainSeedPostman, "seed-postman", "", "Postman Collection v2.1 JSON file; extracts body field values as seed data")
 	_ = chainCmd.MarkFlagRequired("spec")
 }
 
@@ -67,6 +69,17 @@ func runChain(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("loading data pool: %w", err)
 		}
 		gen.Pool = pool
+	}
+	if chainSeedPostman != "" {
+		pmPool, err := datagen.ParsePostmanCollection(chainSeedPostman)
+		if err != nil {
+			return fmt.Errorf("loading postman collection: %w", err)
+		}
+		if gen.Pool == nil {
+			gen.Pool = pmPool
+		} else {
+			gen.Pool.Merge(pmPool)
+		}
 	}
 	cases := bfsChainCases(parsedSpec.Operations, depGraph, chainDepth, gen)
 

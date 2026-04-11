@@ -192,6 +192,8 @@
 | AT-142 | explore --export-pool writes pool JSON in dry-run | `go test ./cmd/... -run TestExploreCommand_ExportPool_DryRun` | pool.json created | ✅ PASS |
 | AT-143 | chain --data-pool loads pool without error | `go test ./cmd/... -run TestChainCommand_DataPool_Loaded` | index.json produced, no error | ✅ PASS |
 | AT-144 | score includes Status Coverage dimension | `go test ./internal/score/... -run TestComputeStatusCoverage` | Status Coverage dimension present with correct score | ✅ PASS |
+| AT-145 | Postman collection parsing extracts body fields into DataPool | `go test ./internal/datagen/... -run TestParsePostmanCollection` | All 3 postman tests pass | ✅ PASS |
+| AT-146 | chain --seed-postman loads collection without error | `go test ./cmd/... -run TestChainCommand_SeedPostman` | index.json produced | ✅ PASS |
 
 ---
 
@@ -407,7 +409,7 @@
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 4 | 4 | 0 |
-| **Total** | **96** | **96** | **0** |
+| **Total** | **98** | **98** | **0** |
 
 ---
 
