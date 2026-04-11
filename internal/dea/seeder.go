@@ -57,6 +57,9 @@ func seedBodyHypotheses(op *spec.Operation) []*HypothesisNode {
 
 	for _, fieldName := range fieldNames {
 		fieldSchema := s.Properties[fieldName]
+		if fieldSchema == nil {
+			continue
+		}
 		prefix := fmt.Sprintf("requestBody.%s", fieldName)
 
 		if fieldSchema.Type != "" {

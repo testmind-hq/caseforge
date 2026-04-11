@@ -90,17 +90,19 @@ func TestIDORTechnique_Generate_AllHaveP1Priority(t *testing.T) {
 	}
 }
 
-func TestIDORTechnique_Generate_AllExpect403(t *testing.T) {
+func TestIDORTechnique_Generate_AllExpect4xx(t *testing.T) {
 	op := makeIntPathParamOp()
 	cases, err := NewIDORTechnique().Generate(op)
 	require.NoError(t, err)
 	assert.NotEmpty(t, cases)
 	for _, c := range cases {
 		require.Len(t, c.Steps, 1)
-		require.Len(t, c.Steps[0].Assertions, 1)
-		assert.Equal(t, "status_code", c.Steps[0].Assertions[0].Target)
-		assert.Equal(t, "eq", c.Steps[0].Assertions[0].Operator)
-		assert.Equal(t, 403, c.Steps[0].Assertions[0].Expected)
+		// Two assertions: gte 400 AND lt 500 — accepts 403 (forbidden) or 404 (resource-hiding)
+		require.Len(t, c.Steps[0].Assertions, 2)
+		assert.Equal(t, "gte", c.Steps[0].Assertions[0].Operator)
+		assert.Equal(t, 400, c.Steps[0].Assertions[0].Expected)
+		assert.Equal(t, "lt", c.Steps[0].Assertions[1].Operator)
+		assert.Equal(t, 500, c.Steps[0].Assertions[1].Expected)
 	}
 }
 

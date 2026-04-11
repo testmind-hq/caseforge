@@ -85,8 +85,11 @@ func (t *IDORTechnique) Generate(op *spec.Operation) ([]schema.TestCase, error) 
 			// Override the path to substitute the ID value
 			tc.Steps[0].Path = buildIDORPath(op, p, m.value)
 
+			// Accept any 4xx: 403 (forbidden) or 404 (resource-hiding) are both
+			// valid secure responses; 2xx signals a likely IDOR vulnerability.
 			tc.Steps[0].Assertions = []schema.Assertion{
-				{Target: "status_code", Operator: "eq", Expected: 403},
+				{Target: "status_code", Operator: "gte", Expected: 400},
+				{Target: "status_code", Operator: "lt", Expected: 500},
 			}
 			tc.Source = schema.CaseSource{
 				Technique: "idor",

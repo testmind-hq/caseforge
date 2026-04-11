@@ -99,6 +99,10 @@ func (t *MassAssignmentTechnique) Generate(op *spec.Operation) ([]schema.TestCas
 		tc := buildTestCase(op, body,
 			fmt.Sprintf("[mass_assignment] %s probe", cat.name), specPath)
 		tc.Priority = "P2"
+		// Assert that the server rejects undeclared privileged fields.
+		// A PASSING test (400) means the server correctly rejected extra fields.
+		// A FAILING test (2xx) means the server accepted them — a potential
+		// mass-assignment vulnerability that warrants manual investigation.
 		tc.Steps[0].Assertions = []schema.Assertion{
 			{Target: "status_code", Operator: "eq", Expected: 400},
 		}
