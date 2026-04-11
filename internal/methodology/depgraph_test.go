@@ -189,6 +189,66 @@ func TestBuildDepGraph_OpenAPILinks(t *testing.T) {
 	}
 }
 
+func TestParseLinkExpression(t *testing.T) {
+	tests := []struct {
+		expr string
+		want string
+	}{
+		{"$response.body#/id", "jsonpath $.id"},
+		{"$response.body#/data/id", "jsonpath $.data.id"},
+		{"$response.body#/result/userId", "jsonpath $.result.userId"},
+		{"$request.path/id", ""},   // not a response.body expression
+		{"literal-value", ""},      // plain literal
+		{"", ""},
+	}
+	for _, tc := range tests {
+		got := parseLinkExpression(tc.expr)
+		if got != tc.want {
+			t.Errorf("parseLinkExpression(%q) = %q, want %q", tc.expr, got, tc.want)
+		}
+	}
+}
+
+func TestBuildDepGraph_OpenAPILinks_DedupWithHeuristic(t *testing.T) {
+	// The heuristic (Pass 1) will infer POST /users → GET /users/{userId}.
+	// An explicit Link on the same creator→consumer pair must not produce a duplicate edge.
+	createOp := &spec.Operation{
+		OperationID: "createUser",
+		Method:      "POST",
+		Path:        "/users",
+		Responses: map[string]*spec.Response{
+			"201": {
+				Headers: map[string]string{},
+				Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{
+						Type:       "object",
+						Properties: map[string]*spec.Schema{"id": {Type: "integer"}},
+					}},
+				},
+			},
+		},
+		Links: []spec.SpecLink{
+			{
+				Name:         "GetUserById",
+				OperationID:  "getUser",
+				ResponseCode: "201",
+				Parameters:   map[string]string{"userId": "$response.body#/id"},
+			},
+		},
+	}
+	getOp := &spec.Operation{
+		OperationID: "getUser",
+		Method:      "GET",
+		Path:        "/users/{userId}",
+		Responses:   map[string]*spec.Response{"200": {}},
+	}
+	g := BuildDepGraph([]*spec.Operation{createOp, getOp})
+	// Must have exactly one edge, not two (heuristic + link).
+	if len(g.Edges) != 1 {
+		t.Errorf("expected 1 deduplicated edge, got %d", len(g.Edges))
+	}
+}
+
 func TestBuildDepGraph_Deterministic(t *testing.T) {
 	ops := crudOps()
 	g1 := BuildDepGraph(ops)
