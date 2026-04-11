@@ -3,9 +3,11 @@ package methodology
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
+	"github.com/testmind-hq/caseforge/internal/score"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -36,47 +38,49 @@ type probeCategory struct {
 	fields   map[string]any
 }
 
-var probeCategories = []probeCategory{
-	{
-		name:     "privilege",
-		scenario: "MASS_ASSIGNMENT_PRIVILEGE",
-		fields: map[string]any{
-			"role":     "__probe__",
-			"admin":    true,
-			"isAdmin":  true,
-			"is_admin": true,
+func probeCategories() []probeCategory {
+	return []probeCategory{
+		{
+			name:     "privilege",
+			scenario: string(score.ScenarioMassAssignmentPrivilege),
+			fields: map[string]any{
+				"role":     "__probe__",
+				"admin":    true,
+				"isAdmin":  true,
+				"is_admin": true,
+			},
 		},
-	},
-	{
-		name:     "status",
-		scenario: "MASS_ASSIGNMENT_STATUS",
-		fields: map[string]any{
-			"verified": true,
-			"approved": true,
-			"banned":   false,
-			"disabled": false,
+		{
+			name:     "status",
+			scenario: string(score.ScenarioMassAssignmentStatus),
+			fields: map[string]any{
+				"verified": true,
+				"approved": true,
+				"banned":   false,
+				"disabled": false,
+			},
 		},
-	},
-	{
-		name:     "financial",
-		scenario: "MASS_ASSIGNMENT_FINANCIAL",
-		fields: map[string]any{
-			"balance":  float64(1),
-			"credits":  float64(1),
-			"discount": float64(0),
-			"price":    float64(1),
+		{
+			name:     "financial",
+			scenario: string(score.ScenarioMassAssignmentFinancial),
+			fields: map[string]any{
+				"balance":  float64(1),
+				"credits":  float64(1),
+				"discount": float64(0),
+				"price":    float64(1),
+			},
 		},
-	},
-	{
-		name:     "identity",
-		scenario: "MASS_ASSIGNMENT_IDENTITY",
-		fields: map[string]any{
-			"userId":    "__probe__",
-			"user_id":   "__probe__",
-			"ownerId":   "__probe__",
-			"createdBy": "__probe__",
+		{
+			name:     "identity",
+			scenario: string(score.ScenarioMassAssignmentIdentity),
+			fields: map[string]any{
+				"userId":    "__probe__",
+				"user_id":   "__probe__",
+				"ownerId":   "__probe__",
+				"createdBy": "__probe__",
+			},
 		},
-	},
+	}
 }
 
 func (t *MassAssignmentTechnique) Generate(op *spec.Operation) ([]schema.TestCase, error) {
@@ -86,8 +90,8 @@ func (t *MassAssignmentTechnique) Generate(op *spec.Operation) ([]schema.TestCas
 	}
 
 	var cases []schema.TestCase
-	for _, cat := range probeCategories {
-		body := copyMap(validBase)
+	for _, cat := range probeCategories() {
+		body := maps.Clone(validBase)
 		for k, v := range cat.fields {
 			body[k] = v
 		}
@@ -96,7 +100,7 @@ func (t *MassAssignmentTechnique) Generate(op *spec.Operation) ([]schema.TestCas
 			fmt.Sprintf("[mass_assignment] %s probe", cat.name), specPath)
 		tc.Priority = "P2"
 		tc.Steps[0].Assertions = []schema.Assertion{
-			{Target: "status_code", Operator: "eq", Expected: 200},
+			{Target: "status_code", Operator: "eq", Expected: 400},
 		}
 		tc.Source = schema.CaseSource{
 			Technique: "mass_assignment",
