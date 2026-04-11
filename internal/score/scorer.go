@@ -318,7 +318,7 @@ func buildSuggestions(secScore, statusScore int, opsMissingBoundary []opKey) []S
 		out = append(out, Suggestion{
 			Priority: p,
 			Message:  fmt.Sprintf("Add error-path cases (status coverage: %d/100)", statusScore),
-			Command:  "caseforge gen --technique mutation,isolated_negative",
+			Command:  "caseforge gen --technique mutation,isolated_negative,constraint_mutation",
 		})
 		p++
 	}
