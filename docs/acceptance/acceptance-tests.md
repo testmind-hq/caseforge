@@ -187,6 +187,7 @@
 | AT-137 | gen registers mutation and auth_chain techniques without error | `go test ./cmd/... -run 'TestGen_Seed_DeterministicOutput'` | Deterministic output with new techniques | ✅ PASS |
 | AT-138 | OpenAPI Links parsed into Operation.Links | `go test ./internal/spec/... -run 'TestParsedSpec_LinksPopulated'` | Links slice populated with name, operationId, parameters | ✅ PASS |
 | AT-139 | OpenAPI Links create dep-graph edges | `go test ./internal/methodology/... -run 'TestBuildDepGraph_OpenAPILinks'` | Edge with correct creator/consumer/pathParam/captureFrom | ✅ PASS |
+| AT-140 | BFS chain appends DELETE teardown for non-DELETE consumers | `go test ./cmd/... -run TestChainCommand_AddsTeardownForNonDeleteChains` | Chain case contains step with type=teardown | ✅ PASS |
 
 ---
 

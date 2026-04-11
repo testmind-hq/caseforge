@@ -1146,6 +1146,9 @@ run "AT-138" "OpenAPI Links parsed into Operation.Links" \
 run "AT-139" "OpenAPI Links create dep-graph edges" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestBuildDepGraph_OpenAPILinks' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-140" "BFS chain appends DELETE teardown for non-DELETE consumers" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_AddsTeardownForNonDeleteChains' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

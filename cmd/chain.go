@@ -125,6 +125,27 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int)
 			captureName: captureName,
 		})
 		if len(steps) >= 2 {
+			// Append DELETE teardown if consumer is not already DELETE
+			if edge.Consumer.Method != "DELETE" {
+				if td := findTeardownEdge(g, edge.Creator.Path); td != nil {
+					lastID := steps[len(steps)-1].ID
+					tdPath := strings.ReplaceAll(td.Consumer.Path,
+						fmt.Sprintf("{%s}", td.PathParam),
+						fmt.Sprintf("{{%s}}", captureName))
+					tdStep := schema.Step{
+						ID:    "step-teardown",
+						Title: fmt.Sprintf("teardown: %s %s", td.Consumer.Method, tdPath),
+						Type:  "teardown",
+						Method: td.Consumer.Method,
+						Path:   tdPath,
+						Assertions: []schema.Assertion{
+							{Target: "status_code", Operator: schema.OperatorLt, Expected: 300},
+						},
+						DependsOn: []string{lastID},
+					}
+					steps = append(steps, tdStep)
+				}
+			}
 			cases = append(cases, chainCase(steps, edge.Creator.Path, "chain_bfs", 2))
 		}
 	}
@@ -278,6 +299,18 @@ func chainCase(steps []schema.Step, resourcePath, technique string, depth int) s
 		Steps:       steps,
 		GeneratedAt: time.Now(),
 	}
+}
+
+// findTeardownEdge returns the first DELETE edge from the given creator path, or nil.
+// Used to automatically append cleanup steps to non-DELETE BFS chains.
+func findTeardownEdge(g *methodology.DepGraph, creatorPath string) *methodology.DepEdge {
+	for i := range g.Edges {
+		e := &g.Edges[i]
+		if e.Creator.Path == creatorPath && e.Consumer.Method == "DELETE" {
+			return e
+		}
+	}
+	return nil
 }
 
 // buildValidBodyForOp generates a valid request body for an operation.
