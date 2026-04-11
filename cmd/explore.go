@@ -79,7 +79,7 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 		}
 		parsedSpec.Operations = opFilter.Apply(parsedSpec.Operations)
 		if len(parsedSpec.Operations) == 0 {
-			fmt.Fprintln(out, "warning: path/tag filters matched no operations")
+			fmt.Fprintln(os.Stderr, "warning: --include-path/--exclude-path/--include-tag/--exclude-tag matched no operations")
 		}
 	}
 

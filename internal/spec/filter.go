@@ -46,25 +46,42 @@ func (f *FilterSet) Validate() error {
 
 // Apply returns the subset of ops that pass all active filters.
 // Returns ops unchanged when the FilterSet is empty.
+// Patterns are compiled once per Apply call to avoid repeated compilation.
 func (f *FilterSet) Apply(ops []*Operation) []*Operation {
 	if f.IsEmpty() {
 		return ops
 	}
+	// Compile regexes once for the entire Apply call.
+	inclPathRx := compileAll(f.IncludePaths)
+	exclPathRx := compileAll(f.ExcludePaths)
+
 	out := make([]*Operation, 0, len(ops))
 	for _, op := range ops {
-		if f.passes(op) {
+		if passes(op, inclPathRx, exclPathRx, f.IncludeTags, f.ExcludeTags) {
 			out = append(out, op)
 		}
 	}
 	return out
 }
 
-func (f *FilterSet) passes(op *Operation) bool {
-	// IncludePath: op.Path must match at least one pattern (if any set)
-	if len(f.IncludePaths) > 0 {
+// compileAll compiles a slice of regex patterns. Patterns are assumed to have
+// been validated by Validate(); errors are silently ignored here.
+func compileAll(patterns []string) []*regexp.Regexp {
+	rxs := make([]*regexp.Regexp, 0, len(patterns))
+	for _, p := range patterns {
+		if rx, err := regexp.Compile(p); err == nil {
+			rxs = append(rxs, rx)
+		}
+	}
+	return rxs
+}
+
+func passes(op *Operation, inclPathRx, exclPathRx []*regexp.Regexp, inclTags, exclTags []string) bool {
+	// IncludePath: op.Path must match at least one compiled pattern (if any set)
+	if len(inclPathRx) > 0 {
 		matched := false
-		for _, p := range f.IncludePaths {
-			if ok, _ := regexp.MatchString(p, op.Path); ok {
+		for _, rx := range inclPathRx {
+			if rx.MatchString(op.Path) {
 				matched = true
 				break
 			}
@@ -73,35 +90,31 @@ func (f *FilterSet) passes(op *Operation) bool {
 			return false
 		}
 	}
-	// ExcludePath: op.Path must not match any pattern
-	for _, p := range f.ExcludePaths {
-		if ok, _ := regexp.MatchString(p, op.Path); ok {
+	// ExcludePath: op.Path must not match any compiled pattern
+	for _, rx := range exclPathRx {
+		if rx.MatchString(op.Path) {
 			return false
 		}
 	}
 	// IncludeTag: op.Tags must intersect with IncludeTags (if any set)
-	if len(f.IncludeTags) > 0 {
-		matched := false
-	outer:
-		for _, includeTag := range f.IncludeTags {
-			for _, opTag := range op.Tags {
-				if opTag == includeTag {
-					matched = true
-					break outer
-				}
-			}
-		}
-		if !matched {
-			return false
-		}
+	if len(inclTags) > 0 && !tagsIntersect(op.Tags, inclTags) {
+		return false
 	}
 	// ExcludeTag: op.Tags must not intersect with ExcludeTags
-	for _, excludeTag := range f.ExcludeTags {
-		for _, opTag := range op.Tags {
-			if opTag == excludeTag {
-				return false
+	if tagsIntersect(op.Tags, exclTags) {
+		return false
+	}
+	return true
+}
+
+// tagsIntersect reports whether a and b share at least one element.
+func tagsIntersect(a, b []string) bool {
+	for _, x := range a {
+		for _, y := range b {
+			if x == y {
+				return true
 			}
 		}
 	}
-	return true
+	return false
 }

@@ -23,7 +23,26 @@ func TestBuildFilterSet_IncludeTag(t *testing.T) {
 	assert.Equal(t, []string{"users", "admin"}, f.IncludeTags)
 }
 
+func TestBuildFilterSet_ExcludePath(t *testing.T) {
+	f := buildFilterSet("", "^/admin", "", "")
+	assert.Equal(t, spec.FilterSet{ExcludePaths: []string{"^/admin"}}, f)
+}
+
 func TestBuildFilterSet_ExcludeTag(t *testing.T) {
 	f := buildFilterSet("", "", "", "deprecated")
 	assert.Equal(t, []string{"deprecated"}, f.ExcludeTags)
+}
+
+func TestChainCommand_HasFilterFlags(t *testing.T) {
+	assert.NotNil(t, chainCmd.Flags().Lookup("include-path"), "--include-path flag required")
+	assert.NotNil(t, chainCmd.Flags().Lookup("exclude-path"), "--exclude-path flag required")
+	assert.NotNil(t, chainCmd.Flags().Lookup("include-tag"), "--include-tag flag required")
+	assert.NotNil(t, chainCmd.Flags().Lookup("exclude-tag"), "--exclude-tag flag required")
+}
+
+func TestExploreCommand_HasFilterFlags(t *testing.T) {
+	assert.NotNil(t, exploreCmd.Flags().Lookup("include-path"), "--include-path flag required")
+	assert.NotNil(t, exploreCmd.Flags().Lookup("exclude-path"), "--exclude-path flag required")
+	assert.NotNil(t, exploreCmd.Flags().Lookup("include-tag"), "--include-tag flag required")
+	assert.NotNil(t, exploreCmd.Flags().Lookup("exclude-tag"), "--exclude-tag flag required")
 }
