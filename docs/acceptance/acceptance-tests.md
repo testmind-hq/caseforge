@@ -203,6 +203,8 @@
 | AT-153 | explore discovers response schema mismatch rule | `go test ./internal/dea/... -run TestExplorer_ResponseSchemaMismatch_ProducesRule` | DiscoveredRule with category response_schema_mismatch | ✅ PASS |
 | AT-154 | constraint_mutation generates null injection cases | `go test ./internal/methodology/... -run TestConstraintMutationTechnique_Generate_NullInjection` | null case present with status_code eq 422 | ✅ PASS |
 | AT-155 | constraint_mutation generates wrong-content-type case | `go test ./internal/methodology/... -run TestConstraintMutationTechnique_Generate_WrongContentType` | case with Content-Type: text/plain, expects 415 | ✅ PASS |
+| AT-156 | boundary_value cases carry named Scenario field | `go test ./internal/methodology/... -run TestBoundaryGeneratesMinMaxCases` | cases have non-empty Source.Scenario | ✅ PASS |
+| AT-157 | score Boundary Coverage detail shows scenario info | `go test ./internal/score/... -run TestBoundaryDetail_IncludesScenarioInfo` | detail contains covered scenario names | ✅ PASS |
 
 ---
 

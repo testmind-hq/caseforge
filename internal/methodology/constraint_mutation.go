@@ -63,6 +63,7 @@ func (t *ConstraintMutationTechnique) Generate(op *spec.Operation) ([]schema.Tes
 			Technique: "constraint_mutation",
 			SpecPath:  specPath,
 			Rationale: fmt.Sprintf("field %q is non-nullable but receives null — server must reject with 422", fieldName),
+			Scenario:  "NULL_INJECTION",
 		}
 		cases = append(cases, tc)
 	}
@@ -84,6 +85,7 @@ func (t *ConstraintMutationTechnique) Generate(op *spec.Operation) ([]schema.Tes
 		Technique: "constraint_mutation",
 		SpecPath:  specPath,
 		Rationale: "valid JSON body sent with Content-Type: text/plain — server must return 415 Unsupported Media Type",
+		Scenario:  "WRONG_CONTENT_TYPE",
 	}
 	cases = append(cases, tc)
 

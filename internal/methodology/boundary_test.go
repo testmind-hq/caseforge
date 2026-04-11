@@ -63,4 +63,9 @@ func TestBoundaryGeneratesMinMaxCases(t *testing.T) {
 		assert.NotEmpty(t, tc.Source.Rationale)
 		assert.NotEmpty(t, tc.ID)
 	}
+
+	// Verify scenario names are set
+	for _, c := range cases {
+		assert.NotEmpty(t, c.Source.Scenario, "boundary case should have a named scenario")
+	}
 }

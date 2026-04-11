@@ -76,6 +76,7 @@ type CaseSource struct {
 	Technique string `json:"technique"` // e.g. "equivalence_partitioning"
 	SpecPath  string `json:"spec_path"` // e.g. "POST /users requestBody.properties.email"
 	Rationale string `json:"rationale"`
+	Scenario  string `json:"scenario,omitempty"` // named coverage scenario (see score.CoverageScenario constants)
 }
 
 // Capture records a value extracted from a step response for use in subsequent steps.

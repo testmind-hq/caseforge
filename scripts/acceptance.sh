@@ -1194,6 +1194,12 @@ run "AT-154" "constraint_mutation generates null injection cases" \
 run "AT-155" "constraint_mutation generates wrong-content-type case" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestConstraintMutationTechnique_Generate_WrongContentType' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-156" "boundary_value cases carry named Scenario field" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestBoundaryGeneratesMinMaxCases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-157" "score Boundary Coverage detail shows scenario info" \
+  "(cd $REPO_ROOT && go test ./internal/score/... -run 'TestBoundaryDetail_IncludesScenarioInfo' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
