@@ -10,6 +10,8 @@ type Parameter struct {
 	In       string // "query"|"path"|"header"|"cookie"
 	Required bool
 	Schema   *Schema
+	Example  any                 // parameter-level single example value
+	Examples map[string]*Example // parameter-level named examples (name → Example)
 }
 
 type RequestBody struct {

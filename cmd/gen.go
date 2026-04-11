@@ -77,6 +77,7 @@ var allTechniqueNames = []string{
 	"semantic_annotation",
 	"field_boundary",
 	"required_omission",
+	"positive_examples",
 }
 
 func init() {
@@ -340,6 +341,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewSemanticAnnotationTechnique(),
 		methodology.NewFieldBoundaryTechnique(),
 		methodology.NewRequiredOmissionTechnique(),
+		methodology.NewPositiveExamplesTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

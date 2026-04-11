@@ -140,6 +140,23 @@ func convertParameter(p *openapi3.Parameter) *Parameter {
 	if p.Schema != nil && p.Schema.Value != nil {
 		param.Schema = convertSchema(p.Schema.Value)
 	}
+	// Parse single example
+	if p.Example != nil {
+		param.Example = p.Example
+	}
+	// Parse named examples
+	if len(p.Examples) > 0 {
+		param.Examples = make(map[string]*Example, len(p.Examples))
+		for name, ref := range p.Examples {
+			if ref != nil && ref.Value != nil {
+				param.Examples[name] = &Example{
+					Summary:     ref.Value.Summary,
+					Description: ref.Value.Description,
+					Value:       ref.Value.Value,
+				}
+			}
+		}
+	}
 	return param
 }
 

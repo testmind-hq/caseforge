@@ -233,6 +233,10 @@
 | AT-183 | required_omission generates one case per required field | `go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_OneCasePerRequiredField' -count=1` | PASS | ✅ PASS |
 | AT-184 | required_omission case has field absent (REQUIRED_OMISSION scenario) | `caseforge gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission \| grep REQUIRED_OMISSION` | output contains REQUIRED_OMISSION | ✅ PASS |
 | AT-185 | required_omission cases expect 4xx | `go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_Expects4xx' -count=1` | PASS | ✅ PASS |
+| AT-186 | positive_examples Applies for op with parameter examples | `caseforge gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples \| grep positive_examples` | output contains positive_examples | ✅ PASS |
+| AT-187 | positive_examples generates one case per named example | `go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_OneCasePerNamedExample' -count=1` | PASS | ✅ PASS |
+| AT-188 | positive_examples substitutes path param value in URL | `caseforge gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples \| grep /users/42` | output contains /users/42 | ✅ PASS |
+| AT-189 | positive_examples expects 2xx assertions | `go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_Expects2xx' -count=1` | PASS | ✅ PASS |
 
 ---
 
@@ -450,7 +454,8 @@
 | score | 4 | 4 | 0 |
 | idor | 2 | 2 | 0 |
 | datagen pattern | 2 | 2 | 0 |
-| **Total** | **102** | **102** | **0** |
+| positive_examples | 4 | 4 | 0 |
+| **Total** | **106** | **106** | **0** |
 
 ---
 

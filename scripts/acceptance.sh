@@ -1284,6 +1284,18 @@ run "AT-184" "required_omission case has field absent (REQUIRED_OMISSION scenari
 run "AT-185" "required_omission cases expect 4xx" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_Expects4xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-186" "positive_examples Applies for op with parameter examples" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples --output $WORKDIR/pe186 2>/dev/null && grep -q 'positive_examples' $WORKDIR/pe186/index.json)"
+
+run "AT-187" "positive_examples generates one case per named example" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_OneCasePerNamedExample' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-188" "positive_examples substitutes path param value in URL" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples --output $WORKDIR/pe188 2>/dev/null && grep -q '/users/42' $WORKDIR/pe188/index.json)"
+
+run "AT-189" "positive_examples expects 2xx assertions" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_Expects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

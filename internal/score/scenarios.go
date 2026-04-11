@@ -39,6 +39,8 @@ const (
 	ScenarioFieldBoundaryValid   CoverageScenario = "FIELD_BOUNDARY_VALID"   // nested field at declared boundary (valid)
 	ScenarioFieldBoundaryInvalid CoverageScenario = "FIELD_BOUNDARY_INVALID" // nested field outside declared boundary (invalid)
 	ScenarioRequiredOmission     CoverageScenario = "REQUIRED_OMISSION"      // required field entirely absent from payload
+
+	ScenarioPositiveExample CoverageScenario = "POSITIVE_EXAMPLE" // happy-path from spec examples
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -66,4 +68,5 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioFieldBoundaryValid,
 	ScenarioFieldBoundaryInvalid,
 	ScenarioRequiredOmission,
+	ScenarioPositiveExample,
 }
