@@ -52,8 +52,8 @@ func NewExplorer(targetURL string, maxProbes int) *Explorer {
 
 // appendRule appends rule to report.Rules only if no rule with the same
 // (operation, category, fieldPath) key has been added in this run.
-// Also enforces the MaxFailures cap when non-zero.
-// Returns true if the rule was appended, false if it was a duplicate or capped.
+// Returns true if the rule was appended, false if it was a duplicate.
+// Callers are responsible for checking MaxFailures after a true return.
 func (e *Explorer) appendRule(report *ExplorationReport, rule *DiscoveredRule) bool {
 	k := ruleKey{operation: rule.Operation, category: rule.Category, fieldPath: rule.FieldPath}
 	if e.seenRules[k] {
@@ -154,7 +154,10 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			if is2xx && ev.ActualBody != "" {
 				extractBodyToPool(e.pool, ev.ActualBody)
 				if rule := validateProbeResponse(op, probe, ev); rule != nil {
-					e.appendRule(report, rule)
+					if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+						report.TotalProbes = probesRun
+						return report, nil
+					}
 				}
 			}
 
@@ -221,7 +224,10 @@ func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, 
 		if states[i].got2xx && ev.ActualBody != "" {
 			extractBodyToPool(e.pool, ev.ActualBody)
 			if rule := validateProbeResponse(states[i].op, probe, ev); rule != nil {
-				e.appendRule(report, rule)
+				if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+					report.TotalProbes = probesRun
+					return report, nil
+				}
 			}
 		}
 	}
@@ -256,7 +262,10 @@ func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, 
 			if is2xx && ev.ActualBody != "" {
 				extractBodyToPool(e.pool, ev.ActualBody)
 				if rule := validateProbeResponse(st.op, probe, ev); rule != nil {
-					e.appendRule(report, rule)
+					if e.appendRule(report, rule) && e.MaxFailures > 0 && len(report.Rules) >= e.MaxFailures {
+						report.TotalProbes = probesRun
+						return report, nil
+					}
 				}
 			}
 		}
