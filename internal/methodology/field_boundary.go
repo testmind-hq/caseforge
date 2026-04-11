@@ -215,10 +215,3 @@ func setAtPath(body map[string]any, dotPath string, value any) {
 	}
 }
 
-// max returns the larger of a and b (Go 1.21+ has built-in max, but keep explicit for clarity).
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
