@@ -166,7 +166,7 @@ func TestTypeCoercionTechnique_Generate_SkipsEnumMatch(t *testing.T) {
 	op := makeTypedOp(map[string]*spec.Schema{
 		"status": {
 			Type: "string",
-			Enum: []any{123, "active"},
+			Enum: []any{float64(123), "active"},
 		},
 	})
 	cases, err := NewTypeCoercionTechnique().Generate(op)

@@ -3,6 +3,8 @@ package methodology
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
@@ -68,7 +70,8 @@ func (t *TypeCoercionTechnique) Generate(op *spec.Operation) ([]schema.TestCase,
 
 	var cases []schema.TestCase
 
-	for fieldName, fieldSchema := range s.Properties {
+	for _, fieldName := range slices.Sorted(maps.Keys(s.Properties)) {
+		fieldSchema := s.Properties[fieldName]
 		if fieldSchema == nil || fieldSchema.Type == "" {
 			continue // skip type-polymorphic fields
 		}
@@ -109,7 +112,7 @@ func wrongTypeMutationsFor(fieldType string) []wrongTypeMutation {
 	switch fieldType {
 	case "string":
 		return []wrongTypeMutation{
-			{value: 123, label: "wrong_type_integer"},
+			{value: float64(123), label: "wrong_type_integer"},
 			{value: true, label: "wrong_type_boolean"},
 		}
 	case "integer", "number":
@@ -120,7 +123,7 @@ func wrongTypeMutationsFor(fieldType string) []wrongTypeMutation {
 	case "boolean":
 		return []wrongTypeMutation{
 			{value: "not_a_boolean", label: "wrong_type_string"},
-			{value: 1, label: "wrong_type_integer"},
+			{value: float64(1), label: "wrong_type_integer"},
 		}
 	case "array":
 		return []wrongTypeMutation{
@@ -136,10 +139,5 @@ func wrongTypeMutationsFor(fieldType string) []wrongTypeMutation {
 
 // isInEnum returns true if value is present in the enum slice.
 func isInEnum(value any, enum []any) bool {
-	for _, e := range enum {
-		if e == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(enum, value)
 }
