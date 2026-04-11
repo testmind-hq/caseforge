@@ -215,6 +215,8 @@
 | AT-165 | mass_assignment generates 4 category cases | `go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Generate_ProducesExactly4Cases'` | PASS | ✅ PASS |
 | AT-166 | idor Applies for op with integer path param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Applies_IntPathParam'` | PASS | ✅ PASS |
 | AT-167 | idor generates 2 cases for integer ID param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases'` | PASS | ✅ PASS |
+| AT-168 | explore seeds KindTypeCoercion hypotheses for typed fields | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesTypeCoercion' -count=1` | PASS | ✅ PASS |
+| AT-169 | explore seeds KindMassAssignment hypothesis for body ops | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1` | PASS | ✅ PASS |
 
 ---
 

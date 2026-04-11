@@ -48,6 +48,12 @@ func InferRule(h *HypothesisNode) *DiscoveredRule {
 		return inferRequiredQueryParam(h)
 	case KindFormatViolation:
 		return inferFormatViolation(h)
+	case KindTypeCoercion:
+		return inferTypeCoercion(h)
+	case KindUnicodeControl:
+		return inferUnicodeControl(h)
+	case KindMassAssignment:
+		return inferMassAssignment(h)
 	}
 	return nil
 }
@@ -235,6 +241,42 @@ func inferFormatViolation(h *HypothesisNode) *DiscoveredRule {
 	return newRule(h, CategorySpecMismatch,
 		fmt.Sprintf("Field '%s': spec declares format but server does not validate it (returned %d)", field, h.Evidence.ActualStatus),
 		true)
+}
+
+func inferTypeCoercion(h *HypothesisNode) *DiscoveredRule {
+	field := extractFieldName(h.FieldPath)
+	if h.Status == StatusConfirmed {
+		return newRule(h, CategoryFieldConstraint,
+			fmt.Sprintf("Field '%s': type validation enforced — wrong type returns %d", field, h.Evidence.ActualStatus),
+			false)
+	}
+	return newRule(h, CategoryBehavior,
+		fmt.Sprintf("Field '%s': server accepts wrong-typed value (returned %d) — potential type coercion issue", field, h.Evidence.ActualStatus),
+		true)
+}
+
+func inferUnicodeControl(h *HypothesisNode) *DiscoveredRule {
+	field := extractFieldName(h.FieldPath)
+	if h.Status == StatusConfirmed {
+		return newRule(h, CategoryFieldConstraint,
+			fmt.Sprintf("Field '%s': control characters rejected by server (%d)", field, h.Evidence.ActualStatus),
+			false)
+	}
+	return newRule(h, CategoryBehavior,
+		fmt.Sprintf("Field '%s': server accepts control characters (returned %d) — potential injection risk", field, h.Evidence.ActualStatus),
+		true)
+}
+
+func inferMassAssignment(h *HypothesisNode) *DiscoveredRule {
+	if h.Status == StatusConfirmed {
+		// 200 means server accepted — potentially vulnerable
+		return newRule(h, CategoryBehavior,
+			fmt.Sprintf("Mass assignment probe: server accepted undeclared privileged fields (returned %d) — review response for reflected fields", h.Evidence.ActualStatus),
+			true)
+	}
+	return newRule(h, CategoryFieldConstraint,
+		fmt.Sprintf("Mass assignment probe: server rejected undeclared fields (%d) — good", h.Evidence.ActualStatus),
+		false)
 }
 
 func extractFieldName(fieldPath string) string {

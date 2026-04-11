@@ -1230,6 +1230,12 @@ run "AT-166" "idor Applies for op with integer path param" \
 run "AT-167" "idor generates 2 cases for integer ID param" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-168" "explore seeds KindTypeCoercion hypotheses for typed fields" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesTypeCoercion' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-169" "explore seeds KindMassAssignment hypothesis for body ops" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
