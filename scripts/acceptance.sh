@@ -1236,6 +1236,12 @@ run "AT-168" "explore seeds KindTypeCoercion hypotheses for typed fields" \
 run "AT-169" "explore seeds KindMassAssignment hypothesis for body ops" \
   "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-170" "datagen generates pattern-matching strings for simple patterns" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestGenerateByPattern_Digits' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-171" "datagen falls back gracefully on invalid patterns" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

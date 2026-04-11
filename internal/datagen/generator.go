@@ -2,6 +2,9 @@
 package datagen
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
@@ -52,6 +55,13 @@ func (g *Generator) Generate(s *spec.Schema, fieldName string) any {
 		}
 	}
 
+	// Tier 1.5: pattern-aware string generation
+	if s.Type == "string" && s.Pattern != "" {
+		if val, ok := generateByPattern(s.Pattern); ok {
+			return val
+		}
+	}
+
 	// Tier 2: field name semantic (description provides disambiguation context)
 	if fieldName != "" {
 		if val, ok := generateByFieldName(fieldName, s.Description); ok {
@@ -95,6 +105,202 @@ func generateByType(s *spec.Schema) any {
 	default:
 		return gofakeit.Word()
 	}
+}
+
+// generateByPattern attempts to produce a string that matches the given regex pattern.
+// It uses a best-effort approach: walk the pattern tokens and produce a concrete candidate,
+// then verify it matches. Falls back to gofakeit.Word() if the pattern is invalid or
+// the candidate doesn't match.
+func generateByPattern(pattern string) (string, bool) {
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		// Pattern is invalid; fall back
+		return gofakeit.Word(), false
+	}
+
+	candidate := buildPatternCandidate(pattern)
+
+	// Verify the candidate matches
+	if compiled.MatchString(candidate) {
+		return candidate, true
+	}
+
+	// Fall back
+	return gofakeit.Word(), false
+}
+
+// buildPatternCandidate walks a regex pattern string and produces a rough concrete candidate.
+// It handles common OpenAPI patterns without requiring external packages.
+func buildPatternCandidate(pattern string) string {
+	var out strings.Builder
+	i := 0
+	n := len(pattern)
+
+	// readToken reads the next "atom" (a character, escape, char class, or group)
+	// and returns (the representative string, next index).
+	var readToken func(idx int) (string, int)
+	readToken = func(idx int) (string, int) {
+		if idx >= n {
+			return "", idx
+		}
+		ch := pattern[idx]
+		switch ch {
+		case '^', '$':
+			// anchors — skip
+			return "", idx + 1
+		case '.':
+			return "a", idx + 1
+		case '\\':
+			if idx+1 >= n {
+				return "", idx + 1
+			}
+			next := pattern[idx+1]
+			switch next {
+			case 'd':
+				return "1", idx + 2
+			case 'D':
+				return "a", idx + 2
+			case 'w':
+				return "a", idx + 2
+			case 'W':
+				return "1", idx + 2
+			case 's':
+				return " ", idx + 2
+			case 'S':
+				return "a", idx + 2
+			default:
+				return string(next), idx + 2
+			}
+		case '[':
+			// character class
+			end := strings.Index(pattern[idx:], "]")
+			if end < 0 {
+				return "a", idx + 1
+			}
+			class := pattern[idx+1 : idx+end]
+			newIdx := idx + end + 1
+			if len(class) == 0 {
+				return "a", newIdx
+			}
+			negated := false
+			if class[0] == '^' {
+				negated = true
+				class = class[1:]
+			}
+			if negated || len(class) == 0 {
+				return "a", newIdx
+			}
+			// Pick first printable char in class (skip range markers)
+			if len(class) >= 3 && class[1] == '-' {
+				// range like a-z: return start of range
+				return string(class[0]), newIdx
+			}
+			return string(class[0]), newIdx
+		case '(':
+			// group: find matching ), generate inner content
+			depth := 0
+			j := idx
+			for j < n {
+				if pattern[j] == '(' {
+					depth++
+				} else if pattern[j] == ')' {
+					depth--
+					if depth == 0 {
+						break
+					}
+				}
+				j++
+			}
+			inner := pattern[idx+1 : j]
+			// Handle alternation in group: take first alternative
+			if pipe := strings.Index(inner, "|"); pipe >= 0 {
+				inner = inner[:pipe]
+			}
+			return buildPatternCandidate(inner), j + 1
+		case '|':
+			// alternation at top level: stop (take what we have so far)
+			return "", n // signal end
+		default:
+			return string(ch), idx + 1
+		}
+	}
+
+	for i < n {
+		token, next := readToken(i)
+		if next == n && token == "" && pattern[i] == '|' {
+			// top-level alternation: stop
+			break
+		}
+
+		// Check for quantifier after token
+		q := ""
+		if next < n {
+			switch pattern[next] {
+			case '+':
+				q = "+"
+				next++
+			case '*':
+				q = "*"
+				next++
+			case '?':
+				q = "?"
+				next++
+			case '{':
+				// {n} or {n,m}
+				end := strings.Index(pattern[next:], "}")
+				if end >= 0 {
+					q = pattern[next : next+end+1]
+					next = next + end + 1
+				}
+			}
+		}
+
+		// Determine repeat count from quantifier
+		repeat := 1
+		if q != "" {
+			switch q {
+			case "+", "*":
+				repeat = 1
+			case "?":
+				repeat = 1
+			default:
+				// {n} or {n,m}
+				inner := q[1 : len(q)-1]
+				if comma := strings.Index(inner, ","); comma >= 0 {
+					// {n,m} — use n (minimum), but at least 1
+					nStr := inner[:comma]
+					repeat = parseIntOr(nStr, 1)
+					if repeat == 0 {
+						repeat = 1
+					}
+				} else {
+					repeat = parseIntOr(inner, 1)
+					if repeat == 0 {
+						repeat = 1
+					}
+				}
+			}
+		}
+
+		for r := 0; r < repeat; r++ {
+			out.WriteString(token)
+		}
+		i = next
+	}
+
+	return out.String()
+}
+
+// parseIntOr parses a decimal string, returning def on error.
+func parseIntOr(s string, def int) int {
+	val := 0
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return def
+		}
+		val = val*10 + int(c-'0')
+	}
+	return val
 }
 
 // GenerateBoundary produces a boundary value for numeric/string schemas.

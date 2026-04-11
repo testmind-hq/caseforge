@@ -217,6 +217,8 @@
 | AT-167 | idor generates 2 cases for integer ID param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases'` | PASS | ✅ PASS |
 | AT-168 | explore seeds KindTypeCoercion hypotheses for typed fields | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesTypeCoercion' -count=1` | PASS | ✅ PASS |
 | AT-169 | explore seeds KindMassAssignment hypothesis for body ops | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1` | PASS | ✅ PASS |
+| AT-170 | datagen generates pattern-matching strings for simple patterns | `go test ./internal/datagen/... -run 'TestGenerateByPattern_Digits' -count=1` | PASS | ✅ PASS |
+| AT-171 | datagen falls back gracefully on invalid patterns | `go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1` | PASS | ✅ PASS |
 
 ---
 
@@ -433,7 +435,8 @@
 | example_extraction | 2 | 2 | 0 |
 | score | 4 | 4 | 0 |
 | idor | 2 | 2 | 0 |
-| **Total** | **100** | **100** | **0** |
+| datagen pattern | 2 | 2 | 0 |
+| **Total** | **102** | **102** | **0** |
 
 ---
 
