@@ -111,6 +111,7 @@ func TestIDORTechnique_Generate_ScenarioIDOR(t *testing.T) {
 	assert.NotEmpty(t, cases)
 	for _, c := range cases {
 		assert.Equal(t, "IDOR_PARAM", c.Source.Scenario)
+		assert.Equal(t, "idor", c.Source.Technique)
 	}
 }
 
