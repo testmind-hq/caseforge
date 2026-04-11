@@ -4,6 +4,7 @@ package dea
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/spec"
@@ -26,8 +27,11 @@ func validateProbeResponse(op *spec.Operation, probe Probe, ev *Evidence) *Disco
 	if len(violations) == 0 {
 		return nil
 	}
+	// Include ActualBody in the hash to avoid ID collisions when multiple probes
+	// on the same operation all produce schema mismatch rules.
+	id := fmt.Sprintf("RULE-%s", strings.ToUpper(fmt.Sprintf("%x", hashID(op.Path+probe.Method+ev.ActualBody))[:6]))
 	return &DiscoveredRule{
-		ID:        fmt.Sprintf("RULE-%s", strings.ToUpper(fmt.Sprintf("%x", hashID(op.Path+probe.Method))[:6])),
+		ID:        id,
 		Operation: fmt.Sprintf("%s %s", probe.Method, probe.Path),
 		Category:  CategoryResponseSchemaMismatch,
 		Description: fmt.Sprintf("Response body does not match declared schema: %s",
@@ -42,7 +46,7 @@ func validateProbeResponse(op *spec.Operation, probe Probe, ev *Evidence) *Disco
 	}
 }
 
-// hashID produces a simple uint32 hash for deterministic ID generation.
+// hashID produces a simple uint32 FNV-1 hash.
 func hashID(s string) uint32 {
 	h := uint32(2166136261)
 	for i := 0; i < len(s); i++ {
@@ -61,10 +65,13 @@ func findResponseSchema(op *spec.Operation, statusCode int) *spec.Schema {
 			return mt.Schema
 		}
 	}
-	// Fallback: any 2xx response with a JSON schema
+	// Fallback: any 2xx response with a JSON schema.
+	// Non-numeric keys (e.g. "2XX", "default") are skipped via strconv.Atoi error.
 	for code, r := range op.Responses {
-		var n int
-		fmt.Sscanf(code, "%d", &n)
+		n, err := strconv.Atoi(code)
+		if err != nil {
+			continue
+		}
 		if n >= 200 && n < 300 {
 			if mt, ok := r.Content["application/json"]; ok && mt.Schema != nil {
 				return mt.Schema
@@ -76,13 +83,14 @@ func findResponseSchema(op *spec.Operation, statusCode int) *spec.Schema {
 
 // checkResponseBody parses body as JSON and validates it against schema.
 // Returns human-readable violation messages; nil when body is empty or not JSON.
+// Note: array-typed top-level schemas are not validated (body must be a JSON object).
 func checkResponseBody(body string, s *spec.Schema) []string {
 	if body == "" {
 		return nil
 	}
 	var m map[string]any
 	if err := json.Unmarshal([]byte(body), &m); err != nil {
-		// Non-JSON body — skip structural validation (binary, HTML error pages, etc.)
+		// Non-JSON or array-typed body — skip structural validation.
 		return nil
 	}
 	return checkObjectSchema(m, s)

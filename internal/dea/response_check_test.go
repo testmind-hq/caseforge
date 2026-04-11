@@ -74,6 +74,12 @@ func TestCheckResponseBody_EmptyBody_ReturnsNil(t *testing.T) {
 	assert.Nil(t, violations)
 }
 
+func TestCheckResponseBody_ArrayBody_ReturnsNil(t *testing.T) {
+	// Array-typed top-level bodies are skipped (not validated) — documented limitation.
+	violations := checkResponseBody(`[{"id":1},{"id":2}]`, &spec.Schema{Type: "array"})
+	assert.Nil(t, violations)
+}
+
 func TestValidateProbeResponse_ReturnsMismatchRule(t *testing.T) {
 	op := makeSchemaOp()
 	probe := Probe{Method: "POST", Path: "/pets", ExpectedStatus: 201}
