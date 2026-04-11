@@ -256,3 +256,20 @@ func TestK6AssertionLine_NewOperators(t *testing.T) {
 		})
 	}
 }
+
+func TestK6AssertionLine_NotExists(t *testing.T) {
+	tc := schema.TestCase{
+		ID: "TC-wo", Title: "writeonly check", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "GET", Path: "/users/1",
+			Assertions: []schema.Assertion{
+				{Target: "jsonpath $.password", Operator: "not_exists"},
+			},
+		}},
+	}
+	r := NewK6Renderer()
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
+	assert.Contains(t, content, `r.json('password') === undefined`)
+}

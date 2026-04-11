@@ -227,6 +227,22 @@ func TestHurlChainCaseAppendixBFormat(t *testing.T) {
 	assert.Less(t, capturesIdx, assertsIdx, "[Captures] must appear before [Asserts]")
 }
 
+func TestHurlRenderAssertion_NotExists(t *testing.T) {
+	r := NewHurlRenderer("{{base_url}}")
+	tc := schema.TestCase{
+		ID: "TC-wo", Title: "writeonly check", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "GET", Path: "/users/1",
+			Assertions: []schema.Assertion{
+				{Target: "status_code", Operator: "eq", Expected: 200},
+				{Target: "jsonpath $.password", Operator: "not_exists"},
+			},
+		}},
+	}
+	content := r.renderCase(tc)
+	assert.Contains(t, content, `jsonpath "$.password" not exists`)
+}
+
 // TestHurlChainCaseDependsOnOmittedWhenEmpty verifies depends_on not emitted when empty.
 func TestHurlChainCaseDependsOnOmittedWhenEmpty(t *testing.T) {
 	r := NewHurlRenderer("")

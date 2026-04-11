@@ -204,7 +204,7 @@ func (t *SemanticAnnotationTechnique) generateWriteOnlyCases(op *spec.Operation)
 			tc.Priority = "P2"
 			tc.Steps[0].Assertions = []schema.Assertion{
 				{Target: "status_code", Operator: schema.OperatorEq, Expected: 200},
-				{Target: fmt.Sprintf("jsonpath $.%s", fieldName), Operator: schema.OperatorNe, Expected: nil},
+				{Target: fmt.Sprintf("jsonpath $.%s", fieldName), Operator: schema.OperatorNotExists},
 			}
 			tc.Source = schema.CaseSource{
 				Technique: "semantic_annotation",

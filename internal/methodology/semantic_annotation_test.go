@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -194,7 +195,7 @@ func TestSemanticAnnotationTechnique_Generate_WriteOnlyCase_FieldAbsent(t *testi
 		for _, a := range tc.Steps[0].Assertions {
 			if a.Target == "jsonpath $.password" {
 				hasJSONPathAssertion = true
-				assert.Equal(t, "ne", a.Operator)
+				assert.Equal(t, schema.OperatorNotExists, a.Operator)
 			}
 		}
 		assert.True(t, hasJSONPathAssertion, "should have jsonpath assertion for 'password' field")

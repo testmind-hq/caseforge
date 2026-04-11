@@ -26,6 +26,9 @@ const (
 	// OperatorExists checks that the target field is present in the response.
 	// Expected is not evaluated; use nil or omit it.
 	OperatorExists = "exists"
+	// OperatorNotExists checks that the target field is absent from the response.
+	// Expected is not evaluated; use nil or omit it.
+	OperatorNotExists = "not_exists"
 	// OperatorIsISO8601 checks that the target field value is a valid ISO 8601
 	// date-time string (e.g. "2024-01-02T15:04:05Z"). Expected is not evaluated.
 	OperatorIsISO8601 = "is_iso8601"

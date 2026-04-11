@@ -188,6 +188,8 @@ func k6AssertionLine(a schema.Assertion) string {
 		switch a.Operator {
 		case "exists":
 			return fmt.Sprintf("'jsonpath $.%s exists': (r) => r.json('%s') !== undefined,", field, field)
+		case "not_exists":
+			return fmt.Sprintf("'jsonpath $.%s not exists': (r) => r.json('%s') === undefined,", field, field)
 		case "eq":
 			return fmt.Sprintf("'jsonpath $.%s eq %v': (r) => r.json('%s') === %s,", field, a.Expected, field, k6JSValue(a.Expected))
 		case "ne":
