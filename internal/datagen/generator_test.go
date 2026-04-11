@@ -74,10 +74,10 @@ func TestGenerateByPattern_Alphanumeric(t *testing.T) {
 }
 
 func TestGenerateByPattern_InvalidPattern(t *testing.T) {
-	// Should not panic; returns fallback word
+	// Should not panic; returns ("", false) so caller falls through to lower tiers
 	val, ok := generateByPattern(`[invalid`)
 	assert.False(t, ok, "expected ok=false for invalid pattern")
-	assert.NotEmpty(t, val, "fallback should return non-empty string")
+	assert.Empty(t, val, "generateByPattern returns empty string on failure; caller provides fallback")
 }
 
 func TestGenerator_Generate_UsesPattern(t *testing.T) {

@@ -114,8 +114,8 @@ func generateByType(s *spec.Schema) any {
 func generateByPattern(pattern string) (string, bool) {
 	compiled, err := regexp.Compile(pattern)
 	if err != nil {
-		// Pattern is invalid; fall back
-		return gofakeit.Word(), false
+		// Pattern is invalid; caller falls through to lower tiers.
+		return "", false
 	}
 
 	candidate := buildPatternCandidate(pattern)
@@ -125,12 +125,17 @@ func generateByPattern(pattern string) (string, bool) {
 		return candidate, true
 	}
 
-	// Fall back
-	return gofakeit.Word(), false
+	// Candidate does not match (e.g. non-capturing groups (?:...), look-ahead
+	// (?=...), or other constructs not handled by buildPatternCandidate);
+	// caller falls through to lower tiers.
+	return "", false
 }
 
 // buildPatternCandidate walks a regex pattern string and produces a rough concrete candidate.
-// It handles common OpenAPI patterns without requiring external packages.
+// It handles common OpenAPI patterns (anchors, \d/\w/\s escapes, [a-z] classes,
+// quantifiers, alternation, grouping) without requiring external packages.
+// Non-capturing groups (?:...) and zero-width assertions are not handled and
+// will cause the verification step in generateByPattern to fail, triggering fallback.
 func buildPatternCandidate(pattern string) string {
 	var out strings.Builder
 	i := 0
@@ -291,8 +296,11 @@ func buildPatternCandidate(pattern string) string {
 	return out.String()
 }
 
-// parseIntOr parses a decimal string, returning def on error.
+// parseIntOr parses a decimal string, returning def on error or empty input.
 func parseIntOr(s string, def int) int {
+	if len(s) == 0 {
+		return def
+	}
 	val := 0
 	for _, c := range s {
 		if c < '0' || c > '9' {
