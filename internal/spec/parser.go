@@ -204,6 +204,8 @@ func convertSchema(s *openapi3.Schema) *Schema {
 		Format:      s.Format,
 		Description: s.Description,
 		Nullable:    s.Nullable,
+		ReadOnly:    s.ReadOnly,
+		WriteOnly:   s.WriteOnly,
 		Enum:        s.Enum,
 		Required:    s.Required,
 	}

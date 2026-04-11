@@ -1242,6 +1242,24 @@ run "AT-170" "datagen generates pattern-matching strings for simple patterns" \
 run "AT-171" "datagen falls back gracefully on invalid patterns" \
   "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-172" "semantic_annotation generates cases for nullable fields" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/semantic.yaml --no-ai --technique semantic_annotation --output $WORKDIR/semantic 2>/dev/null && grep -q 'NULLABLE_ACCEPTANCE' $WORKDIR/semantic/index.json)"
+
+run "AT-173" "nullable acceptance case expects 2xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_NullableCase_Expects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-174" "readOnly write rejection case expects 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_ReadOnlyCase_Expects4xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-175" "writeOnly read suppression case has jsonpath assertion" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_WriteOnlyCase_FieldAbsent' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-176" "schema ReadOnly field parsed from spec" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestSemanticAnnotation_ReadOnly_Parsed' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-177" "schema WriteOnly field parsed from spec" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestSemanticAnnotation_WriteOnly_Parsed' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

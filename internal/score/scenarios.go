@@ -31,6 +31,10 @@ const (
 	ScenarioMassAssignmentIdentity  CoverageScenario = "MASS_ASSIGNMENT_IDENTITY"   // ownership takeover via extra fields
 
 	ScenarioIDORParam CoverageScenario = "IDOR_PARAM" // IDOR: substitute ID param with alternative value
+
+	ScenarioNullableAcceptance CoverageScenario = "NULLABLE_ACCEPTANCE" // nullable field accepts null value
+	ScenarioReadOnlyWrite      CoverageScenario = "READ_ONLY_WRITE"     // readOnly field rejected on write
+	ScenarioWriteOnlyRead      CoverageScenario = "WRITE_ONLY_READ"     // writeOnly field absent from read response
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -52,4 +56,7 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioMassAssignmentFinancial,
 	ScenarioMassAssignmentIdentity,
 	ScenarioIDORParam,
+	ScenarioNullableAcceptance,
+	ScenarioReadOnlyWrite,
+	ScenarioWriteOnlyRead,
 }

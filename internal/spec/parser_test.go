@@ -110,3 +110,84 @@ paths:
 	require.True(t, ok)
 	assert.Equal(t, "string", resp.Headers["Location"])
 }
+
+func TestSemanticAnnotation_ReadOnly_Parsed(t *testing.T) {
+	yaml := []byte(`
+openapi: "3.0.3"
+info:
+  title: ReadOnly Test
+  version: "1"
+paths:
+  /users:
+    post:
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  readOnly: true
+                email:
+                  type: string
+      responses:
+        "201": { description: created }
+`)
+	ps, err := parseRawSpec(yaml, "")
+	require.NoError(t, err)
+	require.Len(t, ps.Operations, 1)
+	op := ps.Operations[0]
+	require.NotNil(t, op.RequestBody)
+	mt, ok := op.RequestBody.Content["application/json"]
+	require.True(t, ok)
+	require.NotNil(t, mt.Schema)
+	idProp, ok := mt.Schema.Properties["id"]
+	require.True(t, ok)
+	assert.True(t, idProp.ReadOnly, "id field should have ReadOnly=true")
+	emailProp, ok := mt.Schema.Properties["email"]
+	require.True(t, ok)
+	assert.False(t, emailProp.ReadOnly, "email field should have ReadOnly=false")
+}
+
+func TestSemanticAnnotation_WriteOnly_Parsed(t *testing.T) {
+	yaml := []byte(`
+openapi: "3.0.3"
+info:
+  title: WriteOnly Test
+  version: "1"
+paths:
+  /users/{id}:
+    get:
+      operationId: getUser
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  password: { type: string, writeOnly: true }
+`)
+	ps, err := parseRawSpec(yaml, "")
+	require.NoError(t, err)
+	require.Len(t, ps.Operations, 1)
+	op := ps.Operations[0]
+	resp, ok := op.Responses["200"]
+	require.True(t, ok)
+	mt, ok := resp.Content["application/json"]
+	require.True(t, ok)
+	require.NotNil(t, mt.Schema)
+	pwProp, ok := mt.Schema.Properties["password"]
+	require.True(t, ok)
+	assert.True(t, pwProp.WriteOnly, "password field should have WriteOnly=true")
+	idProp, ok := mt.Schema.Properties["id"]
+	require.True(t, ok)
+	assert.False(t, idProp.WriteOnly, "id field should have WriteOnly=false")
+}

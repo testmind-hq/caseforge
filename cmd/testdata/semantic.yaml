@@ -1,0 +1,46 @@
+openapi: "3.0.3"
+info:
+  title: Semantic Test
+  version: "1"
+paths:
+  /users:
+    post:
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                id:
+                  type: integer
+                  readOnly: true
+                password:
+                  type: string
+                  writeOnly: true
+                nickname:
+                  type: string
+                  nullable: true
+      responses:
+        "201": { description: created }
+  /users/{id}:
+    get:
+      operationId: getUser
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  email: { type: string }
+                  password: { type: string, writeOnly: true }
