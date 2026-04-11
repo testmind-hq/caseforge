@@ -125,6 +125,9 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			// Extract field values from 2xx responses into the data pool
 			if is2xx && ev.ActualBody != "" {
 				extractBodyToPool(e.pool, ev.ActualBody)
+				if rule := validateProbeResponse(op, probe, ev); rule != nil {
+					report.Rules = append(report.Rules, *rule)
+				}
 			}
 
 			rule := InferRule(h)
@@ -183,6 +186,9 @@ func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, 
 		}
 		if states[i].got2xx && ev.ActualBody != "" {
 			extractBodyToPool(e.pool, ev.ActualBody)
+			if rule := validateProbeResponse(states[i].op, probe, ev); rule != nil {
+				report.Rules = append(report.Rules, *rule)
+			}
 		}
 	}
 
@@ -212,6 +218,9 @@ func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, 
 			}
 			if is2xx && ev.ActualBody != "" {
 				extractBodyToPool(e.pool, ev.ActualBody)
+				if rule := validateProbeResponse(st.op, probe, ev); rule != nil {
+					report.Rules = append(report.Rules, *rule)
+				}
 			}
 		}
 	}

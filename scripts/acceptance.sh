@@ -1182,6 +1182,12 @@ run "AT-150" "gen --include-path filters operations" \
 run "AT-151" "gen --exclude-tag flag accepted without error" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGenCommand_HasFilterFlags' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-152" "response_check unit tests pass" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestFindResponseSchema|TestCheckResponseBody|TestValidateProbeResponse' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-153" "explore discovers response schema mismatch rule" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_ResponseSchemaMismatch_ProducesRule' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

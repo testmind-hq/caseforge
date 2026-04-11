@@ -5,9 +5,10 @@ import "time"
 type RuleCategory string
 
 const (
-	CategoryFieldConstraint RuleCategory = "field_constraint"
-	CategorySpecMismatch    RuleCategory = "spec_mismatch"
-	CategoryBehavior        RuleCategory = "behavior"
+	CategoryFieldConstraint       RuleCategory = "field_constraint"
+	CategorySpecMismatch          RuleCategory = "spec_mismatch"
+	CategoryBehavior              RuleCategory = "behavior"
+	CategoryResponseSchemaMismatch RuleCategory = "response_schema_mismatch"
 )
 
 type Confidence string

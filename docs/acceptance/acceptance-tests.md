@@ -199,6 +199,8 @@
 | AT-149 | FilterSet unit tests pass | `go test ./internal/spec/... -run TestFilterSet` | All FilterSet tests pass | ✅ PASS |
 | AT-150 | gen --include-path filters operations | `go test ./cmd/... -run TestBuildFilterSet` | buildFilterSet returns correct FilterSet | ✅ PASS |
 | AT-151 | gen --exclude-tag flag accepted without error | `go test ./cmd/... -run TestGenCommand_HasFilterFlags` | flags registered on genCmd | ✅ PASS |
+| AT-152 | response_check unit tests pass | `go test ./internal/dea/... -run TestFindResponseSchema\|TestCheckResponseBody\|TestValidateProbeResponse` | All response check tests pass | ✅ PASS |
+| AT-153 | explore discovers response schema mismatch rule | `go test ./internal/dea/... -run TestExplorer_ResponseSchemaMismatch_ProducesRule` | DiscoveredRule with category response_schema_mismatch | ✅ PASS |
 
 ---
 
