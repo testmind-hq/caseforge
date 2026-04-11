@@ -67,8 +67,8 @@ type Step struct {
 }
 
 // Assertion is a single check applied to a step's response.
-// Valid operators: eq, ne, lt, gt, gte, lte, contains, matches, exists, is_iso8601, is_uuid.
-// For exists, is_iso8601, and is_uuid the Expected field is not evaluated by runners.
+// Valid operators: eq, ne, lt, gt, gte, lte, contains, matches, exists, not_exists, is_iso8601, is_uuid.
+// For exists, not_exists, is_iso8601, and is_uuid the Expected field is not evaluated by runners.
 type Assertion struct {
 	Target   string `json:"target"`   // "status_code"|"jsonpath $.<field>"|"header <Name>"|"duration_ms"|"body.<field>"
 	Operator string `json:"operator"` // see Operator* constants

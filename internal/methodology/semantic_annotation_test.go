@@ -114,9 +114,6 @@ func TestSemanticAnnotationTechnique_Generate_NullableCase_Expects2xx(t *testing
 	cases, err := NewSemanticAnnotationTechnique().Generate(op)
 	require.NoError(t, err)
 
-	var nullableCase *spec.Operation
-	_ = nullableCase
-
 	found := false
 	for _, tc := range cases {
 		if tc.Source.Scenario != "NULLABLE_ACCEPTANCE" {
