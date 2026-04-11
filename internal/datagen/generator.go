@@ -39,7 +39,7 @@ func (g *Generator) Generate(s *spec.Schema, fieldName string) any {
 	}
 
 	// Tier 0.5: pool — prefer real observed values for non-enum fields
-	if g.Pool != nil {
+	if g != nil && g.Pool != nil {
 		if val, ok := g.Pool.ValueFor(fieldName); ok {
 			return val
 		}
