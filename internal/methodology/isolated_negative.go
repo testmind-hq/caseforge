@@ -108,6 +108,7 @@ func (t *IsolatedNegativeTechnique) Generate(op *spec.Operation) ([]schema.TestC
 			Technique: "isolated_negative",
 			SpecPath:  specPath,
 			Rationale: fmt.Sprintf("isolated failure: required param %q is absent", p.Name),
+			Scenario:  "MISSING_REQUIRED",
 		}
 		cases = append(cases, tc)
 	}
