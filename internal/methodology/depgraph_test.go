@@ -141,52 +141,45 @@ func TestBuildDepGraph_NestedIDPath(t *testing.T) {
 }
 
 func TestBuildDepGraph_OpenAPILinks(t *testing.T) {
-	// createUser declares a Link to getUser with parameter userId from response body id
-	createOp := &spec.Operation{
-		OperationID: "createUser",
+	// Use paths that the path-heuristic would NOT match (different resource trees),
+	// so the only possible edge comes from the explicit Link. This ensures Pass 2 is
+	// actually exercised rather than being shadowed by a heuristic-inferred edge.
+	loginOp := &spec.Operation{
+		OperationID: "loginUser",
 		Method:      "POST",
-		Path:        "/users",
+		Path:        "/auth/sessions",
 		Responses: map[string]*spec.Response{
-			"201": {
+			"200": {
 				Content: map[string]*spec.MediaType{
 					"application/json": {Schema: &spec.Schema{
 						Type:       "object",
-						Properties: map[string]*spec.Schema{"id": {Type: "integer"}},
+						Properties: map[string]*spec.Schema{"userId": {Type: "string"}},
 					}},
 				},
 			},
 		},
 		Links: []spec.SpecLink{
 			{
-				Name:         "GetUserById",
-				OperationID:  "getUser",
-				ResponseCode: "201",
-				Parameters:   map[string]string{"userId": "$response.body#/id"},
+				Name:         "GetUserProfile",
+				OperationID:  "getProfile",
+				ResponseCode: "200",
+				Parameters:   map[string]string{"userId": "$response.body#/userId"},
 			},
 		},
 	}
-	getOp := &spec.Operation{
-		OperationID: "getUser",
+	profileOp := &spec.Operation{
+		OperationID: "getProfile",
 		Method:      "GET",
-		Path:        "/users/{userId}",
+		Path:        "/profile/{userId}",
 	}
-	g := BuildDepGraph([]*spec.Operation{createOp, getOp})
-	if len(g.Edges) == 0 {
-		t.Fatal("expected at least one edge from OpenAPI Link, got none")
-	}
+	g := BuildDepGraph([]*spec.Operation{loginOp, profileOp})
+	require.Len(t, g.Edges, 1, "expected exactly one Link-based edge")
 	edge := g.Edges[0]
-	if edge.Creator.OperationID != "createUser" {
-		t.Errorf("creator = %q, want createUser", edge.Creator.OperationID)
-	}
-	if edge.Consumer.OperationID != "getUser" {
-		t.Errorf("consumer = %q, want getUser", edge.Consumer.OperationID)
-	}
-	if edge.PathParam != "userId" {
-		t.Errorf("pathParam = %q, want userId", edge.PathParam)
-	}
-	if edge.CaptureFrom != "jsonpath $.id" {
-		t.Errorf("captureFrom = %q, want jsonpath $.id", edge.CaptureFrom)
-	}
+	assert.Equal(t, "loginUser", edge.Creator.OperationID)
+	assert.Equal(t, "getProfile", edge.Consumer.OperationID)
+	assert.Equal(t, "userId", edge.PathParam)
+	assert.Equal(t, "jsonpath $.userId", edge.CaptureFrom)
+	assert.Equal(t, "userId", edge.IDField)
 }
 
 func TestParseLinkExpression(t *testing.T) {

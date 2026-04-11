@@ -92,9 +92,9 @@ func BuildDepGraph(ops []*spec.Operation) *DepGraph {
 				if captureFrom == "" {
 					continue
 				}
-				// idField: dotted path derived from the expression (e.g. "$response.body#/data/id" → "data.id")
-				path := strings.TrimPrefix(paramExpr, "$response.body#/")
-				idField := strings.ReplaceAll(path, "/", ".")
+				// idField: strip the "jsonpath $." prefix produced by parseLinkExpression
+				// so both values share a single source of truth.
+				idField := strings.TrimPrefix(captureFrom, "jsonpath $.")
 
 				key := fmt.Sprintf("%s|%s|%s", op.Path, consumer.Method, consumer.Path)
 				if seen[key] {
