@@ -104,6 +104,7 @@ func convertOperation(method, path string, op *openapi3.Operation) *Operation {
 		sort.Strings(linkNames)
 		for _, linkName := range linkNames {
 			linkRef := resp.Value.Links[linkName]
+			// Skip links that use operationRef (relative JSON pointer); only operationId is supported.
 			if linkRef == nil || linkRef.Value == nil || linkRef.Value.OperationID == "" {
 				continue
 			}
@@ -114,6 +115,8 @@ func convertOperation(method, path string, op *openapi3.Operation) *Operation {
 				Parameters:   make(map[string]string),
 			}
 			for paramName, paramExpr := range linkRef.Value.Parameters {
+				// Only string runtime expressions (e.g. "$response.body#/id") are captured;
+				// non-string literals (integers, booleans) are skipped.
 				if s, ok := paramExpr.(string); ok {
 					sl.Parameters[paramName] = s
 				}
@@ -121,7 +124,7 @@ func convertOperation(method, path string, op *openapi3.Operation) *Operation {
 			o.Links = append(o.Links, sl)
 		}
 	}
-	// Sort links for determinism
+	// Sort links for determinism: response-code map iteration order is non-deterministic.
 	sort.Slice(o.Links, func(i, j int) bool {
 		return o.Links[i].Name < o.Links[j].Name
 	})
