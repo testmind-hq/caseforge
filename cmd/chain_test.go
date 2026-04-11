@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -132,5 +133,200 @@ func TestChainCommand_Depth1_SingleOpCases(t *testing.T) {
 	for _, tc := range cases {
 		assert.Equal(t, "chain", tc.Kind)
 		assert.Equal(t, 1, len(tc.Steps), "depth-1 cases must have exactly 1 step")
+	}
+}
+
+func TestChainCommand_DataPool_Loaded(t *testing.T) {
+	tmp := t.TempDir()
+	t.Cleanup(func() { chainDataPool = "" })
+
+	poolFile := filepath.Join(tmp, "pool.json")
+	require.NoError(t, os.WriteFile(poolFile, []byte(`{"name": ["seeded-name"]}`), 0644))
+
+	const specYAML = `
+openapi: "3.0.0"
+info: {title: T, version: "1"}
+paths:
+  /items:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+  /items/{itemId}:
+    get:
+      parameters:
+        - {name: itemId, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: ok}
+`
+	specFile := filepath.Join(tmp, "spec.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
+	outDir := filepath.Join(tmp, "chains")
+
+	rootCmd.SetArgs([]string{
+		"chain", "--spec", specFile, "--depth", "2",
+		"--output", outDir, "--data-pool", poolFile,
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("chain: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "index.json")); err != nil {
+		t.Errorf("index.json not written: %v", err)
+	}
+}
+
+func TestChainCommand_AddsTeardownForNonDeleteChains(t *testing.T) {
+	const specYAML = `
+openapi: "3.0.0"
+info: {title: T, version: "1"}
+paths:
+  /items:
+    post:
+      operationId: createItem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+  /items/{itemId}:
+    get:
+      operationId: getItem
+      parameters:
+        - {name: itemId, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: ok}
+    delete:
+      operationId: deleteItem
+      parameters:
+        - {name: itemId, in: path, required: true, schema: {type: integer}}
+      responses:
+        "204": {description: deleted}
+`
+	tmp := t.TempDir()
+	specFile := filepath.Join(tmp, "spec.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
+
+	outDir := filepath.Join(tmp, "chains")
+	cmd := rootCmd
+	cmd.SetArgs([]string{"chain", "--spec", specFile, "--depth", "2", "--output", outDir})
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("chain command failed: %v", err)
+	}
+
+	indexPath := filepath.Join(outDir, "index.json")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read index.json: %v", err)
+	}
+	var index struct {
+		TestCases []map[string]any `json:"test_cases"`
+	}
+	if err := json.Unmarshal(data, &index); err != nil {
+		t.Fatalf("unmarshal cases: %v", err)
+	}
+
+	hasTeardown := false
+	for _, tc := range index.TestCases {
+		steps, _ := tc["steps"].([]any)
+		for _, s := range steps {
+			step := s.(map[string]any)
+			if step["type"] == "teardown" {
+				hasTeardown = true
+			}
+		}
+	}
+	if !hasTeardown {
+		t.Error("expected at least one chain case with a teardown step, got none")
+	}
+}
+
+func TestChainCommand_SeedPostman(t *testing.T) {
+	tmp := t.TempDir()
+	t.Cleanup(func() { chainSeedPostman = "" })
+
+	col := map[string]any{
+		"item": []any{
+			map[string]any{
+				"name": "create",
+				"request": map[string]any{
+					"method": "POST",
+					"body":   map[string]any{"mode": "raw", "raw": `{"name":"seeded"}`},
+				},
+			},
+		},
+	}
+	colData, err := json.Marshal(col)
+	require.NoError(t, err)
+	colFile := filepath.Join(tmp, "collection.json")
+	require.NoError(t, os.WriteFile(colFile, colData, 0644))
+
+	const specYAML = `
+openapi: "3.0.0"
+info: {title: T, version: "1"}
+paths:
+  /items:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+  /items/{itemId}:
+    get:
+      parameters:
+        - {name: itemId, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: ok}
+`
+	specFile := filepath.Join(tmp, "spec.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
+	outDir := filepath.Join(tmp, "chains")
+
+	rootCmd.SetArgs([]string{
+		"chain", "--spec", specFile, "--depth", "2",
+		"--output", outDir, "--seed-postman", colFile,
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("chain: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outDir, "index.json")); err != nil {
+		t.Errorf("index.json not written: %v", err)
 	}
 }

@@ -21,7 +21,7 @@ CaseForge reads your OpenAPI specification and generates structured, traceable t
 - **Spec linting** — validates OpenAPI specs with configurable severity thresholds and JSON output
 - **Spec diff** — classifies breaking vs non-breaking changes; auto-generates cases for breaking ops
 - **Risk-based testing** — detects which API operations are at risk from recent git changes via static analysis
-- **Test case scoring** — multi-dimensional quality scoring (coverage, methodology, priority distribution)
+- **Test case scoring** — multi-dimensional quality scoring (breadth, boundary, security, execution, status coverage)
 - **Natural language input** — `ask` generates cases from a plain-text description
 - **Platform export** — exports to Allure, Xray, or TestRail
 - **Webhook push** — fires `on_generate` / `on_run_complete` events to configured endpoints
@@ -239,21 +239,33 @@ caseforge lint --spec openapi.yaml
 ### `caseforge chain`
 
 ```
---spec string     OpenAPI spec file or URL (required)
---depth int       Maximum chain depth 1..4 (default: 2)
---output string   Output directory (default: ./chains)
---format string   hurl | markdown | csv | postman | k6 (default: hurl)
+--spec string         OpenAPI spec file or URL (required)
+--depth int           Maximum chain depth 1..4 (default: 2)
+--output string       Output directory (default: ./chains)
+--format string       hurl | markdown | csv | postman | k6 (default: hurl)
+--data-pool string    JSON data pool file written by explore --export-pool
+--seed-postman string Postman Collection v2.1 JSON to seed the data pool
 ```
+
+Chain cases follow OpenAPI Links to wire producer `$response.body` fields into
+consumer path/query parameters, and auto-append a DELETE teardown step for
+depth-2 chains where the consumer is not a DELETE operation.
 
 ### `caseforge explore`
 
 ```
---spec string       OpenAPI spec file
---target string     Target API base URL (required without --dry-run)
---max-probes int    Maximum HTTP probes per run (default: 50)
---output string     Directory to write dea-report.json (default: ./reports)
---dry-run           Seed hypotheses only; do not execute probes
+--spec string              OpenAPI spec file
+--target string            Target API base URL (required without --dry-run)
+--max-probes int           Maximum HTTP probes per run (default: 50)
+--output string            Directory to write dea-report.json (default: ./reports)
+--dry-run                  Seed hypotheses only; do not execute probes
+--export-pool string       Write observed 2xx response field values to a JSON data pool file
+--prioritize-uncovered     Two-pass scheduling: breadth-scan all ops in pass 1, then
+                           focus remaining budget on operations that did not return 2xx
 ```
+
+The data pool written by `--export-pool` can be loaded into `caseforge chain`
+via `--data-pool` to seed realistic field values into generated chain probes.
 
 ### `caseforge export`
 

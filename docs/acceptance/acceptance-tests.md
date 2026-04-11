@@ -185,6 +185,17 @@
 | AT-135 | chain invalid depth exits non-zero | `go test ./cmd/... -run 'TestChainCommand'` | Error returned for depth 0 | ✅ PASS |
 | AT-136 | N-step chain includes update step when PUT present | `go test ./internal/methodology/... -run 'TestChainTechnique_NStepChain'` | 4-step chain: setup→update→test→teardown | ✅ PASS |
 | AT-137 | gen registers mutation and auth_chain techniques without error | `go test ./cmd/... -run 'TestGen_Seed_DeterministicOutput'` | Deterministic output with new techniques | ✅ PASS |
+| AT-138 | OpenAPI Links parsed into Operation.Links | `go test ./internal/spec/... -run 'TestParsedSpec_LinksPopulated'` | Links slice populated with name, operationId, parameters | ✅ PASS |
+| AT-139 | OpenAPI Links create dep-graph edges | `go test ./internal/methodology/... -run 'TestBuildDepGraph_OpenAPILinks'` | Edge with correct creator/consumer/pathParam/captureFrom | ✅ PASS |
+| AT-140 | BFS chain appends DELETE teardown for non-DELETE consumers | `go test ./cmd/... -run TestChainCommand_AddsTeardownForNonDeleteChains` | Chain case contains step with type=teardown | ✅ PASS |
+| AT-141 | DataPool Add/ValueFor/Save/Load/Merge unit tests pass | `go test ./internal/datagen/... -run TestDataPool` | All 5 DataPool tests pass | ✅ PASS |
+| AT-142 | explore --export-pool writes pool JSON in dry-run | `go test ./cmd/... -run TestExploreCommand_ExportPool_DryRun` | pool.json created | ✅ PASS |
+| AT-143 | chain --data-pool loads pool without error | `go test ./cmd/... -run TestChainCommand_DataPool_Loaded` | index.json produced, no error | ✅ PASS |
+| AT-144 | score includes Status Coverage dimension | `go test ./internal/score/... -run TestComputeStatusCoverage` | Status Coverage dimension present with correct score | ✅ PASS |
+| AT-145 | Postman collection parsing extracts body fields into DataPool | `go test ./internal/datagen/... -run TestParsePostmanCollection` | All 3 postman tests pass | ✅ PASS |
+| AT-146 | chain --seed-postman loads collection without error | `go test ./cmd/... -run TestChainCommand_SeedPostman` | index.json produced | ✅ PASS |
+| AT-147 | explore --prioritize-uncovered dry-run reports probes | `go test ./internal/dea/... -run TestExplorer_PrioritizeUncovered_DryRun` | TotalProbes > 0 | ✅ PASS |
+| AT-148 | explore --prioritize-uncovered flag accepted without error | `go test ./cmd/... -run TestExploreCommand_PrioritizeUncoveredFlag` | No error returned | ✅ PASS |
 
 ---
 
@@ -400,7 +411,7 @@
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 4 | 4 | 0 |
-| **Total** | **94** | **94** | **0** |
+| **Total** | **98** | **98** | **0** |
 
 ---
 

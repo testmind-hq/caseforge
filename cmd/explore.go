@@ -37,6 +37,8 @@ func init() {
 	exploreCmd.Flags().Int("max-probes", 50, "Maximum number of HTTP probes per run")
 	exploreCmd.Flags().String("output", "./reports", "Output directory for dea-report.json")
 	exploreCmd.Flags().Bool("dry-run", false, "Seed hypotheses without executing HTTP probes")
+	exploreCmd.Flags().String("export-pool", "", "Write observed field values to a JSON data pool file (from 2xx responses)")
+	exploreCmd.Flags().Bool("prioritize-uncovered", false, "Two-pass probe scheduling: cover all ops in pass 1, focus budget on non-2xx ops in pass 2")
 }
 
 func runExplore(cmd *cobra.Command, _ []string) error {
@@ -64,6 +66,9 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 
 	explorer := dea.NewExplorer(targetURL, maxProbes)
 	explorer.DryRun = dryRun
+	if prio, _ := cmd.Flags().GetBool("prioritize-uncovered"); prio {
+		explorer.PrioritizeUncovered = true
+	}
 
 	if dryRun {
 		fmt.Fprintln(out, "Dry-run mode: seeding hypotheses without HTTP probes...")
@@ -112,5 +117,12 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("write report: %w", err)
 	}
 	fmt.Fprintf(out, "\n✓ Report written to %s\n", reportPath)
+
+	if poolPath, _ := cmd.Flags().GetString("export-pool"); poolPath != "" {
+		if err := explorer.DataPool().Save(poolPath); err != nil {
+			return fmt.Errorf("write data pool: %w", err)
+		}
+		fmt.Fprintf(out, "✓ Data pool written to %s (%d field(s))\n", poolPath, explorer.DataPool().Len())
+	}
 	return nil
 }

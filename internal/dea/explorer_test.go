@@ -135,3 +135,35 @@ func TestExplorer_DryRun_NoHTTPCalls(t *testing.T) {
 	assert.Greater(t, report.TotalProbes, 0, "dry run counts planned probes")
 	assert.NotEmpty(t, report.Rules, "dry run must still produce planned hypotheses as 'pending' rules")
 }
+
+func TestExplorer_PrioritizeUncovered_DryRun(t *testing.T) {
+	// In dry-run, PrioritizeUncovered falls through to the standard path (priority
+	// scheduling is skipped in dry-run since no real HTTP calls are made).
+	// The test verifies that setting the field does not break explore.
+	e := NewExplorer("", 100)
+	e.DryRun = true
+	e.PrioritizeUncovered = true
+
+	report, err := e.Explore(context.Background(), testSpec())
+	require.NoError(t, err)
+	assert.Greater(t, report.TotalProbes, 0, "expected probes > 0 in dry-run with PrioritizeUncovered")
+}
+
+func TestExplorer_PrioritizeUncovered_LiveProbes(t *testing.T) {
+	// This test exercises the actual exploreWithPriority two-pass scheduling path
+	// (DryRun=false, PrioritizeUncovered=true). Pass 1 runs one probe per operation
+	// for breadth coverage; Pass 2 allocates remaining budget to ops that didn't get 2xx.
+	srv := testServer()
+	defer srv.Close()
+
+	e := NewExplorer(srv.URL, 50)
+	e.PrioritizeUncovered = true
+
+	report, err := e.Explore(context.Background(), testSpec())
+	require.NoError(t, err)
+	require.NotNil(t, report)
+	assert.Greater(t, report.TotalProbes, 0, "expected live probes > 0")
+	assert.Equal(t, srv.URL, report.TargetURL)
+	// Pass 1 fires at least one probe per operation; rules should be inferred.
+	assert.NotEmpty(t, report.Rules, "expected rules from live two-pass exploration")
+}

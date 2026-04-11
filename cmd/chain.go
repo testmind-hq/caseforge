@@ -31,10 +31,12 @@ Depth 3: three-step chains (create → update → read, etc.).`,
 }
 
 var (
-	chainSpecPath string
-	chainOutput   string
-	chainDepth    int
-	chainFormat   string
+	chainSpecPath    string
+	chainOutput      string
+	chainDepth       int
+	chainFormat      string
+	chainDataPool    string // path to DataPool JSON (from explore --export-pool)
+	chainSeedPostman string // path to Postman Collection v2.1 JSON
 )
 
 func init() {
@@ -43,6 +45,8 @@ func init() {
 	chainCmd.Flags().StringVar(&chainOutput, "output", "./chains", "Output directory")
 	chainCmd.Flags().IntVar(&chainDepth, "depth", 2, "Maximum chain depth (1..4)")
 	chainCmd.Flags().StringVar(&chainFormat, "format", "hurl", "Output format: hurl|markdown|csv|postman|k6")
+	chainCmd.Flags().StringVar(&chainDataPool, "data-pool", "", "JSON data pool file (from explore --export-pool)")
+	chainCmd.Flags().StringVar(&chainSeedPostman, "seed-postman", "", "Postman Collection v2.1 JSON file; extracts body field values as seed data")
 	_ = chainCmd.MarkFlagRequired("spec")
 }
 
@@ -58,7 +62,26 @@ func runChain(cmd *cobra.Command, args []string) error {
 	}
 
 	depGraph := methodology.BuildDepGraph(parsedSpec.Operations)
-	cases := bfsChainCases(parsedSpec.Operations, depGraph, chainDepth)
+	gen := datagen.NewGenerator(nil)
+	if chainDataPool != "" {
+		pool, err := datagen.LoadDataPool(chainDataPool)
+		if err != nil {
+			return fmt.Errorf("loading data pool: %w", err)
+		}
+		gen.Pool = pool
+	}
+	if chainSeedPostman != "" {
+		pmPool, err := datagen.ParsePostmanCollection(chainSeedPostman)
+		if err != nil {
+			return fmt.Errorf("loading postman collection: %w", err)
+		}
+		if gen.Pool == nil {
+			gen.Pool = pmPool
+		} else {
+			gen.Pool.Merge(pmPool)
+		}
+	}
+	cases := bfsChainCases(parsedSpec.Operations, depGraph, chainDepth, gen)
 
 	if err := os.MkdirAll(chainOutput, 0755); err != nil {
 		return fmt.Errorf("creating output dir: %w", err)
@@ -93,8 +116,7 @@ func runChain(cmd *cobra.Command, args []string) error {
 
 // bfsChainCases generates all sequences of length 1..maxDepth using the dep graph.
 // Each sequence becomes a chain TestCase with steps connected by captures.
-func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int) []schema.TestCase {
-	gen := datagen.NewGenerator(nil)
+func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int, gen *datagen.Generator) []schema.TestCase {
 	var cases []schema.TestCase
 
 	// Depth 1: one case per operation (single-step)
@@ -125,6 +147,31 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int)
 			captureName: captureName,
 		})
 		if len(steps) >= 2 {
+			// Append DELETE teardown if consumer is not already DELETE
+			if edge.Consumer.Method != "DELETE" {
+				if td := findTeardownEdge(g, edge.Creator.Path); td != nil {
+					lastID := steps[len(steps)-1].ID
+					// Derive the path-param name from the DELETE path itself to avoid a
+					// mismatch when td.PathParam is Link-derived and may differ from the
+					// capture variable name used in prior steps.
+					tdParamName := lastPathParam(td.Consumer.Path)
+					tdPath := strings.ReplaceAll(td.Consumer.Path,
+						fmt.Sprintf("{%s}", tdParamName),
+						fmt.Sprintf("{{%s}}", captureName))
+					tdStep := schema.Step{
+						ID:     fmt.Sprintf("step-%d", len(steps)+1),
+						Title:  fmt.Sprintf("teardown: %s %s", td.Consumer.Method, tdPath),
+						Type:   "teardown",
+						Method: td.Consumer.Method,
+						Path:   tdPath,
+						Assertions: []schema.Assertion{
+							{Target: "status_code", Operator: schema.OperatorLt, Expected: 300},
+						},
+						DependsOn: []string{lastID},
+					}
+					steps = append(steps, tdStep)
+				}
+			}
 			cases = append(cases, chainCase(steps, edge.Creator.Path, "chain_bfs", 2))
 		}
 	}
@@ -137,7 +184,7 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int)
 				if edge.Creator.Path == seq.lastOpPath ||
 					strings.HasPrefix(seq.lastOpPath, edge.Creator.Path+"/") {
 					prevID := seq.steps[len(seq.steps)-1].ID
-				consumerStep := buildConsumerStep(edge, seq.captureName, gen, len(seq.steps), prevID)
+					consumerStep := buildConsumerStep(edge, seq.captureName, gen, len(seq.steps), prevID)
 					newSteps := append(append([]schema.Step{}, seq.steps...), consumerStep)
 					newSeq := sequence{
 						steps:       newSteps,
@@ -278,6 +325,29 @@ func chainCase(steps []schema.Step, resourcePath, technique string, depth int) s
 		Steps:       steps,
 		GeneratedAt: time.Now(),
 	}
+}
+
+// lastPathParam extracts the path-parameter name from the last segment of a path,
+// e.g. "/items/{itemId}" → "itemId". Returns "" if the last segment is not a parameter.
+func lastPathParam(path string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	last := parts[len(parts)-1]
+	if strings.HasPrefix(last, "{") && strings.HasSuffix(last, "}") {
+		return strings.Trim(last, "{}")
+	}
+	return ""
+}
+
+// findTeardownEdge returns the first DELETE edge from the given creator path, or nil.
+// Used to automatically append cleanup steps to non-DELETE BFS chains.
+func findTeardownEdge(g *methodology.DepGraph, creatorPath string) *methodology.DepEdge {
+	for i := range g.Edges {
+		e := &g.Edges[i]
+		if e.Creator.Path == creatorPath && e.Consumer.Method == "DELETE" {
+			return e
+		}
+	}
+	return nil
 }
 
 // buildValidBodyForOp generates a valid request body for an operation.

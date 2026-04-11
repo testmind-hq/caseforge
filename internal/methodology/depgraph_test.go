@@ -140,6 +140,108 @@ func TestBuildDepGraph_NestedIDPath(t *testing.T) {
 	assert.Equal(t, "data.id", g.Edges[0].IDField, "IDField must match CaptureFrom nested path")
 }
 
+func TestBuildDepGraph_OpenAPILinks(t *testing.T) {
+	// Use paths that the path-heuristic would NOT match (different resource trees),
+	// so the only possible edge comes from the explicit Link. This ensures Pass 2 is
+	// actually exercised rather than being shadowed by a heuristic-inferred edge.
+	loginOp := &spec.Operation{
+		OperationID: "loginUser",
+		Method:      "POST",
+		Path:        "/auth/sessions",
+		Responses: map[string]*spec.Response{
+			"200": {
+				Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{
+						Type:       "object",
+						Properties: map[string]*spec.Schema{"userId": {Type: "string"}},
+					}},
+				},
+			},
+		},
+		Links: []spec.SpecLink{
+			{
+				Name:         "GetUserProfile",
+				OperationID:  "getProfile",
+				ResponseCode: "200",
+				Parameters:   map[string]string{"userId": "$response.body#/userId"},
+			},
+		},
+	}
+	profileOp := &spec.Operation{
+		OperationID: "getProfile",
+		Method:      "GET",
+		Path:        "/profile/{userId}",
+	}
+	g := BuildDepGraph([]*spec.Operation{loginOp, profileOp})
+	require.Len(t, g.Edges, 1, "expected exactly one Link-based edge")
+	edge := g.Edges[0]
+	assert.Equal(t, "loginUser", edge.Creator.OperationID)
+	assert.Equal(t, "getProfile", edge.Consumer.OperationID)
+	assert.Equal(t, "userId", edge.PathParam)
+	assert.Equal(t, "jsonpath $.userId", edge.CaptureFrom)
+	assert.Equal(t, "userId", edge.IDField)
+}
+
+func TestParseLinkExpression(t *testing.T) {
+	tests := []struct {
+		expr string
+		want string
+	}{
+		{"$response.body#/id", "jsonpath $.id"},
+		{"$response.body#/data/id", "jsonpath $.data.id"},
+		{"$response.body#/result/userId", "jsonpath $.result.userId"},
+		{"$request.path/id", ""},   // not a response.body expression
+		{"literal-value", ""},      // plain literal
+		{"", ""},
+	}
+	for _, tc := range tests {
+		got := parseLinkExpression(tc.expr)
+		if got != tc.want {
+			t.Errorf("parseLinkExpression(%q) = %q, want %q", tc.expr, got, tc.want)
+		}
+	}
+}
+
+func TestBuildDepGraph_OpenAPILinks_DedupWithHeuristic(t *testing.T) {
+	// The heuristic (Pass 1) will infer POST /users → GET /users/{userId}.
+	// An explicit Link on the same creator→consumer pair must not produce a duplicate edge.
+	createOp := &spec.Operation{
+		OperationID: "createUser",
+		Method:      "POST",
+		Path:        "/users",
+		Responses: map[string]*spec.Response{
+			"201": {
+				Headers: map[string]string{},
+				Content: map[string]*spec.MediaType{
+					"application/json": {Schema: &spec.Schema{
+						Type:       "object",
+						Properties: map[string]*spec.Schema{"id": {Type: "integer"}},
+					}},
+				},
+			},
+		},
+		Links: []spec.SpecLink{
+			{
+				Name:         "GetUserById",
+				OperationID:  "getUser",
+				ResponseCode: "201",
+				Parameters:   map[string]string{"userId": "$response.body#/id"},
+			},
+		},
+	}
+	getOp := &spec.Operation{
+		OperationID: "getUser",
+		Method:      "GET",
+		Path:        "/users/{userId}",
+		Responses:   map[string]*spec.Response{"200": {}},
+	}
+	g := BuildDepGraph([]*spec.Operation{createOp, getOp})
+	// Must have exactly one edge, not two (heuristic + link).
+	if len(g.Edges) != 1 {
+		t.Errorf("expected 1 deduplicated edge, got %d", len(g.Edges))
+	}
+}
+
 func TestBuildDepGraph_Deterministic(t *testing.T) {
 	ops := crudOps()
 	g1 := BuildDepGraph(ops)

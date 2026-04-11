@@ -1140,6 +1140,39 @@ run "AT-136" "N-step chain includes update step when PUT present" \
 run "AT-137" "gen registers mutation and auth_chain techniques without error" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestGen_Seed_DeterministicOutput' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-138" "OpenAPI Links parsed into Operation.Links" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestParsedSpec_LinksPopulated' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-139" "OpenAPI Links create dep-graph edges" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestBuildDepGraph_OpenAPILinks' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-140" "BFS chain appends DELETE teardown for non-DELETE consumers" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_AddsTeardownForNonDeleteChains' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-141" "DataPool Add/ValueFor/Save/Load/Merge unit tests pass" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestDataPool' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-142" "explore --export-pool writes pool JSON in dry-run" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestExploreCommand_ExportPool_DryRun' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-143" "chain --data-pool loads pool without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_DataPool_Loaded' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-144" "score includes Status Coverage dimension" \
+  "(cd $REPO_ROOT && go test ./internal/score/... -run 'TestComputeStatusCoverage' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-145" "Postman collection parsing extracts body fields into DataPool" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestParsePostmanCollection' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-146" "chain --seed-postman loads collection without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_SeedPostman' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-147" "explore --prioritize-uncovered dry-run reports probes" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_PrioritizeUncovered_DryRun' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-148" "explore --prioritize-uncovered flag accepted without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestExploreCommand_PrioritizeUncoveredFlag' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

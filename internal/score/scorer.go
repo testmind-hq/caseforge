@@ -66,6 +66,7 @@ func Compute(cases []schema.TestCase) Report {
 				zero("Boundary Coverage"),
 				zero("Security Coverage"),
 				zero("Executability"),
+				zero("Status Coverage"),
 			},
 			Suggestions: []Suggestion{},
 		}
@@ -88,11 +89,12 @@ func Compute(cases []schema.TestCase) Report {
 	boundaryScore, boundaryDetail, opsMissingBoundary := computeBoundary(opCases, totalOps)
 	secScore, secDetail := computeSecurity(opCases, totalOps)
 	execScore, execDetail := computeExecutability(cases)
+	statusScore, statusDetail := computeStatusCoverage(opCases, totalOps)
 
-	// Weighted overall: breadth 30 %, boundary 25 %, security 25 %, exec 20 %
-	overall := (breadthScore*30 + boundaryScore*25 + secScore*25 + execScore*20) / 100
+	// Weighted overall: breadth 25 %, boundary 20 %, security 20 %, exec 15 %, status_coverage 20 %
+	overall := (breadthScore*25 + boundaryScore*20 + secScore*20 + execScore*15 + statusScore*20) / 100
 
-	suggestions := buildSuggestions(secScore, opsMissingBoundary)
+	suggestions := buildSuggestions(secScore, statusScore, opsMissingBoundary)
 
 	return Report{
 		Overall:    overall,
@@ -103,6 +105,7 @@ func Compute(cases []schema.TestCase) Report {
 			{Name: "Boundary Coverage", Score: boundaryScore, Detail: boundaryDetail},
 			{Name: "Security Coverage", Score: secScore, Detail: secDetail},
 			{Name: "Executability", Score: execScore, Detail: execDetail},
+			{Name: "Status Coverage", Score: statusScore, Detail: statusDetail},
 		},
 		Suggestions: suggestions,
 	}
@@ -203,6 +206,82 @@ func computeSecurity(opCases map[opKey][]schema.TestCase, totalOps int) (int, st
 	return score, detail
 }
 
+// computeStatusCoverage returns the % of operations that have both a 2xx-asserting
+// case (happy path) and a 4xx/5xx-asserting case (error path).
+// Inspired by EvoMaster's per-(endpoint × status-code) coverage targets.
+func computeStatusCoverage(opCases map[opKey][]schema.TestCase, totalOps int) (int, string) {
+	if totalOps == 0 {
+		return 0, "no operations found"
+	}
+	covered := 0
+	for _, cases := range opCases {
+		has2xx := false
+		has4xx := false
+		for _, c := range cases {
+			for _, step := range c.Steps {
+				for _, a := range step.Assertions {
+					if a.Target != "status_code" {
+						continue
+					}
+					if is2xxAssertion(a) {
+						has2xx = true
+					}
+					if is4xxAssertion(a) {
+						has4xx = true
+					}
+				}
+			}
+		}
+		if has2xx && has4xx {
+			covered++
+		}
+	}
+	score := covered * 100 / totalOps
+	detail := fmt.Sprintf("%d/%d operations have both 2xx and 4xx/5xx cases", covered, totalOps)
+	return score, detail
+}
+
+func is2xxAssertion(a schema.Assertion) bool {
+	n, ok := toAssertInt(a.Expected)
+	if !ok {
+		return false
+	}
+	switch a.Operator {
+	case schema.OperatorLt:
+		// "status_code lt 300" is the canonical happy-path assertion; n must be exactly 300.
+		return n == 300
+	case schema.OperatorEq:
+		return n >= 200 && n < 300
+	}
+	return false
+}
+
+func is4xxAssertion(a schema.Assertion) bool {
+	n, ok := toAssertInt(a.Expected)
+	if !ok {
+		return false
+	}
+	switch a.Operator {
+	case schema.OperatorGte:
+		return n >= 400
+	case schema.OperatorEq:
+		return n >= 400
+	}
+	return false
+}
+
+func toAssertInt(v any) (int, bool) {
+	switch x := v.(type) {
+	case int:
+		return x, true
+	case int64:
+		return int(x), true
+	case float64:
+		return int(x), true
+	}
+	return 0, false
+}
+
 // computeExecutability returns the % of cases that have ≥ 1 assertion.
 func computeExecutability(cases []schema.TestCase) (int, string) {
 	if len(cases) == 0 {
@@ -224,7 +303,7 @@ func computeExecutability(cases []schema.TestCase) (int, string) {
 
 // buildSuggestions assembles improvement suggestions ordered by priority.
 // Returns an empty (non-nil) slice so JSON output is always "[]", never "null".
-func buildSuggestions(secScore int, opsMissingBoundary []opKey) []Suggestion {
+func buildSuggestions(secScore, statusScore int, opsMissingBoundary []opKey) []Suggestion {
 	out := []Suggestion{}
 	p := 1
 	if secScore < 80 {
@@ -232,6 +311,14 @@ func buildSuggestions(secScore int, opsMissingBoundary []opKey) []Suggestion {
 			Priority: p,
 			Message:  fmt.Sprintf("Add OWASP security cases (security score: %d/100)", secScore),
 			Command:  "caseforge gen --technique owasp_api_top10",
+		})
+		p++
+	}
+	if statusScore < 80 {
+		out = append(out, Suggestion{
+			Priority: p,
+			Message:  fmt.Sprintf("Add error-path cases (status coverage: %d/100)", statusScore),
+			Command:  "caseforge gen --technique mutation,isolated_negative",
 		})
 		p++
 	}

@@ -4,6 +4,7 @@ package spec
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -91,6 +92,42 @@ func convertOperation(method, path string, op *openapi3.Operation) *Operation {
 			o.Responses[code] = convertResponse(resp.Value)
 		}
 	}
+	// Parse OpenAPI 3.0 Links from each response
+	for code, resp := range op.Responses.Map() {
+		if resp.Value == nil {
+			continue
+		}
+		linkNames := make([]string, 0, len(resp.Value.Links))
+		for name := range resp.Value.Links {
+			linkNames = append(linkNames, name)
+		}
+		sort.Strings(linkNames)
+		for _, linkName := range linkNames {
+			linkRef := resp.Value.Links[linkName]
+			// Skip links that use operationRef (relative JSON pointer); only operationId is supported.
+			if linkRef == nil || linkRef.Value == nil || linkRef.Value.OperationID == "" {
+				continue
+			}
+			sl := SpecLink{
+				Name:         linkName,
+				OperationID:  linkRef.Value.OperationID,
+				ResponseCode: code,
+				Parameters:   make(map[string]string),
+			}
+			for paramName, paramExpr := range linkRef.Value.Parameters {
+				// Only string runtime expressions (e.g. "$response.body#/id") are captured;
+				// non-string literals (integers, booleans) are skipped.
+				if s, ok := paramExpr.(string); ok {
+					sl.Parameters[paramName] = s
+				}
+			}
+			o.Links = append(o.Links, sl)
+		}
+	}
+	// Sort links for determinism: response-code map iteration order is non-deterministic.
+	sort.Slice(o.Links, func(i, j int) bool {
+		return o.Links[i].Name < o.Links[j].Name
+	})
 	return o
 }
 
