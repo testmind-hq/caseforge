@@ -27,10 +27,12 @@ func NewExplorer(targetURL string, maxProbes int) *Explorer {
 		maxProbes = 50
 	}
 	pool := datagen.NewDataPool()
+	gen := datagen.NewGenerator(nil)
+	gen.Pool = pool // observed values feed back into probe generation within the same run
 	return &Explorer{
 		TargetURL: targetURL,
 		MaxProbes: maxProbes,
-		gen:       datagen.NewGenerator(nil),
+		gen:       gen,
 		pool:      pool,
 	}
 }
