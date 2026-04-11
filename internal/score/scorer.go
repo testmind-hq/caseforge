@@ -317,7 +317,7 @@ func buildSuggestions(secScore, statusScore int, opsMissingBoundary []opKey) []S
 	if statusScore < 80 {
 		out = append(out, Suggestion{
 			Priority: p,
-			Message:  fmt.Sprintf("Add error-path cases — %d/100 ops have both 2xx and 4xx coverage", statusScore),
+			Message:  fmt.Sprintf("Add error-path cases (status coverage: %d/100)", statusScore),
 			Command:  "caseforge gen --technique mutation,isolated_negative",
 		})
 		p++

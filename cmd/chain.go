@@ -159,9 +159,9 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int,
 						fmt.Sprintf("{%s}", tdParamName),
 						fmt.Sprintf("{{%s}}", captureName))
 					tdStep := schema.Step{
-						ID:    fmt.Sprintf("step-%d", len(steps)+1),
-						Title: fmt.Sprintf("teardown: %s %s", td.Consumer.Method, tdPath),
-						Type:  "teardown",
+						ID:     fmt.Sprintf("step-%d", len(steps)+1),
+						Title:  fmt.Sprintf("teardown: %s %s", td.Consumer.Method, tdPath),
+						Type:   "teardown",
 						Method: td.Consumer.Method,
 						Path:   tdPath,
 						Assertions: []schema.Assertion{
@@ -184,7 +184,7 @@ func bfsChainCases(ops []*spec.Operation, g *methodology.DepGraph, maxDepth int,
 				if edge.Creator.Path == seq.lastOpPath ||
 					strings.HasPrefix(seq.lastOpPath, edge.Creator.Path+"/") {
 					prevID := seq.steps[len(seq.steps)-1].ID
-				consumerStep := buildConsumerStep(edge, seq.captureName, gen, len(seq.steps), prevID)
+					consumerStep := buildConsumerStep(edge, seq.captureName, gen, len(seq.steps), prevID)
 					newSteps := append(append([]schema.Step{}, seq.steps...), consumerStep)
 					newSeq := sequence{
 						steps:       newSteps,
