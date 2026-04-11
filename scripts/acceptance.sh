@@ -1206,6 +1206,42 @@ run "AT-158" "explore --max-failures stops after N rules" \
 run "AT-159" "explore deduplicates rules with same operation+category+fieldPath" \
   "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_RuleDeduplication' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-160" "type_coercion Applies for op with typed fields" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestTypeCoercionTechnique_Applies_True' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-161" "type_coercion generates WRONG_TYPE cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestTypeCoercionTechnique_Generate_StringField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-162" "unicode_fuzzing Applies for op with string field" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Applies_True' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-163" "unicode_fuzzing generates 5 cases per string field" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Generate_ProducesExactly5PerStringField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-164" "mass_assignment Applies for op with request body" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Applies_True' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-165" "mass_assignment generates 4 category cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Generate_ProducesExactly4Cases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-166" "idor Applies for op with integer path param" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestIDORTechnique_Applies_IntPathParam' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-167" "idor generates 2 cases for integer ID param" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-168" "explore seeds KindTypeCoercion hypotheses for typed fields" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesTypeCoercion' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-169" "explore seeds KindMassAssignment hypothesis for body ops" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-170" "datagen generates pattern-matching strings for simple patterns" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestGenerateByPattern_Digits' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-171" "datagen falls back gracefully on invalid patterns" \
+  "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

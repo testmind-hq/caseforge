@@ -3,7 +3,8 @@ package dea
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -35,11 +36,7 @@ func seedBodyHypotheses(op *spec.Operation) []*HypothesisNode {
 		requiredSet[r] = true
 	}
 
-	fieldNames := make([]string, 0, len(s.Properties))
-	for k := range s.Properties {
-		fieldNames = append(fieldNames, k)
-	}
-	sort.Strings(fieldNames)
+	fieldNames := slices.Sorted(maps.Keys(s.Properties))
 
 	for _, fieldName := range fieldNames {
 		fieldSchema := s.Properties[fieldName]
@@ -57,6 +54,28 @@ func seedBodyHypotheses(op *spec.Operation) []*HypothesisNode {
 
 		nodes = append(nodes, seedFieldConstraintHypotheses(op, fieldName, fieldSchema, prefix)...)
 	}
+
+	for _, fieldName := range fieldNames {
+		fieldSchema := s.Properties[fieldName]
+		if fieldSchema == nil {
+			continue
+		}
+		prefix := fmt.Sprintf("requestBody.%s", fieldName)
+
+		if fieldSchema.Type != "" {
+			nodes = append(nodes, newHypothesis(op, KindTypeCoercion, prefix,
+				fmt.Sprintf("wrong type for field '%s' must return 4xx", fieldName)))
+		}
+
+		if fieldSchema.Type == "string" {
+			nodes = append(nodes, newHypothesis(op, KindUnicodeControl, prefix,
+				fmt.Sprintf("control character in string field '%s' must return 4xx", fieldName)))
+		}
+	}
+
+	nodes = append(nodes, newHypothesis(op, KindMassAssignment, "requestBody",
+		"injecting undeclared privileged fields (admin, role) should not be accepted"))
+
 	return nodes
 }
 

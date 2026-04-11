@@ -207,6 +207,18 @@
 | AT-157 | score Boundary Coverage detail shows scenario info | `go test ./internal/score/... -run TestBoundaryDetail_IncludesScenarioInfo` | detail contains covered scenario names | ✅ PASS |
 | AT-158 | explore --max-failures stops after N rules | `go test ./internal/dea/... -run TestExplorer_MaxFailures_StopsEarly` | len(Rules) ≤ MaxFailures | ✅ PASS |
 | AT-159 | explore deduplicates rules with same operation+category+fieldPath | `go test ./internal/dea/... -run TestExplorer_RuleDeduplication` | no duplicate (op, category, fieldPath) triplets in report | ✅ PASS |
+| AT-160 | type_coercion Applies() for op with typed fields | `go test ./internal/methodology/... -run TestTypeCoercionTechnique_Applies_True` | PASS | ✅ PASS |
+| AT-161 | type_coercion generates WRONG_TYPE cases for all typed fields | `go test ./internal/methodology/... -run TestTypeCoercionTechnique_Generate_StringField` | PASS | ✅ PASS |
+| AT-162 | unicode_fuzzing Applies for op with string field | `go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Applies_True'` | PASS | ✅ PASS |
+| AT-163 | unicode_fuzzing generates 5 cases per string field | `go test ./internal/methodology/... -run 'TestUnicodeFuzzingTechnique_Generate_ProducesExactly5PerStringField'` | PASS | ✅ PASS |
+| AT-164 | mass_assignment Applies for op with request body | `go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Applies_True'` | PASS | ✅ PASS |
+| AT-165 | mass_assignment generates 4 category cases | `go test ./internal/methodology/... -run 'TestMassAssignmentTechnique_Generate_ProducesExactly4Cases'` | PASS | ✅ PASS |
+| AT-166 | idor Applies for op with integer path param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Applies_IntPathParam'` | PASS | ✅ PASS |
+| AT-167 | idor generates 2 cases for integer ID param | `go test ./internal/methodology/... -run 'TestIDORTechnique_Generate_IntegerID_Produces2Cases'` | PASS | ✅ PASS |
+| AT-168 | explore seeds KindTypeCoercion hypotheses for typed fields | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesTypeCoercion' -count=1` | PASS | ✅ PASS |
+| AT-169 | explore seeds KindMassAssignment hypothesis for body ops | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1` | PASS | ✅ PASS |
+| AT-170 | datagen generates pattern-matching strings for simple patterns | `go test ./internal/datagen/... -run 'TestGenerateByPattern_Digits' -count=1` | PASS | ✅ PASS |
+| AT-171 | datagen falls back gracefully on invalid patterns | `go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1` | PASS | ✅ PASS |
 
 ---
 
@@ -395,7 +407,7 @@
 ---
 
 
-## Summary (last run: 2026-04-04)
+## Summary (last run: 2026-04-11)
 
 | Category | Total | Pass | Fail |
 |----------|-------|------|------|
@@ -422,7 +434,9 @@
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 4 | 4 | 0 |
-| **Total** | **98** | **98** | **0** |
+| idor | 2 | 2 | 0 |
+| datagen pattern | 2 | 2 | 0 |
+| **Total** | **102** | **102** | **0** |
 
 ---
 

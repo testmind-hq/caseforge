@@ -18,6 +18,9 @@ const (
 	KindArrayMaxItems     HypothesisKind = "array_max_items"
 	KindRequiredQueryParam HypothesisKind = "required_query_param"
 	KindFormatViolation   HypothesisKind = "format_violation"
+	KindTypeCoercion      HypothesisKind = "type_coercion"
+	KindUnicodeControl    HypothesisKind = "unicode_control"
+	KindMassAssignment    HypothesisKind = "mass_assignment"
 )
 
 type HypothesisStatus string

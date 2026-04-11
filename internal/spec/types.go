@@ -63,4 +63,5 @@ type Schema struct {
 	Nullable    bool
 	Ref         string // original $ref path if applicable
 	Example     any
+	Pattern     string // regex pattern constraint for string fields (OpenAPI `pattern`)
 }

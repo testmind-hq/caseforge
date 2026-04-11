@@ -174,6 +174,14 @@ func k6AssertionLine(a schema.Assertion) string {
 			return fmt.Sprintf("'status is %v': (r) => r.status === %v,", a.Expected, a.Expected)
 		case "ne":
 			return fmt.Sprintf("'status is not %v': (r) => r.status !== %v,", a.Expected, a.Expected)
+		case "gte":
+			return fmt.Sprintf("'status >= %v': (r) => r.status >= %v,", a.Expected, a.Expected)
+		case "lte":
+			return fmt.Sprintf("'status <= %v': (r) => r.status <= %v,", a.Expected, a.Expected)
+		case "gt":
+			return fmt.Sprintf("'status > %v': (r) => r.status > %v,", a.Expected, a.Expected)
+		case "lt":
+			return fmt.Sprintf("'status < %v': (r) => r.status < %v,", a.Expected, a.Expected)
 		}
 	case strings.HasPrefix(a.Target, "jsonpath $."):
 		field := strings.TrimPrefix(a.Target, "jsonpath $.")

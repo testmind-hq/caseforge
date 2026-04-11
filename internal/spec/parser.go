@@ -242,5 +242,6 @@ func convertSchema(s *openapi3.Schema) *Schema {
 		}
 	}
 	cs.Example = s.Example
+	cs.Pattern = s.Pattern
 	return cs
 }

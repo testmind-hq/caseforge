@@ -23,6 +23,14 @@ const (
 	ScenarioArrayMinItems    CoverageScenario = "ARRAY_MIN_ITEMS"    // array below minItems (invalid)
 	ScenarioArrayMaxItems    CoverageScenario = "ARRAY_MAX_ITEMS"    // array above maxItems (invalid)
 	ScenarioWrongContentType CoverageScenario = "WRONG_CONTENT_TYPE" // request with unsupported content-type
+	ScenarioUnicodeInjection CoverageScenario = "UNICODE_INJECTION"  // unicode/control-char injection
+
+	ScenarioMassAssignmentPrivilege CoverageScenario = "MASS_ASSIGNMENT_PRIVILEGE"  // privilege escalation via extra fields
+	ScenarioMassAssignmentStatus    CoverageScenario = "MASS_ASSIGNMENT_STATUS"     // status manipulation via extra fields
+	ScenarioMassAssignmentFinancial CoverageScenario = "MASS_ASSIGNMENT_FINANCIAL"  // financial manipulation via extra fields
+	ScenarioMassAssignmentIdentity  CoverageScenario = "MASS_ASSIGNMENT_IDENTITY"   // ownership takeover via extra fields
+
+	ScenarioIDORParam CoverageScenario = "IDOR_PARAM" // IDOR: substitute ID param with alternative value
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -38,4 +46,10 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioArrayMinItems,
 	ScenarioArrayMaxItems,
 	ScenarioWrongContentType,
+	ScenarioUnicodeInjection,
+	ScenarioMassAssignmentPrivilege,
+	ScenarioMassAssignmentStatus,
+	ScenarioMassAssignmentFinancial,
+	ScenarioMassAssignmentIdentity,
+	ScenarioIDORParam,
 }

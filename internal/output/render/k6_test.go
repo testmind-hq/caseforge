@@ -62,6 +62,26 @@ func TestK6RendererStatusCodeAssertion(t *testing.T) {
 	assert.Contains(t, content, `r.status === 201`)
 }
 
+func TestK6RendererStatusCodeRangeAssertions(t *testing.T) {
+	tc := schema.TestCase{
+		ID: "TC-idor", Title: "IDOR range check", Kind: "single",
+		Steps: []schema.Step{{
+			ID: "step-1", Method: "GET", Path: "/users/99999",
+			Assertions: []schema.Assertion{
+				{Target: "status_code", Operator: "gte", Expected: 400},
+				{Target: "status_code", Operator: "lt", Expected: 500},
+			},
+		}},
+	}
+	r := NewK6Renderer()
+	dir := t.TempDir()
+	require.NoError(t, r.Render([]schema.TestCase{tc}, dir))
+	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
+	assert.Contains(t, content, `r.status >= 400`)
+	assert.Contains(t, content, `r.status < 500`)
+	assert.NotContains(t, content, `// unrendered`)
+}
+
 func TestK6RendererJSONPathAssertion(t *testing.T) {
 	tc := schema.TestCase{
 		ID: "TC-json", Title: "jsonpath check", Kind: "single",

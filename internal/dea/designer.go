@@ -23,7 +23,11 @@ func DesignProbe(h *HypothesisNode, op *spec.Operation, gen *datagen.Generator) 
 	if hasJSONBody(op) {
 		body := buildBaseBody(op, gen)
 		headers["Content-Type"] = "application/json"
-		if bodyFieldName != "" {
+		if h.Kind == KindMassAssignment {
+			body["admin"] = true
+			body["role"] = "__probe__"
+			body["isAdmin"] = true
+		} else if bodyFieldName != "" {
 			mutateField(body, bodyFieldName, h.Kind, op)
 		}
 		bodyAny = body
@@ -103,17 +107,43 @@ func mutateField(body map[string]any, fieldName string, kind HypothesisKind, op 
 		} else {
 			body[fieldName] = make([]any, 101)
 		}
+
+	case KindTypeCoercion:
+		if s != nil {
+			switch s.Type {
+			case "string":
+				body[fieldName] = float64(123)
+			case "integer", "number":
+				body[fieldName] = "not_a_number"
+			case "boolean":
+				body[fieldName] = "not_a_boolean"
+			case "array":
+				body[fieldName] = "not_an_array"
+			default:
+				body[fieldName] = float64(999)
+			}
+		} else {
+			body[fieldName] = float64(999)
+		}
+
+	case KindUnicodeControl:
+		body[fieldName] = "hello\u0000world"
 	}
 }
 
 func expectedStatusFor(kind HypothesisKind, op *spec.Operation) int {
-	if kind == KindOptionalField {
+	switch kind {
+	case KindOptionalField:
 		for code := range op.Responses {
 			var n int
 			if _, err := fmt.Sscanf(code, "%d", &n); err == nil && n >= 200 && n < 300 {
 				return n
 			}
 		}
+		return 200
+	case KindTypeCoercion, KindUnicodeControl:
+		return 400
+	case KindMassAssignment:
 		return 200
 	}
 	return 400

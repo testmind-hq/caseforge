@@ -151,20 +151,32 @@ func (r *HurlRenderer) renderStep(step schema.Step) string {
 	b.WriteString("\n")
 
 	// Assertions (Hurl HTTP + asserts block)
-	statusCode := 200
+	// Exact status (eq) goes into the HTTP line; range operators (gte/lte/gt/lt/ne)
+	// go into the [Asserts] block as `status <op> N` so Hurl can evaluate them.
+	exactStatus := -1
 	var asserts []schema.Assertion
 	for _, a := range step.Assertions {
 		if a.Target == "status_code" {
-			if code, ok := a.Expected.(float64); ok {
-				statusCode = int(code)
-			} else if code, ok := a.Expected.(int); ok {
-				statusCode = code
+			if a.Operator == "eq" {
+				if code, ok := a.Expected.(float64); ok {
+					exactStatus = int(code)
+				} else if code, ok := a.Expected.(int); ok {
+					exactStatus = code
+				}
+			} else {
+				// Range assertion — render as `status <op> N` in [Asserts].
+				asserts = append(asserts, a)
 			}
 		} else {
 			asserts = append(asserts, a)
 		}
 	}
-	b.WriteString(fmt.Sprintf("HTTP %d\n", statusCode))
+	if exactStatus >= 0 {
+		b.WriteString(fmt.Sprintf("HTTP %d\n", exactStatus))
+	} else {
+		// No exact status constraint; use wildcard so range asserts in [Asserts] govern.
+		b.WriteString("HTTP *\n")
+	}
 
 	// Captures block must come BEFORE [Asserts] (Hurl spec ordering requirement)
 	if len(step.Captures) > 0 {
@@ -210,6 +222,20 @@ func renderAssertion(a schema.Assertion) string {
 		a.Target = "jsonpath $." + strings.TrimPrefix(a.Target, "body.")
 	}
 	switch {
+	case a.Target == "status_code":
+		// Non-eq status operators (gte/gt/lte/lt/ne) routed here from step rendering.
+		switch a.Operator {
+		case "gte":
+			return fmt.Sprintf("status >= %v\n", a.Expected)
+		case "lte":
+			return fmt.Sprintf("status <= %v\n", a.Expected)
+		case "gt":
+			return fmt.Sprintf("status > %v\n", a.Expected)
+		case "lt":
+			return fmt.Sprintf("status < %v\n", a.Expected)
+		case "ne":
+			return fmt.Sprintf("status != %v\n", a.Expected)
+		}
 	case a.Target == "duration_ms":
 		switch a.Operator {
 		case "lt":

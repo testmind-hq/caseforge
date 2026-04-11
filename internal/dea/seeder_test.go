@@ -422,6 +422,90 @@ func TestSeedHypotheses_FormatViolation(t *testing.T) {
 	assert.Contains(t, kinds, KindFormatViolation)
 }
 
+func TestSeedHypotheses_IncludesTypeCoercion(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/pets",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type:     "object",
+						Required: []string{"name"},
+						Properties: map[string]*spec.Schema{
+							"name": {Type: "string"},
+							"age":  {Type: "integer"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var kinds []HypothesisKind
+	for _, n := range nodes {
+		kinds = append(kinds, n.Kind)
+	}
+	assert.Contains(t, kinds, KindTypeCoercion, "must seed type_coercion hypothesis for typed fields")
+}
+
+func TestSeedHypotheses_IncludesUnicodeControl(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/pets",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type:     "object",
+						Required: []string{"name"},
+						Properties: map[string]*spec.Schema{
+							"name": {Type: "string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var kinds []HypothesisKind
+	for _, n := range nodes {
+		kinds = append(kinds, n.Kind)
+	}
+	assert.Contains(t, kinds, KindUnicodeControl, "must seed unicode_control hypothesis for string fields")
+}
+
+func TestSeedHypotheses_IncludesMassAssignment(t *testing.T) {
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/pets",
+		RequestBody: &spec.RequestBody{
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type:     "object",
+						Required: []string{"name"},
+						Properties: map[string]*spec.Schema{
+							"name": {Type: "string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nodes := SeedHypotheses(op)
+	var massCount int
+	for _, n := range nodes {
+		if n.Kind == KindMassAssignment {
+			massCount++
+		}
+	}
+	require.Equal(t, 1, massCount, "must seed exactly one mass_assignment hypothesis per operation")
+}
+
 func TestSeedHypotheses_NoFormatViolation_WhenNoFormat(t *testing.T) {
 	op := &spec.Operation{
 		Method: "POST",
