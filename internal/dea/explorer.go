@@ -85,6 +85,8 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 		TargetURL:  e.TargetURL,
 		ExploredAt: time.Now(),
 	}
+	// Reset deduplication state so each Explore() call starts fresh.
+	e.seenRules = make(map[ruleKey]bool)
 
 	if e.PrioritizeUncovered && !e.DryRun {
 		return e.exploreWithPriority(ctx, s, report)

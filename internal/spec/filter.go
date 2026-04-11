@@ -19,7 +19,11 @@ import (
 type FilterSet struct {
 	IncludePaths []string // regex patterns; op passes if path matches ≥1 (if set)
 	ExcludePaths []string // regex patterns; op excluded if path matches any
-	IncludeTags  []string // exact tag names; op passes if tags intersect (if set)
+	// IncludeTags lists exact tag names to include. An operation passes if its
+	// Tags field intersects with this list. Operations that carry no tags never
+	// intersect any non-empty IncludeTags list and are therefore excluded when
+	// IncludeTags is set.
+	IncludeTags []string
 	ExcludeTags  []string // exact tag names; op excluded if tags intersect any
 }
 
