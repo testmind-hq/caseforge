@@ -91,6 +91,7 @@ paths:
 	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
 	poolFile := filepath.Join(tmp, "pool.json")
 
+	t.Cleanup(func() { _ = exploreCmd.Flags().Set("export-pool", "") })
 	rootCmd.SetArgs([]string{
 		"explore", "--spec", specFile, "--dry-run", "--export-pool", poolFile,
 	})
@@ -100,5 +101,29 @@ paths:
 	}
 	if _, err := os.Stat(poolFile); err != nil {
 		t.Errorf("pool file not written: %v", err)
+	}
+}
+
+func TestExploreCommand_PrioritizeUncoveredFlag(t *testing.T) {
+	tmp := t.TempDir()
+	const specYAML = `
+openapi: "3.0.0"
+info: {title: T, version: "1"}
+paths:
+  /items:
+    post:
+      responses:
+        "201": {description: created}
+`
+	specFile := filepath.Join(tmp, "spec.yaml")
+	require.NoError(t, os.WriteFile(specFile, []byte(specYAML), 0644))
+	outDir := filepath.Join(tmp, "reports")
+
+	rootCmd.SetArgs([]string{
+		"explore", "--spec", specFile, "--dry-run",
+		"--prioritize-uncovered", "--output", outDir,
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("explore with --prioritize-uncovered: %v", err)
 	}
 }

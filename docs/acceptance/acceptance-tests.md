@@ -194,6 +194,8 @@
 | AT-144 | score includes Status Coverage dimension | `go test ./internal/score/... -run TestComputeStatusCoverage` | Status Coverage dimension present with correct score | ✅ PASS |
 | AT-145 | Postman collection parsing extracts body fields into DataPool | `go test ./internal/datagen/... -run TestParsePostmanCollection` | All 3 postman tests pass | ✅ PASS |
 | AT-146 | chain --seed-postman loads collection without error | `go test ./cmd/... -run TestChainCommand_SeedPostman` | index.json produced | ✅ PASS |
+| AT-147 | explore --prioritize-uncovered dry-run reports probes | `go test ./internal/dea/... -run TestExplorer_PrioritizeUncovered_DryRun` | TotalProbes > 0 | ✅ PASS |
+| AT-148 | explore --prioritize-uncovered flag accepted without error | `go test ./cmd/... -run TestExploreCommand_PrioritizeUncoveredFlag` | No error returned | ✅ PASS |
 
 ---
 

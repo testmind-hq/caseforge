@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/testmind-hq/caseforge/internal/datagen"
@@ -13,9 +14,10 @@ import (
 
 // Explorer runs the hypothesis-test-infer loop against a live API.
 type Explorer struct {
-	TargetURL string
-	MaxProbes int
-	DryRun    bool // if true, seed hypotheses but skip HTTP execution
+	TargetURL           string
+	MaxProbes           int
+	DryRun              bool // if true, seed hypotheses but skip HTTP execution
+	PrioritizeUncovered bool // if true, use two-pass scheduling: breadth first, then depth on non-2xx ops
 
 	gen  *datagen.Generator
 	pool *datagen.DataPool
@@ -57,6 +59,10 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 	report := &ExplorationReport{
 		TargetURL:  e.TargetURL,
 		ExploredAt: time.Now(),
+	}
+
+	if e.PrioritizeUncovered && !e.DryRun {
+		return e.exploreWithPriority(ctx, s, report)
 	}
 
 	probesRun := 0
@@ -124,6 +130,88 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 			rule := InferRule(h)
 			if rule != nil {
 				report.Rules = append(report.Rules, *rule)
+			}
+		}
+	}
+
+	report.TotalProbes = probesRun
+	return report, nil
+}
+
+// exploreWithPriority implements a two-pass probe scheduling strategy inspired by
+// EvoMaster's focused-search mode:
+//
+//	Pass 1: run the first hypothesis for every operation (breadth scan, 1 probe/op).
+//	Pass 2: allocate remaining budget to operations that didn't return 2xx in pass 1,
+//	         running their remaining hypotheses in full before moving to covered ops.
+func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, report *ExplorationReport) (*ExplorationReport, error) {
+	type opState struct {
+		op         *spec.Operation
+		hypotheses []*HypothesisNode
+		got2xx     bool
+	}
+
+	states := make([]opState, 0, len(s.Operations))
+	for _, op := range s.Operations {
+		hyps := SeedHypotheses(op)
+		if len(hyps) > 0 {
+			states = append(states, opState{op: op, hypotheses: hyps})
+		}
+	}
+
+	probesRun := 0
+
+	// Pass 1: one probe per operation for breadth coverage.
+	for i := range states {
+		if ctx.Err() != nil || probesRun >= e.MaxProbes {
+			break
+		}
+		h := states[i].hypotheses[0]
+		probe := DesignProbe(h, states[i].op, e.gen)
+		ev, err := RunProbe(ctx, e.TargetURL, probe)
+		if err != nil {
+			continue
+		}
+		probesRun++
+		states[i].got2xx = ev.ActualStatus >= 200 && ev.ActualStatus < 300
+		expectedIs4xx := probe.ExpectedStatus >= 400
+		confirmed := (expectedIs4xx && ev.ActualStatus >= 400) ||
+			(!expectedIs4xx && states[i].got2xx)
+		h.Resolve(ev, confirmed)
+		if rule := InferRule(h); rule != nil {
+			report.Rules = append(report.Rules, *rule)
+		}
+		if states[i].got2xx && ev.ActualBody != "" {
+			extractBodyToPool(e.pool, ev.ActualBody)
+		}
+	}
+
+	// Pass 2: prioritize ops that didn't get 2xx — run their remaining hypotheses first.
+	// Sort: failing ops (got2xx=false) before covered ops.
+	sort.SliceStable(states, func(i, j int) bool {
+		return !states[i].got2xx && states[j].got2xx
+	})
+
+	for _, st := range states {
+		for _, h := range st.hypotheses[1:] {
+			if ctx.Err() != nil || probesRun >= e.MaxProbes {
+				break
+			}
+			probe := DesignProbe(h, st.op, e.gen)
+			ev, err := RunProbe(ctx, e.TargetURL, probe)
+			if err != nil {
+				continue
+			}
+			probesRun++
+			is2xx := ev.ActualStatus >= 200 && ev.ActualStatus < 300
+			expectedIs4xx := probe.ExpectedStatus >= 400
+			confirmed := (expectedIs4xx && ev.ActualStatus >= 400) || (!expectedIs4xx && is2xx)
+			h.Resolve(ev, confirmed)
+			if rule := InferRule(h); rule != nil {
+				report.Rules = append(report.Rules, *rule)
+			}
+			if is2xx && ev.ActualBody != "" {
+				extractBodyToPool(e.pool, ev.ActualBody)
 			}
 		}
 	}

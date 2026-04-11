@@ -1167,6 +1167,12 @@ run "AT-145" "Postman collection parsing extracts body fields into DataPool" \
 run "AT-146" "chain --seed-postman loads collection without error" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_SeedPostman' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-147" "explore --prioritize-uncovered dry-run reports probes" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_PrioritizeUncovered_DryRun' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-148" "explore --prioritize-uncovered flag accepted without error" \
+  "(cd $REPO_ROOT && go test ./cmd/... -run 'TestExploreCommand_PrioritizeUncoveredFlag' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
