@@ -1200,6 +1200,12 @@ run "AT-156" "boundary_value cases carry named Scenario field" \
 run "AT-157" "score Boundary Coverage detail shows scenario info" \
   "(cd $REPO_ROOT && go test ./internal/score/... -run 'TestBoundaryDetail_IncludesScenarioInfo' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-158" "explore --max-failures stops after N rules" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_MaxFailures_StopsEarly' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-159" "explore deduplicates rules with same operation+category+fieldPath" \
+  "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_RuleDeduplication' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

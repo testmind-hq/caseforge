@@ -39,6 +39,7 @@ func init() {
 	exploreCmd.Flags().Bool("dry-run", false, "Seed hypotheses without executing HTTP probes")
 	exploreCmd.Flags().String("export-pool", "", "Write observed field values to a JSON data pool file (from 2xx responses)")
 	exploreCmd.Flags().Bool("prioritize-uncovered", false, "Two-pass probe scheduling: cover all ops in pass 1, focus budget on non-2xx ops in pass 2")
+	exploreCmd.Flags().Int("max-failures", 0, "Stop after discovering this many rules (0 = unlimited)")
 	exploreCmd.Flags().String("include-path", "", "Regex to include operations by path")
 	exploreCmd.Flags().String("exclude-path", "", "Regex to exclude operations by path")
 	exploreCmd.Flags().String("include-tag", "", "Comma-separated tags to include")
@@ -87,6 +88,9 @@ func runExplore(cmd *cobra.Command, _ []string) error {
 	explorer.DryRun = dryRun
 	if prio, _ := cmd.Flags().GetBool("prioritize-uncovered"); prio {
 		explorer.PrioritizeUncovered = true
+	}
+	if maxFailures, _ := cmd.Flags().GetInt("max-failures"); maxFailures > 0 {
+		explorer.MaxFailures = maxFailures
 	}
 
 	if dryRun {

@@ -107,13 +107,18 @@ func TestExplorer_DiscoverImplicitMinRule(t *testing.T) {
 	report, err := explorer.Explore(context.Background(), &spec.ParsedSpec{Operations: []*spec.Operation{op}})
 	require.NoError(t, err)
 
-	var implicitRules []DiscoveredRule
+	// With rule deduplication enabled, an implicit-min rule for the same
+	// (operation, category, fieldPath) may be suppressed when a non-implicit
+	// required-field rule was already recorded first. The exploration must
+	// still produce at least one rule capturing the server's constraint on
+	// the 'name' field.
+	var nameRules []DiscoveredRule
 	for _, r := range report.Rules {
-		if r.Implicit {
-			implicitRules = append(implicitRules, r)
+		if r.FieldPath == "requestBody.name" {
+			nameRules = append(nameRules, r)
 		}
 	}
-	assert.NotEmpty(t, implicitRules, "server rejects empty name → must produce implicit min rule")
+	assert.NotEmpty(t, nameRules, "server rejects empty name → must produce at least one rule for requestBody.name")
 }
 
 func TestExplorer_MaxProbesRespected(t *testing.T) {
@@ -166,4 +171,77 @@ func TestExplorer_PrioritizeUncovered_LiveProbes(t *testing.T) {
 	assert.Equal(t, srv.URL, report.TargetURL)
 	// Pass 1 fires at least one probe per operation; rules should be inferred.
 	assert.NotEmpty(t, report.Rules, "expected rules from live two-pass exploration")
+}
+
+func TestExplorer_MaxFailures_StopsEarly(t *testing.T) {
+	srv := testServer()
+	defer srv.Close()
+
+	// testSpec() has fields with constraints; multiple rules will be inferred.
+	// Set MaxFailures=1 — should stop after finding the first rule.
+	explorer := NewExplorer(srv.URL, 50)
+	explorer.MaxFailures = 1
+	report, err := explorer.Explore(context.Background(), testSpec())
+	require.NoError(t, err)
+	// With MaxFailures=1, at most 1 rule should be in the report.
+	assert.LessOrEqual(t, len(report.Rules), 1)
+}
+
+func TestExplorer_MaxFailures_Zero_NoLimit(t *testing.T) {
+	srv := testServer()
+	defer srv.Close()
+
+	// MaxFailures=0 (default) → no limit; normal exploration
+	explorer := NewExplorer(srv.URL, 50)
+	explorer.MaxFailures = 0
+	report, err := explorer.Explore(context.Background(), testSpec())
+	require.NoError(t, err)
+	assert.Greater(t, report.TotalProbes, 0)
+}
+
+func TestExplorer_RuleDeduplication(t *testing.T) {
+	srv := testServer()
+	defer srv.Close()
+
+	op := &spec.Operation{
+		Method: "POST",
+		Path:   "/pets",
+		RequestBody: &spec.RequestBody{
+			Required: true,
+			Content: map[string]*spec.MediaType{
+				"application/json": {
+					Schema: &spec.Schema{
+						Type:     "object",
+						Required: []string{"name"},
+						Properties: map[string]*spec.Schema{
+							"name": {Type: "string"},
+						},
+					},
+				},
+			},
+		},
+		Responses: map[string]*spec.Response{
+			"201": {Description: "Created"},
+			"400": {Description: "Bad Request"},
+		},
+	}
+
+	explorer := NewExplorer(srv.URL, 100)
+	report, err := explorer.Explore(context.Background(), &spec.ParsedSpec{Operations: []*spec.Operation{op}})
+	require.NoError(t, err)
+
+	type key struct {
+		op  string
+		cat RuleCategory
+		fp  string
+	}
+	seen := make(map[key]int)
+	for _, r := range report.Rules {
+		k := key{op: r.Operation, cat: r.Category, fp: r.FieldPath}
+		seen[k]++
+	}
+	for k, count := range seen {
+		assert.Equal(t, 1, count,
+			"duplicate rule for (%s, %s, %s): got %d copies", k.op, k.cat, k.fp, count)
+	}
 }
