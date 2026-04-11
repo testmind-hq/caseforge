@@ -69,6 +69,7 @@ var allTechniqueNames = []string{
 	"variable_irrelevance",
 	"mutation",
 	"auth_chain",
+	"constraint_mutation",
 }
 
 func init() {
@@ -324,6 +325,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewSchemaViolationTechnique(),
 		methodology.NewVariableIrrelevanceTechnique(),
 		methodology.NewMutationTechnique(),
+		methodology.NewConstraintMutationTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

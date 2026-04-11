@@ -1188,6 +1188,12 @@ run "AT-152" "response_check unit tests pass" \
 run "AT-153" "explore discovers response schema mismatch rule" \
   "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_ResponseSchemaMismatch_ProducesRule' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-154" "constraint_mutation generates null injection cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestConstraintMutationTechnique_Generate_NullInjection' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-155" "constraint_mutation generates wrong-content-type case" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestConstraintMutationTechnique_Generate_WrongContentType' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
