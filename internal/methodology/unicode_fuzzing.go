@@ -35,7 +35,8 @@ func NewUnicodeFuzzingTechnique() *UnicodeFuzzingTechnique {
 func (u *UnicodeFuzzingTechnique) Name() string { return "unicode_fuzzing" }
 
 // Applies returns true if the operation has a JSON request body with at least
-// one string-typed property.
+// one string-typed property. Only top-level direct properties are examined;
+// nested or allOf-merged schemas are not traversed.
 func (u *UnicodeFuzzingTechnique) Applies(op *spec.Operation) bool {
 	s := getJSONSchema(op.RequestBody)
 	if s == nil {
