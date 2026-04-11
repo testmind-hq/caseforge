@@ -84,11 +84,6 @@ func (t *FieldBoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase
 	if s == nil {
 		return nil, nil
 	}
-	base := buildValidBody(t.gen, op)
-	if base == nil {
-		base = map[string]any{}
-	}
-
 	var cases []schema.TestCase
 	for _, entry := range walkSchemaFields(s, "") {
 		fs := entry.schema
@@ -134,7 +129,12 @@ func (t *FieldBoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase
 		}
 
 		for _, bc := range bcs {
-			body := maps.Clone(base)
+			// Build a fresh body per case to avoid shared nested-map corruption
+			// when setAtPath mutates intermediate maps in place.
+			body := buildValidBody(t.gen, op)
+			if body == nil {
+				body = map[string]any{}
+			}
 			setAtPath(body, entry.dotPath, bc.value)
 
 			specPath := fmt.Sprintf("%s %s requestBody.%s", op.Method, op.Path, entry.dotPath)
