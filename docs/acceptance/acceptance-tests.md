@@ -207,6 +207,8 @@
 | AT-157 | score Boundary Coverage detail shows scenario info | `go test ./internal/score/... -run TestBoundaryDetail_IncludesScenarioInfo` | detail contains covered scenario names | ✅ PASS |
 | AT-158 | explore --max-failures stops after N rules | `go test ./internal/dea/... -run TestExplorer_MaxFailures_StopsEarly` | len(Rules) ≤ MaxFailures | ✅ PASS |
 | AT-159 | explore deduplicates rules with same operation+category+fieldPath | `go test ./internal/dea/... -run TestExplorer_RuleDeduplication` | no duplicate (op, category, fieldPath) triplets in report | ✅ PASS |
+| AT-160 | type_coercion Applies() for op with typed fields | `go test ./internal/methodology/... -run TestTypeCoercionTechnique_Applies_True` | PASS | ✅ PASS |
+| AT-161 | type_coercion generates WRONG_TYPE cases for all typed fields | `go test ./internal/methodology/... -run TestTypeCoercionTechnique_Generate_StringField` | PASS | ✅ PASS |
 
 ---
 

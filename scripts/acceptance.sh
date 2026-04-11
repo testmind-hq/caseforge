@@ -1206,6 +1206,12 @@ run "AT-158" "explore --max-failures stops after N rules" \
 run "AT-159" "explore deduplicates rules with same operation+category+fieldPath" \
   "(cd $REPO_ROOT && go test ./internal/dea/... -run 'TestExplorer_RuleDeduplication' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-160" "type_coercion Applies for op with typed fields" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestTypeCoercionTechnique_Applies_True' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-161" "type_coercion generates WRONG_TYPE cases" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestTypeCoercionTechnique_Generate_StringField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------
