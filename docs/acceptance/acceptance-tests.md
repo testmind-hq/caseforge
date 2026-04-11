@@ -191,6 +191,7 @@
 | AT-141 | DataPool Add/ValueFor/Save/Load/Merge unit tests pass | `go test ./internal/datagen/... -run TestDataPool` | All 5 DataPool tests pass | ✅ PASS |
 | AT-142 | explore --export-pool writes pool JSON in dry-run | `go test ./cmd/... -run TestExploreCommand_ExportPool_DryRun` | pool.json created | ✅ PASS |
 | AT-143 | chain --data-pool loads pool without error | `go test ./cmd/... -run TestChainCommand_DataPool_Loaded` | index.json produced, no error | ✅ PASS |
+| AT-144 | score includes Status Coverage dimension | `go test ./internal/score/... -run TestComputeStatusCoverage` | Status Coverage dimension present with correct score | ✅ PASS |
 
 ---
 

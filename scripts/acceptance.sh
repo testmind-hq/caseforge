@@ -1158,6 +1158,9 @@ run "AT-142" "explore --export-pool writes pool JSON in dry-run" \
 run "AT-143" "chain --data-pool loads pool without error" \
   "(cd $REPO_ROOT && go test ./cmd/... -run 'TestChainCommand_DataPool_Loaded' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-144" "score includes Status Coverage dimension" \
+  "(cd $REPO_ROOT && go test ./internal/score/... -run 'TestComputeStatusCoverage' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

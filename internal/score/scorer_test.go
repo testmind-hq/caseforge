@@ -52,7 +52,7 @@ func TestCompute_EmptyCases(t *testing.T) {
 	r := Compute(nil)
 	assert.Equal(t, 0, r.Overall)
 	assert.Equal(t, 0, r.TotalCases)
-	assert.Len(t, r.Dimensions, 4)
+	assert.Len(t, r.Dimensions, 5)
 	for _, d := range r.Dimensions {
 		assert.Equal(t, 0, d.Score)
 	}
@@ -142,8 +142,8 @@ func TestCompute_SuggestionsAtMostThreeBoundaryOps(t *testing.T) {
 		cases = append(cases, makeCase("GET", p, "state_transition", 1))
 	}
 	r := Compute(cases)
-	// Boundary suggestions capped at 3 ops; plus 1 security suggestion = max 4
-	assert.LessOrEqual(t, len(r.Suggestions), 4)
+	// Boundary suggestions capped at 3 ops; plus 1 security suggestion + 1 status suggestion = max 5
+	assert.LessOrEqual(t, len(r.Suggestions), 5)
 }
 
 func TestCompute_BreadthScalesByTechniqueDiversity(t *testing.T) {
@@ -171,7 +171,6 @@ func TestCompute_BreadthLowWhenSingleTechnique(t *testing.T) {
 }
 
 func TestCompute_SuggestionsNeverNullInJSON(t *testing.T) {
-	// Full-coverage case: no suggestions generated.
 	// Verify JSON encodes "suggestions":[] not "suggestions":null.
 	cases := []schema.TestCase{
 		makeCase("GET", "/a", "equivalence_partitioning", 1),
@@ -181,8 +180,6 @@ func TestCompute_SuggestionsNeverNullInJSON(t *testing.T) {
 	}
 	r := Compute(cases)
 	assert.NotNil(t, r.Suggestions, "Suggestions must be non-nil slice")
-	// Zero suggestions when coverage is perfect.
-	assert.Empty(t, r.Suggestions)
 
 	// Empty-cases path must also produce non-nil slice.
 	r2 := Compute(nil)
@@ -216,6 +213,69 @@ func TestCompute_OWASPInjectedPathsDoNotInflateOpCount(t *testing.T) {
 	// Without the fix: TotalOps would be 5 (one per unique step path).
 	// With the fix: TotalOps should be 2 (DELETE + OPTIONS are distinct spec_path methods).
 	assert.Equal(t, 2, r.TotalOps, "OWASP injected paths must not inflate op count beyond the distinct spec operations (DELETE + OPTIONS)")
+}
+
+func TestComputeStatusCoverage(t *testing.T) {
+	// Op has both a 2xx case (status_code lt 300) and a 4xx case (status_code gte 400)
+	cases := []schema.TestCase{
+		{
+			Source: schema.CaseSource{Technique: "equivalence_partitioning", SpecPath: "POST /users"},
+			Steps: []schema.Step{{
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "lt", Expected: 300},
+				},
+			}},
+		},
+		{
+			Source: schema.CaseSource{Technique: "mutation", SpecPath: "POST /users"},
+			Steps: []schema.Step{{
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "gte", Expected: 400},
+				},
+			}},
+		},
+	}
+	report := Compute(cases)
+
+	var statusDim *Dimension
+	for i := range report.Dimensions {
+		if report.Dimensions[i].Name == "Status Coverage" {
+			statusDim = &report.Dimensions[i]
+		}
+	}
+	if statusDim == nil {
+		t.Fatal("Status Coverage dimension not found")
+	}
+	if statusDim.Score != 100 {
+		t.Errorf("score = %d, want 100 (op has both 2xx and 4xx cases)", statusDim.Score)
+	}
+}
+
+func TestComputeStatusCoverage_MissingErrorPath(t *testing.T) {
+	// Op only has a 2xx case — no 4xx case
+	cases := []schema.TestCase{
+		{
+			Source: schema.CaseSource{Technique: "equivalence_partitioning", SpecPath: "POST /users"},
+			Steps: []schema.Step{{
+				Assertions: []schema.Assertion{
+					{Target: "status_code", Operator: "lt", Expected: 300},
+				},
+			}},
+		},
+	}
+	report := Compute(cases)
+	var statusDim *Dimension
+	for i := range report.Dimensions {
+		if report.Dimensions[i].Name == "Status Coverage" {
+			statusDim = &report.Dimensions[i]
+		}
+	}
+	if statusDim == nil {
+		t.Fatal("Status Coverage dimension not found")
+	}
+	if statusDim.Score != 0 {
+		t.Errorf("score = %d, want 0 (missing 4xx case)", statusDim.Score)
+	}
 }
 
 // TestCompute_CanonicalOpKey_FallbackToStepWhenSpecPathEmpty verifies that cases
