@@ -278,6 +278,10 @@
 | AT-221 | oracle Mine returns empty for NoopProvider | `go test ./internal/oracle/ -run TestMine_NoopProvider -v` | TestMine_NoopProvider_ReturnsEmpty passes | ✅ PASS |
 | AT-222 | oracle ToAssertions exists produces exists operator | `go test ./internal/oracle/ -run TestConstraintToAssertion_Exists -v` | passes | ✅ PASS |
 | AT-223 | oracle InjectIntoCase skips 4xx cases | `go test ./internal/oracle/ -run TestInjectIntoCase_Skips4xx -v` | passes | ✅ PASS |
+| AT-224 | business_rule_violation technique registered in gen | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique business_rule_violation --output /tmp/at224` | exits 0 | ✅ PASS |
+| AT-225 | business_rule Applies false without SemanticInfo | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Applies_NoSemanticInfo -v` | passes | ✅ PASS |
+| AT-226 | business_rule generates one case per rule | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_OnePerRule -v` | passes | ✅ PASS |
+| AT-227 | business_rule cases expect 4xx | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_Expects4xx -v` | passes | ✅ PASS |
 
 ---
 

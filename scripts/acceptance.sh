@@ -1402,6 +1402,18 @@ run "AT-222" "oracle ToAssertions exists" \
 run "AT-223" "oracle InjectIntoCase skips 4xx" \
   "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestInjectIntoCase_Skips4xx -v)"
 
+run "AT-224" "business_rule_violation technique registered" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique business_rule_violation --output /tmp/at224)"
+
+run "AT-225" "business_rule Applies false no semantic info" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Applies_NoSemanticInfo -v)"
+
+run "AT-226" "business_rule one case per rule" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_OnePerRule -v)"
+
+run "AT-227" "business_rule expects 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_Expects4xx -v)"
+
 echo ""
 
 # -------------------------------------------------------

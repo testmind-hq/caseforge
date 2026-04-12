@@ -82,6 +82,7 @@ var allTechniqueNames = []string{
 	"field_boundary",
 	"required_omission",
 	"positive_examples",
+	"business_rule_violation",
 }
 
 func init() {
@@ -348,6 +349,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewFieldBoundaryTechnique(),
 		methodology.NewRequiredOmissionTechnique(),
 		methodology.NewPositiveExamplesTechnique(),
+		methodology.NewBusinessRuleTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),

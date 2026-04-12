@@ -43,6 +43,8 @@ const (
 	ScenarioPositiveExample CoverageScenario = "POSITIVE_EXAMPLE" // happy-path from spec examples
 
 	ScenarioCRUDFlow CoverageScenario = "CRUD_FLOW" // multi-step CRUD lifecycle chain
+
+	ScenarioBusinessRuleViolation CoverageScenario = "BUSINESS_RULE_VIOLATION" // LLM-inferred implicit business rule violated
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -72,4 +74,5 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioRequiredOmission,
 	ScenarioPositiveExample,
 	ScenarioCRUDFlow,
+	ScenarioBusinessRuleViolation,
 }
