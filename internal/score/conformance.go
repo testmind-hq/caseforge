@@ -32,8 +32,6 @@ const (
 type ConformanceResult struct {
 	Score int              `json:"score"`
 	Trend ConformanceTrend `json:"trend"`
-	// ByOperation maps "METHOD /path" to its individual score (0-100).
-	ByOperation map[string]int `json:"by_operation,omitempty"`
 }
 
 // ComputeConformance computes a per-operation conformance score and trend.

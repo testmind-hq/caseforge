@@ -34,6 +34,8 @@ func init() {
 	scoreCmd.Flags().Bool("save-history", false, "Append current score to .caseforge-conformance.json")
 }
 
+const conformanceHistoryFile = ".caseforge-conformance.json"
+
 // scoreOutput wraps Report with a conformance block for JSON output.
 type scoreOutput struct {
 	score.Report
@@ -60,7 +62,7 @@ func runScore(cmd *cobra.Command, _ []string) error {
 	report := score.Compute(cases)
 
 	// Load history and compute conformance.
-	history, err := score.LoadHistory(".caseforge-conformance.json")
+	history, err := score.LoadHistory(conformanceHistoryFile)
 	if err != nil {
 		return fmt.Errorf("loading conformance history: %w", err)
 	}
@@ -68,7 +70,7 @@ func runScore(cmd *cobra.Command, _ []string) error {
 
 	// Optionally save history.
 	if saveHistory {
-		if saveErr := score.SaveHistory(".caseforge-conformance.json", history, report.Overall); saveErr != nil {
+		if saveErr := score.SaveHistory(conformanceHistoryFile, history, report.Overall); saveErr != nil {
 			return fmt.Errorf("saving conformance history: %w", saveErr)
 		}
 	}
