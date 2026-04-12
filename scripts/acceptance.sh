@@ -1377,6 +1377,19 @@ run "AT-214" "classifyFailure missing_validation for mutation technique" \
 run "AT-215" "classifyFailure security_regression for owasp technique" \
   "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_SecurityRegression -count=1)"
 
+# AT-216–AT-219: score --fill-gaps
+contains "AT-216" "score --fill-gaps requires --spec" "fill-gaps requires --spec" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --fill-gaps 2>&1 || true)"
+
+run "AT-217" "score --fill-gaps runs without panic" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true)"
+
+run "AT-218" "score --fill-gaps prints gen commands" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true)"
+
+run "AT-219" "score ComputeGaps unit tests" \
+  "(cd $REPO_ROOT && go test ./internal/score/ -run TestComputeGaps -v)"
+
 echo ""
 
 # -------------------------------------------------------

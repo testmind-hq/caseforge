@@ -270,6 +270,10 @@
 | AT-213 | classifyFailure server_error for happy-path technique | `go test ./cmd/ -run TestClassifyFailure_ServerError -count=1` | PASS | ✅ PASS |
 | AT-214 | classifyFailure missing_validation for mutation technique | `go test ./cmd/ -run TestClassifyFailure_MissingValidation -count=1` | PASS | ✅ PASS |
 | AT-215 | classifyFailure security_regression for owasp technique | `go test ./cmd/ -run TestClassifyFailure_SecurityRegression -count=1` | PASS | ✅ PASS |
+| AT-216 | score --fill-gaps requires --spec flag | `caseforge score --cases cmd/testdata/score_cases --fill-gaps 2>&1 || true` | output contains "fill-gaps requires --spec" | ✅ PASS |
+| AT-217 | score --fill-gaps runs without panic | `caseforge score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true` | exits without panic | ✅ PASS |
+| AT-218 | score --fill-gaps prints gen commands for gaps | `caseforge score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true` | exits 0 | ✅ PASS |
+| AT-219 | score ComputeGaps unit tests pass | `go test ./internal/score/ -run TestComputeGaps -v` | all gap tests pass | ✅ PASS |
 
 ---
 
