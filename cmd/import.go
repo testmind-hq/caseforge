@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/testmind-hq/caseforge/internal/har"
 	"github.com/testmind-hq/caseforge/internal/output/render"
@@ -52,7 +53,7 @@ func runImportHAR(cmd *cobra.Command, args []string) error {
 	// Deduplicate: keep first occurrence per METHOD+path (ignoring query)
 	seen := map[string]bool{}
 	var cases []schema.TestCase
-	for i, e := range entries {
+	for _, e := range entries {
 		path := e.Request.URL // already stripped to /path?query by parser
 		key := e.Request.Method + " " + stripQuery(path)
 		if seen[key] {
@@ -60,7 +61,7 @@ func runImportHAR(cmd *cobra.Command, args []string) error {
 		}
 		seen[key] = true
 
-		tc := harEntryToTestCase(i, e)
+		tc := harEntryToTestCase(e)
 		cases = append(cases, tc)
 	}
 
@@ -82,8 +83,8 @@ func runImportHAR(cmd *cobra.Command, args []string) error {
 	return renderer.Render(cases, outputDir)
 }
 
-func harEntryToTestCase(idx int, e har.Entry) schema.TestCase {
-	id := fmt.Sprintf("TC-%04d", idx+1)
+func harEntryToTestCase(e har.Entry) schema.TestCase {
+	id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 	path := e.Request.URL
 	title := fmt.Sprintf("[har_replay] %s %s", e.Request.Method, stripQuery(path))
 

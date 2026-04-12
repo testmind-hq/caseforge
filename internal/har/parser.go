@@ -36,6 +36,8 @@ type NameValue struct {
 }
 
 // noiseHeaders is the set of header names (lowercase) to strip.
+// Includes browser fingerprinting headers and credential headers (to prevent
+// accidental secret leakage into generated output files).
 var noiseHeaders = map[string]bool{
 	"user-agent":                true,
 	"accept-encoding":           true,
@@ -44,6 +46,11 @@ var noiseHeaders = map[string]bool{
 	"pragma":                    true,
 	"connection":                true,
 	"upgrade-insecure-requests": true,
+	// Credential headers — strip to prevent secret leakage in generated files
+	"authorization": true,
+	"cookie":        true,
+	"set-cookie":    true,
+	"x-api-key":     true,
 }
 
 // isNoise reports whether the header with the given lowercase name should be stripped.
