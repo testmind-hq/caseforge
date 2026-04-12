@@ -41,6 +41,8 @@ const (
 	ScenarioRequiredOmission     CoverageScenario = "REQUIRED_OMISSION"      // required field entirely absent from payload
 
 	ScenarioPositiveExample CoverageScenario = "POSITIVE_EXAMPLE" // happy-path from spec examples
+
+	ScenarioCRUDFlow CoverageScenario = "CRUD_FLOW" // multi-step CRUD lifecycle chain
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -69,4 +71,5 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioFieldBoundaryInvalid,
 	ScenarioRequiredOmission,
 	ScenarioPositiveExample,
+	ScenarioCRUDFlow,
 }

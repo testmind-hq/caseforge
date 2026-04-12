@@ -191,6 +191,16 @@ func TestChainTechniqueSourceAnnotation(t *testing.T) {
 	assert.True(t, strings.HasPrefix(cases[0].Source.SpecPath, "/users"))
 }
 
+func TestChainTechnique_Source_ScenarioCRUDFlow(t *testing.T) {
+	ct := NewChainTechnique()
+	cases, err := ct.Generate(crudSpec())
+	require.NoError(t, err)
+	require.NotEmpty(t, cases)
+
+	assert.Equal(t, "CRUD_FLOW", cases[0].Source.Scenario,
+		"chain_crud source scenario must be CRUD_FLOW")
+}
+
 func crudSpecWithUpdate() *spec.ParsedSpec {
 	return &spec.ParsedSpec{
 		Operations: []*spec.Operation{

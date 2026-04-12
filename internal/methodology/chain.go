@@ -11,6 +11,7 @@ import (
 	assertpkg "github.com/testmind-hq/caseforge/internal/assert"
 	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
+	"github.com/testmind-hq/caseforge/internal/score"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -267,6 +268,7 @@ func (t *ChainTechnique) buildChainCase(resourcePath string, g *chainGroup) sche
 			Technique: "chain_crud",
 			SpecPath:  resourcePath,
 			Rationale: fmt.Sprintf("CRUD lifecycle: %s for %s", stepDesc, resourcePath),
+			Scenario:  string(score.ScenarioCRUDFlow),
 		},
 		Steps:       steps,
 		GeneratedAt: time.Now(),

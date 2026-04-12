@@ -1296,6 +1296,24 @@ run "AT-188" "positive_examples substitutes path param value in URL" \
 run "AT-189" "positive_examples expects 2xx assertions" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_Expects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-190" "chain_crud detects POST+GET+DELETE chain" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud190 2>/dev/null && grep -q 'chain_crud' $WORKDIR/crud190/index.json)"
+
+run "AT-191" "chain_crud generates kind=chain test case" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud191 2>/dev/null && grep -q '\"kind\": \"chain\"' $WORKDIR/crud191/index.json)"
+
+run "AT-192" "chain_crud setup step captures created id" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud192 2>/dev/null && grep -q '\"captures\"' $WORKDIR/crud192/index.json)"
+
+run "AT-193" "chain_crud test step uses captured id in path" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud193 2>/dev/null && grep -q '{{id}}' $WORKDIR/crud193/index.json)"
+
+run "AT-194" "chain_crud teardown step is DELETE" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud194 2>/dev/null && grep -q '\"type\": \"teardown\"' $WORKDIR/crud194/index.json)"
+
+run "AT-195" "chain_crud source scenario is CRUD_FLOW" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestChainTechnique_Source_ScenarioCRUDFlow' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
 echo ""
 
 # -------------------------------------------------------

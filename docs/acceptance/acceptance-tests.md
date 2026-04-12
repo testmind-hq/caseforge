@@ -237,6 +237,12 @@
 | AT-187 | positive_examples generates one case per named example | `go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_OneCasePerNamedExample' -count=1` | PASS | ✅ PASS |
 | AT-188 | positive_examples substitutes path param value in URL | `caseforge gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples \| grep /users/42` | output contains /users/42 | ✅ PASS |
 | AT-189 | positive_examples expects 2xx assertions | `go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_Expects2xx' -count=1` | PASS | ✅ PASS |
+| AT-190 | chain_crud detects POST+GET+DELETE chain | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep chain_crud` | output contains chain_crud | ✅ PASS |
+| AT-191 | chain_crud generates kind=chain test case | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '"kind":"chain"'` | output contains "kind":"chain" | ✅ PASS |
+| AT-192 | chain_crud setup step captures created id | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '"captures"'` | output contains captures | ✅ PASS |
+| AT-193 | chain_crud test step uses captured id in path | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '{{id}}'` | output contains {{id}} | ✅ PASS |
+| AT-194 | chain_crud teardown step is DELETE | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '"type":"teardown"'` | output contains "type":"teardown" | ✅ PASS |
+| AT-195 | chain_crud source scenario is CRUD_FLOW | `go test ./internal/methodology/... -run 'TestChainTechnique_Source_ScenarioCRUDFlow' -count=1` | PASS | ✅ PASS |
 
 ---
 
