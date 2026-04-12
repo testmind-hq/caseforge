@@ -1314,6 +1314,24 @@ run "AT-194" "chain_crud teardown step is DELETE" \
 run "AT-195" "chain_crud source scenario is CRUD_FLOW" \
   "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestChainTechnique_Source_ScenarioCRUDFlow' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-196" "import subcommand registered" \
+  "(cd $REPO_ROOT && $BIN import --help 2>&1 | grep -q 'import')"
+
+run "AT-197" "import har subcommand registered" \
+  "(cd $REPO_ROOT && $BIN import har --help 2>&1 | grep -q 'har')"
+
+run "AT-198" "import har parses entries from HAR file" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_198 2>/dev/null && ls $WORKDIR/har_test_198 | grep -q '.')"
+
+run "AT-199" "import har strips noise headers (user-agent absent from output)" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_199 2>/dev/null && ! grep -r 'user-agent\|Mozilla' $WORKDIR/har_test_199)"
+
+run "AT-200" "import har deduplicates identical METHOD+PATH entries" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_200 2>/dev/null && test \$(ls $WORKDIR/har_test_200 | wc -l | tr -d ' ') -eq 2)"
+
+run "AT-201" "import har writes test cases to output directory" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_201 2>/dev/null && test \$(ls $WORKDIR/har_test_201 | wc -l | tr -d ' ') -gt 0)"
+
 echo ""
 
 # -------------------------------------------------------

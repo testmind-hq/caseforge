@@ -246,6 +246,19 @@
 
 ---
 
+### `import har` — HAR Traffic Replay
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-196 | import subcommand registered | `caseforge import --help` | help output contains "import" | ✅ PASS |
+| AT-197 | import har subcommand registered | `caseforge import har --help` | help output contains "har" | ✅ PASS |
+| AT-198 | import har parses entries from HAR file | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_198` | output directory contains files | ✅ PASS |
+| AT-199 | import har strips noise headers | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_199` | user-agent absent from generated output | ✅ PASS |
+| AT-200 | import har deduplicates identical METHOD+PATH entries | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_200` | exactly 2 output files (POST /users deduplicated) | ✅ PASS |
+| AT-201 | import har writes test cases to output directory | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_201` | output directory is non-empty | ✅ PASS |
+
+---
+
 ### `gen` — Technique Coverage
 
 | ID | Scenario | Expected Techniques | Status |
@@ -461,7 +474,8 @@
 | idor | 2 | 2 | 0 |
 | datagen pattern | 2 | 2 | 0 |
 | positive_examples | 4 | 4 | 0 |
-| **Total** | **106** | **106** | **0** |
+| import har | 6 | 6 | 0 |
+| **Total** | **112** | **112** | **0** |
 
 ---
 
