@@ -256,6 +256,12 @@
 | AT-199 | import har strips noise headers | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_199` | user-agent absent from generated output | ✅ PASS |
 | AT-200 | import har deduplicates identical METHOD+PATH entries | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_200` | exactly 2 output files (POST /users deduplicated) | ✅ PASS |
 | AT-201 | import har writes test cases to output directory | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_201` | output directory is non-empty | ✅ PASS |
+| AT-202 | score --format json includes conformance block | `caseforge score --cases cmd/testdata/score_cases --format json` | output contains `"conformance"` | ✅ PASS |
+| AT-203 | score --format json conformance has trend field | `caseforge score --cases cmd/testdata/score_cases --format json` | output contains `"trend"` | ✅ PASS |
+| AT-204 | score terminal output shows conformance trend | `caseforge score --cases cmd/testdata/score_cases` | output contains `"trend:"` or `"Conformance"` | ✅ PASS |
+| AT-205 | score --min-score passes when score meets threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 0` | exit code 0 | ✅ PASS |
+| AT-206 | score --min-score fails when score below threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 200` | exit code non-zero | ✅ PASS |
+| AT-207 | score --save-history writes .caseforge-conformance.json | `cd /tmp && caseforge score --cases /Users/yuchou/Github/yuchou87/caseforge/cmd/testdata/score_cases --save-history && test -f .caseforge-conformance.json` | file exists | ✅ PASS |
 
 ---
 
@@ -470,12 +476,12 @@
 | run | 5 | 5 | 0 |
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
-| score | 4 | 4 | 0 |
+| score | 10 | 10 | 0 |
 | idor | 2 | 2 | 0 |
 | datagen pattern | 2 | 2 | 0 |
 | positive_examples | 4 | 4 | 0 |
 | import har | 6 | 6 | 0 |
-| **Total** | **112** | **112** | **0** |
+| **Total** | **118** | **118** | **0** |
 
 ---
 

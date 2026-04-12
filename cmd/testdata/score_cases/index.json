@@ -1,0 +1,58 @@
+{
+  "$schema": "https://caseforge.dev/schema/v1/index.json",
+  "version": "1",
+  "generated_at": "2026-01-01T00:00:00Z",
+  "meta": {},
+  "test_cases": [
+    {
+      "id": "tc-1",
+      "title": "GET /pets happy path",
+      "kind": "single",
+      "priority": "P1",
+      "tags": [],
+      "source": {
+        "technique": "equivalence_partitioning",
+        "spec_path": "GET /pets",
+        "rationale": "happy path test"
+      },
+      "steps": [
+        {
+          "id": "s1",
+          "title": "step",
+          "type": "test",
+          "method": "GET",
+          "path": "/pets",
+          "assertions": [
+            {"target": "status_code", "operator": "lt", "expected": 300}
+          ]
+        }
+      ],
+      "generated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "tc-2",
+      "title": "GET /pets error path",
+      "kind": "single",
+      "priority": "P1",
+      "tags": [],
+      "source": {
+        "technique": "boundary_value",
+        "spec_path": "GET /pets",
+        "rationale": "error path test"
+      },
+      "steps": [
+        {
+          "id": "s1",
+          "title": "step",
+          "type": "test",
+          "method": "GET",
+          "path": "/pets",
+          "assertions": [
+            {"target": "status_code", "operator": "gte", "expected": 400}
+          ]
+        }
+      ],
+      "generated_at": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

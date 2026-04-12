@@ -1332,6 +1332,25 @@ run "AT-200" "import har deduplicates identical METHOD+PATH entries" \
 run "AT-201" "import har writes test cases to output directory" \
   "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_201 2>/dev/null && test \$(ls $WORKDIR/har_test_201 | wc -l | tr -d ' ') -gt 0)"
 
+# AT-202–AT-207: conformance score + CI gate
+contains "AT-202" "score --format json includes conformance block" '"conformance"' \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --format json)"
+
+contains "AT-203" "score --format json conformance has trend field" '"trend"' \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --format json)"
+
+contains "AT-204" "score terminal output shows conformance trend" "trend:" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases)"
+
+run "AT-205" "score --min-score passes when score meets threshold" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --min-score 0)"
+
+run "AT-206" "score --min-score fails when score below threshold" \
+  "(cd $REPO_ROOT && ! $BIN score --cases cmd/testdata/score_cases --min-score 200 2>/dev/null)"
+
+run "AT-207" "score --save-history writes .caseforge-conformance.json" \
+  "(cd /tmp && $BIN score --cases $REPO_ROOT/cmd/testdata/score_cases --save-history 2>/dev/null && test -f .caseforge-conformance.json)"
+
 echo ""
 
 # -------------------------------------------------------
