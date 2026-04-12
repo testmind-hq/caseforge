@@ -267,6 +267,8 @@ func renderAssertion(a schema.Assertion) string {
 			return fmt.Sprintf("jsonpath %q >= %v\n", expr, a.Expected)
 		case "exists":
 			return fmt.Sprintf("jsonpath %q exists\n", expr)
+		case "not_exists":
+			return fmt.Sprintf("jsonpath %q not exists\n", expr)
 		case "contains":
 			return fmt.Sprintf("jsonpath %q contains %s\n", expr, formatHurlValue(a.Expected))
 		case "matches":

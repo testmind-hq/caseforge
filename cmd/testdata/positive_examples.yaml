@@ -1,0 +1,31 @@
+openapi: "3.0.3"
+info: { title: Positive Examples, version: "1" }
+paths:
+  /users/{id}:
+    get:
+      operationId: getUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          examples:
+            activeUser:
+              summary: Active user
+              value: 42
+            adminUser:
+              summary: Admin user
+              value: 1
+      responses:
+        "200": { description: ok }
+  /search:
+    get:
+      operationId: search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+          example: "hello world"
+      responses:
+        "200": { description: ok }

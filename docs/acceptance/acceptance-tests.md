@@ -219,6 +219,49 @@
 | AT-169 | explore seeds KindMassAssignment hypothesis for body ops | `go test ./internal/dea/... -run 'TestSeedHypotheses_IncludesMassAssignment' -count=1` | PASS | ✅ PASS |
 | AT-170 | datagen generates pattern-matching strings for simple patterns | `go test ./internal/datagen/... -run 'TestGenerateByPattern_Digits' -count=1` | PASS | ✅ PASS |
 | AT-171 | datagen falls back gracefully on invalid patterns | `go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1` | PASS | ✅ PASS |
+| AT-172 | semantic_annotation generates cases for nullable fields | `caseforge gen --spec cmd/testdata/semantic.yaml --no-ai --technique semantic_annotation \| grep NULLABLE_ACCEPTANCE` | output contains NULLABLE_ACCEPTANCE | ✅ PASS |
+| AT-173 | nullable acceptance case expects 2xx | `go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_NullableCase_Expects2xx' -count=1` | PASS | ✅ PASS |
+| AT-174 | readOnly write rejection case expects 4xx | `go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_ReadOnlyCase_Expects4xx' -count=1` | PASS | ✅ PASS |
+| AT-175 | writeOnly read suppression case has jsonpath assertion | `go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_WriteOnlyCase_FieldAbsent' -count=1` | PASS | ✅ PASS |
+| AT-176 | schema ReadOnly field parsed from spec | `go test ./internal/spec/... -run 'TestSemanticAnnotation_ReadOnly_Parsed' -count=1` | PASS | ✅ PASS |
+| AT-177 | schema WriteOnly field parsed from spec | `go test ./internal/spec/... -run 'TestSemanticAnnotation_WriteOnly_Parsed' -count=1` | PASS | ✅ PASS |
+| AT-178 | field_boundary Applies for op with constrained fields | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary \| grep field_boundary` | output contains field_boundary | ✅ PASS |
+| AT-179 | field_boundary generates cases for constrained fields | `go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_4CasesPerConstrainedField' -count=1` | PASS | ✅ PASS |
+| AT-180 | field_boundary generates nested field path cases | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary \| grep address.zip` | output contains address.zip | ✅ PASS |
+| AT-181 | field_boundary valid cases expect 2xx assertions | `go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_ValidBoundaryExpects2xx' -count=1` | PASS | ✅ PASS |
+| AT-182 | required_omission Applies for op with required fields | `caseforge gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission \| grep required_omission` | output contains required_omission | ✅ PASS |
+| AT-183 | required_omission generates one case per required field | `go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_OneCasePerRequiredField' -count=1` | PASS | ✅ PASS |
+| AT-184 | required_omission case has field absent (REQUIRED_OMISSION scenario) | `caseforge gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission \| grep REQUIRED_OMISSION` | output contains REQUIRED_OMISSION | ✅ PASS |
+| AT-185 | required_omission cases expect 4xx | `go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_Expects4xx' -count=1` | PASS | ✅ PASS |
+| AT-186 | positive_examples Applies for op with parameter examples | `caseforge gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples \| grep positive_examples` | output contains positive_examples | ✅ PASS |
+| AT-187 | positive_examples generates one case per named example | `go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_OneCasePerNamedExample' -count=1` | PASS | ✅ PASS |
+| AT-188 | positive_examples substitutes path param value in URL | `caseforge gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples \| grep /users/42` | output contains /users/42 | ✅ PASS |
+| AT-189 | positive_examples expects 2xx assertions | `go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_Expects2xx' -count=1` | PASS | ✅ PASS |
+| AT-190 | chain_crud detects POST+GET+DELETE chain | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep chain_crud` | output contains chain_crud | ✅ PASS |
+| AT-191 | chain_crud generates kind=chain test case | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '"kind":"chain"'` | output contains "kind":"chain" | ✅ PASS |
+| AT-192 | chain_crud setup step captures created id | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '"captures"'` | output contains captures | ✅ PASS |
+| AT-193 | chain_crud test step uses captured id in path | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '{{id}}'` | output contains {{id}} | ✅ PASS |
+| AT-194 | chain_crud teardown step is DELETE | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud \| grep '"type":"teardown"'` | output contains "type":"teardown" | ✅ PASS |
+| AT-195 | chain_crud source scenario is CRUD_FLOW | `go test ./internal/methodology/... -run 'TestChainTechnique_Source_ScenarioCRUDFlow' -count=1` | PASS | ✅ PASS |
+
+---
+
+### `import har` — HAR Traffic Replay
+
+| ID | Scenario | Command | Expected | Status |
+|----|----------|---------|----------|--------|
+| AT-196 | import subcommand registered | `caseforge import --help` | help output contains "import" | ✅ PASS |
+| AT-197 | import har subcommand registered | `caseforge import har --help` | help output contains "har" | ✅ PASS |
+| AT-198 | import har parses entries from HAR file | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_198` | output directory contains files | ✅ PASS |
+| AT-199 | import har strips noise headers | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_199` | user-agent absent from generated output | ✅ PASS |
+| AT-200 | import har deduplicates identical METHOD+PATH entries | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_200` | exactly 2 output files (POST /users deduplicated) | ✅ PASS |
+| AT-201 | import har writes test cases to output directory | `caseforge import har cmd/testdata/sample.har --output /tmp/har_test_201` | output directory is non-empty | ✅ PASS |
+| AT-202 | score --format json includes conformance block | `caseforge score --cases cmd/testdata/score_cases --format json` | output contains `"conformance"` | ✅ PASS |
+| AT-203 | score --format json conformance has trend field | `caseforge score --cases cmd/testdata/score_cases --format json` | output contains `"trend"` | ✅ PASS |
+| AT-204 | score terminal output shows conformance trend | `caseforge score --cases cmd/testdata/score_cases` | output contains `"trend:"` or `"Conformance"` | ✅ PASS |
+| AT-205 | score --min-score passes when score meets threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 0` | exit code 0 | ✅ PASS |
+| AT-206 | score --min-score fails when score below threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 200` | exit code non-zero | ✅ PASS |
+| AT-207 | score --save-history writes .caseforge-conformance.json | `cd /tmp && caseforge score --cases /Users/yuchou/Github/yuchou87/caseforge/cmd/testdata/score_cases --save-history && test -f .caseforge-conformance.json` | file exists | ✅ PASS |
 
 ---
 
@@ -433,10 +476,12 @@
 | run | 5 | 5 | 0 |
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
-| score | 4 | 4 | 0 |
+| score | 10 | 10 | 0 |
 | idor | 2 | 2 | 0 |
 | datagen pattern | 2 | 2 | 0 |
-| **Total** | **102** | **102** | **0** |
+| positive_examples | 4 | 4 | 0 |
+| import har | 6 | 6 | 0 |
+| **Total** | **118** | **118** | **0** |
 
 ---
 

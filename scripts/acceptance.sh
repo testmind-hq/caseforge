@@ -1242,6 +1242,115 @@ run "AT-170" "datagen generates pattern-matching strings for simple patterns" \
 run "AT-171" "datagen falls back gracefully on invalid patterns" \
   "(cd $REPO_ROOT && go test ./internal/datagen/... -run 'TestGenerateByPattern_InvalidPattern' -count=1 2>&1 | grep -E '(PASS|ok)')"
 
+run "AT-172" "semantic_annotation generates cases for nullable fields" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/semantic.yaml --no-ai --technique semantic_annotation --output $WORKDIR/semantic 2>/dev/null && grep -q 'NULLABLE_ACCEPTANCE' $WORKDIR/semantic/index.json)"
+
+run "AT-173" "nullable acceptance case expects 2xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_NullableCase_Expects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-174" "readOnly write rejection case expects 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_ReadOnlyCase_Expects4xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-175" "writeOnly read suppression case has jsonpath assertion" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestSemanticAnnotationTechnique_Generate_WriteOnlyCase_FieldAbsent' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-176" "schema ReadOnly field parsed from spec" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestSemanticAnnotation_ReadOnly_Parsed' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-177" "schema WriteOnly field parsed from spec" \
+  "(cd $REPO_ROOT && go test ./internal/spec/... -run 'TestSemanticAnnotation_WriteOnly_Parsed' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-178" "field_boundary Applies for op with constrained fields" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary --output $WORKDIR/fb178 2>/dev/null && grep -q 'field_boundary' $WORKDIR/fb178/index.json)"
+
+run "AT-179" "field_boundary generates cases for constrained fields" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_4CasesPerConstrainedField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-180" "field_boundary generates nested field path cases" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --technique field_boundary --output $WORKDIR/fb180 2>/dev/null && grep -q 'address.zip' $WORKDIR/fb180/index.json)"
+
+run "AT-181" "field_boundary valid cases expect 2xx assertions" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestFieldBoundaryTechnique_Generate_ValidBoundaryExpects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-182" "required_omission Applies for op with required fields" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission --output $WORKDIR/ro182 2>/dev/null && grep -q 'required_omission' $WORKDIR/ro182/index.json)"
+
+run "AT-183" "required_omission generates one case per required field" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_OneCasePerRequiredField' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-184" "required_omission case has field absent (REQUIRED_OMISSION scenario)" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/required_omission.yaml --no-ai --technique required_omission --output $WORKDIR/ro184 2>/dev/null && grep -q 'REQUIRED_OMISSION' $WORKDIR/ro184/index.json)"
+
+run "AT-185" "required_omission cases expect 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestRequiredOmissionTechnique_Generate_Expects4xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-186" "positive_examples Applies for op with parameter examples" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples --output $WORKDIR/pe186 2>/dev/null && grep -q 'positive_examples' $WORKDIR/pe186/index.json)"
+
+run "AT-187" "positive_examples generates one case per named example" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_OneCasePerNamedExample' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-188" "positive_examples substitutes path param value in URL" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/positive_examples.yaml --no-ai --technique positive_examples --output $WORKDIR/pe188 2>/dev/null && grep -q '/users/42' $WORKDIR/pe188/index.json)"
+
+run "AT-189" "positive_examples expects 2xx assertions" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestPositiveExamplesTechnique_Generate_Expects2xx' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-190" "chain_crud detects POST+GET+DELETE chain" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud190 2>/dev/null && grep -q 'chain_crud' $WORKDIR/crud190/index.json)"
+
+run "AT-191" "chain_crud generates kind=chain test case" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud191 2>/dev/null && grep -q '\"kind\": \"chain\"' $WORKDIR/crud191/index.json)"
+
+run "AT-192" "chain_crud setup step captures created id" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud192 2>/dev/null && grep -q '\"captures\"' $WORKDIR/crud192/index.json)"
+
+run "AT-193" "chain_crud test step uses captured id in path" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud193 2>/dev/null && grep -q '{{id}}' $WORKDIR/crud193/index.json)"
+
+run "AT-194" "chain_crud teardown step is DELETE" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_crud --output $WORKDIR/crud194 2>/dev/null && grep -q '\"type\": \"teardown\"' $WORKDIR/crud194/index.json)"
+
+run "AT-195" "chain_crud source scenario is CRUD_FLOW" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/... -run 'TestChainTechnique_Source_ScenarioCRUDFlow' -count=1 2>&1 | grep -E '(PASS|ok)')"
+
+run "AT-196" "import subcommand registered" \
+  "(cd $REPO_ROOT && $BIN import --help 2>&1 | grep -q 'import')"
+
+run "AT-197" "import har subcommand registered" \
+  "(cd $REPO_ROOT && $BIN import har --help 2>&1 | grep -q 'har')"
+
+run "AT-198" "import har parses entries from HAR file" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_198 2>/dev/null && ls $WORKDIR/har_test_198 | grep -q '.')"
+
+run "AT-199" "import har strips noise headers (user-agent absent from output)" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_199 2>/dev/null && ! grep -r 'user-agent\|Mozilla' $WORKDIR/har_test_199)"
+
+run "AT-200" "import har deduplicates identical METHOD+PATH entries" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_200 2>/dev/null && test \$(ls $WORKDIR/har_test_200 | wc -l | tr -d ' ') -eq 2)"
+
+run "AT-201" "import har writes test cases to output directory" \
+  "(cd $REPO_ROOT && $BIN import har cmd/testdata/sample.har --output $WORKDIR/har_test_201 2>/dev/null && test \$(ls $WORKDIR/har_test_201 | wc -l | tr -d ' ') -gt 0)"
+
+# AT-202–AT-207: conformance score + CI gate
+contains "AT-202" "score --format json includes conformance block" '"conformance"' \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --format json)"
+
+contains "AT-203" "score --format json conformance has trend field" '"trend"' \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --format json)"
+
+contains "AT-204" "score terminal output shows conformance trend" "trend:" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases)"
+
+run "AT-205" "score --min-score passes when score meets threshold" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --min-score 0)"
+
+run "AT-206" "score --min-score fails when score below threshold" \
+  "(cd $REPO_ROOT && ! $BIN score --cases cmd/testdata/score_cases --min-score 200 2>/dev/null)"
+
+run "AT-207" "score --save-history writes .caseforge-conformance.json" \
+  "(cd /tmp && $BIN score --cases $REPO_ROOT/cmd/testdata/score_cases --save-history 2>/dev/null && test -f .caseforge-conformance.json)"
+
 echo ""
 
 # -------------------------------------------------------

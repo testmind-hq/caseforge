@@ -31,6 +31,18 @@ const (
 	ScenarioMassAssignmentIdentity  CoverageScenario = "MASS_ASSIGNMENT_IDENTITY"   // ownership takeover via extra fields
 
 	ScenarioIDORParam CoverageScenario = "IDOR_PARAM" // IDOR: substitute ID param with alternative value
+
+	ScenarioNullableAcceptance CoverageScenario = "NULLABLE_ACCEPTANCE" // nullable field accepts null value
+	ScenarioReadOnlyWrite      CoverageScenario = "READ_ONLY_WRITE"     // readOnly field rejected on write
+	ScenarioWriteOnlyRead      CoverageScenario = "WRITE_ONLY_READ"     // writeOnly field absent from read response
+
+	ScenarioFieldBoundaryValid   CoverageScenario = "FIELD_BOUNDARY_VALID"   // nested field at declared boundary (valid)
+	ScenarioFieldBoundaryInvalid CoverageScenario = "FIELD_BOUNDARY_INVALID" // nested field outside declared boundary (invalid)
+	ScenarioRequiredOmission     CoverageScenario = "REQUIRED_OMISSION"      // required field entirely absent from payload
+
+	ScenarioPositiveExample CoverageScenario = "POSITIVE_EXAMPLE" // happy-path from spec examples
+
+	ScenarioCRUDFlow CoverageScenario = "CRUD_FLOW" // multi-step CRUD lifecycle chain
 )
 
 // trackedScenarios is the canonical list of scenarios reported in score output.
@@ -52,4 +64,12 @@ var trackedScenarios = []CoverageScenario{
 	ScenarioMassAssignmentFinancial,
 	ScenarioMassAssignmentIdentity,
 	ScenarioIDORParam,
+	ScenarioNullableAcceptance,
+	ScenarioReadOnlyWrite,
+	ScenarioWriteOnlyRead,
+	ScenarioFieldBoundaryValid,
+	ScenarioFieldBoundaryInvalid,
+	ScenarioRequiredOmission,
+	ScenarioPositiveExample,
+	ScenarioCRUDFlow,
 }

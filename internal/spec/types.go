@@ -10,6 +10,8 @@ type Parameter struct {
 	In       string // "query"|"path"|"header"|"cookie"
 	Required bool
 	Schema   *Schema
+	Example  any                 // parameter-level single example value
+	Examples map[string]*Example // parameter-level named examples (name → Example)
 }
 
 type RequestBody struct {
@@ -61,6 +63,8 @@ type Schema struct {
 	MaxItems    *uint64
 	Required    []string
 	Nullable    bool
+	ReadOnly    bool
+	WriteOnly   bool
 	Ref         string // original $ref path if applicable
 	Example     any
 	Pattern     string // regex pattern constraint for string fields (OpenAPI `pattern`)

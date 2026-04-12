@@ -158,6 +158,78 @@ func TestScoreCommand_MissingIndexJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "index.json")
 }
 
+func TestScoreCmd_MinScore_PassesWhenAboveThreshold(t *testing.T) {
+	dir := t.TempDir()
+	writeScoreTestIndex(t, dir)
+
+	t.Cleanup(func() { _ = scoreCmd.Flags().Set("min-score", "0") })
+
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetArgs([]string{"score", "--cases", dir, "--min-score", "0"})
+	err := rootCmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestScoreCmd_MinScore_FailsWhenBelowThreshold(t *testing.T) {
+	dir := t.TempDir()
+	writeScoreTestIndex(t, dir)
+
+	t.Cleanup(func() { _ = scoreCmd.Flags().Set("min-score", "0") })
+
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetArgs([]string{"score", "--cases", dir, "--min-score", "200"})
+	err := rootCmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "below minimum threshold")
+}
+
+func TestScoreCmd_SaveHistory_WritesFile(t *testing.T) {
+	dir := t.TempDir()
+	writeScoreTestIndex(t, dir)
+
+	// Change working directory to tmpdir so history file is written there.
+	origDir, _ := os.Getwd()
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		_ = os.Chdir(origDir)
+		_ = scoreCmd.Flags().Set("save-history", "false")
+	})
+
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetArgs([]string{"score", "--cases", dir, "--save-history"})
+	err := rootCmd.Execute()
+	require.NoError(t, err)
+
+	historyPath := filepath.Join(dir, ".caseforge-conformance.json")
+	_, statErr := os.Stat(historyPath)
+	require.NoError(t, statErr, ".caseforge-conformance.json must exist after --save-history")
+}
+
+func TestScoreCmd_JSONOutput_IncludesConformanceBlock(t *testing.T) {
+	dir := t.TempDir()
+	writeScoreTestIndex(t, dir)
+
+	t.Cleanup(func() { _ = scoreCmd.Flags().Set("format", "terminal") })
+
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetArgs([]string{"score", "--cases", dir, "--format", "json"})
+	err := rootCmd.Execute()
+	require.NoError(t, err)
+
+	var out map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &out))
+	assert.Contains(t, out, "conformance", "JSON output must include 'conformance' field")
+
+	conf, ok := out["conformance"].(map[string]any)
+	require.True(t, ok, "conformance must be an object")
+	assert.Contains(t, conf, "trend", "conformance must include 'trend' field")
+	assert.Contains(t, conf, "score", "conformance must include 'score' field")
+}
+
 func TestScoreCommand_OutputContainsSuggestions(t *testing.T) {
 	// Write index with only equivalence cases and no security cases → suggestions expected.
 	dir := t.TempDir()

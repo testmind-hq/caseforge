@@ -74,6 +74,10 @@ var allTechniqueNames = []string{
 	"unicode_fuzzing",
 	"mass_assignment",
 	"idor",
+	"semantic_annotation",
+	"field_boundary",
+	"required_omission",
+	"positive_examples",
 }
 
 func init() {
@@ -334,6 +338,10 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewUnicodeFuzzingTechnique(),
 		methodology.NewMassAssignmentTechnique(),
 		methodology.NewIDORTechnique(),
+		methodology.NewSemanticAnnotationTechnique(),
+		methodology.NewFieldBoundaryTechnique(),
+		methodology.NewRequiredOmissionTechnique(),
+		methodology.NewPositiveExamplesTechnique(),
 	}
 	allSpecTechniques := []methodology.SpecTechnique{
 		methodology.NewChainTechnique(),
