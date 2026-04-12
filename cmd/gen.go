@@ -83,6 +83,7 @@ var allTechniqueNames = []string{
 	"required_omission",
 	"positive_examples",
 	"business_rule_violation",
+	"chain_sequence",
 }
 
 func init() {
@@ -355,6 +356,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		methodology.NewChainTechnique(),
 		methodology.NewSecuritySpecTechnique(),
 		methodology.NewAuthChainTechnique(),
+		methodology.NewChainSequenceTechnique(),
 	}
 	selectedTechniques, selectedSpec := filterTechniques(allTechniques, allSpecTechniques, genTechnique)
 	if genTechnique != "" && len(selectedTechniques) == 0 && len(selectedSpec) == 0 {

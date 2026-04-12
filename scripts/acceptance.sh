@@ -1413,6 +1413,14 @@ run "AT-226" "business_rule one case per rule" \
 
 run "AT-227" "business_rule expects 4xx" \
   "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_Expects4xx -v)"
+run "AT-228" "chain_sequence technique registered" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_sequence --output /tmp/at228)"
+run "AT-229" "scoreFieldSimilarity positive overlap" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestScoreFieldSimilarity_SameToken -v)"
+run "AT-230" "tokenizeFieldName camelCase" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestTokenizeFieldName_CamelCase -v)"
+run "AT-231" "chain_sequence detects non-CRUD chain" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestChainSequenceTechnique_DetectsNonCRUDChain -v)"
 
 echo ""
 

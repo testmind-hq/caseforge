@@ -282,6 +282,10 @@
 | AT-225 | business_rule Applies false without SemanticInfo | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Applies_NoSemanticInfo -v` | passes | ✅ PASS |
 | AT-226 | business_rule generates one case per rule | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_OnePerRule -v` | passes | ✅ PASS |
 | AT-227 | business_rule cases expect 4xx | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_Expects4xx -v` | passes | ✅ PASS |
+| AT-228 | chain_sequence technique registered in gen | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_sequence --output /tmp/at228` | exits 0 | ✅ PASS |
+| AT-229 | scoreFieldSimilarity positive overlap | `go test ./internal/methodology/ -run TestScoreFieldSimilarity_SameToken -v` | passes | ✅ PASS |
+| AT-230 | tokenizeFieldName camelCase | `go test ./internal/methodology/ -run TestTokenizeFieldName_CamelCase -v` | passes | ✅ PASS |
+| AT-231 | chain_sequence detects non-CRUD chain | `go test ./internal/methodology/ -run TestChainSequenceTechnique_DetectsNonCRUDChain -v` | passes | ✅ PASS |
 
 ---
 
