@@ -1351,6 +1351,19 @@ run "AT-206" "score --min-score fails when score below threshold" \
 run "AT-207" "score --save-history writes .caseforge-conformance.json" \
   "(cd /tmp && $BIN score --cases $REPO_ROOT/cmd/testdata/score_cases --save-history 2>/dev/null && test -f .caseforge-conformance.json)"
 
+# AT-208–AT-211: gen --auth-bootstrap
+run "AT-208" "gen --auth-bootstrap exits 0 (spec without security)" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at208 2>/dev/null)"
+
+run "AT-209" "gen --auth-bootstrap skips when no auth op in spec" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at209 2>/dev/null)"
+
+run "AT-210" "gen --auth-bootstrap output directory non-empty" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at210 2>/dev/null && ls /tmp/at210/)"
+
+run "AT-211" "gen --auth-bootstrap preserves non-secured op cases" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at211 2>/dev/null && ls /tmp/at211/)"
+
 echo ""
 
 # -------------------------------------------------------

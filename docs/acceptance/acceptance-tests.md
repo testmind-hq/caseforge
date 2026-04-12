@@ -262,6 +262,10 @@
 | AT-205 | score --min-score passes when score meets threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 0` | exit code 0 | ✅ PASS |
 | AT-206 | score --min-score fails when score below threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 200` | exit code non-zero | ✅ PASS |
 | AT-207 | score --save-history writes .caseforge-conformance.json | `cd /tmp && caseforge score --cases /Users/yuchou/Github/yuchou87/caseforge/cmd/testdata/score_cases --save-history && test -f .caseforge-conformance.json` | file exists | ✅ PASS |
+| AT-208 | gen --auth-bootstrap exits 0 (spec without security) | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at208` | exit code 0 | ✅ PASS |
+| AT-209 | gen --auth-bootstrap skips when no auth op in spec | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at209` | exits 0, no crash | ✅ PASS |
+| AT-210 | gen --auth-bootstrap output directory non-empty | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at210` | output directory non-empty | ✅ PASS |
+| AT-211 | gen --auth-bootstrap preserves non-secured op cases | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at211` | output directory non-empty (cases generated normally) | ✅ PASS |
 
 ---
 
@@ -481,7 +485,8 @@
 | datagen pattern | 2 | 2 | 0 |
 | positive_examples | 4 | 4 | 0 |
 | import har | 6 | 6 | 0 |
-| **Total** | **118** | **118** | **0** |
+| gen — auth-bootstrap | 4 | 4 | 0 |
+| **Total** | **122** | **122** | **0** |
 
 ---
 

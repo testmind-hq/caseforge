@@ -48,6 +48,7 @@ var (
 	genExcludePath string
 	genIncludeTag  string
 	genExcludeTag  string
+	genAuthBootstrap bool
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -98,6 +99,7 @@ func init() {
 	genCmd.Flags().StringVar(&genExcludePath, "exclude-path", "", "Regex to exclude operations by path (e.g. '^/admin')")
 	genCmd.Flags().StringVar(&genIncludeTag, "include-tag", "", "Comma-separated OpenAPI tags to include (e.g. 'users,auth')")
 	genCmd.Flags().StringVar(&genExcludeTag, "exclude-tag", "", "Comma-separated OpenAPI tags to exclude (e.g. 'deprecated,internal')")
+	genCmd.Flags().BoolVar(&genAuthBootstrap, "auth-bootstrap", false, "Wrap all secured-endpoint cases with an auth setup step")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -377,6 +379,11 @@ func runGen(cmd *cobra.Command, args []string) error {
 	// --priority: keep cases whose priority is at least as high as the requested threshold.
 	if genPriority != "" {
 		cases = filterByPriority(cases, genPriority)
+	}
+
+	// --auth-bootstrap: wrap secured-endpoint cases with an auth setup step.
+	if genAuthBootstrap {
+		cases = methodology.BootstrapAuth(cases, parsedSpec)
 	}
 
 	// Write index.json
