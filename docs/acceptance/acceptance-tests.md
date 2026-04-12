@@ -286,6 +286,10 @@
 | AT-229 | scoreFieldSimilarity positive overlap | `go test ./internal/methodology/ -run TestScoreFieldSimilarity_SameToken -v` | passes | ✅ PASS |
 | AT-230 | tokenizeFieldName camelCase | `go test ./internal/methodology/ -run TestTokenizeFieldName_CamelCase -v` | passes | ✅ PASS |
 | AT-231 | chain_sequence detects non-CRUD chain | `go test ./internal/methodology/ -run TestChainSequenceTechnique_DetectsNonCRUDChain -v` | passes | ✅ PASS |
+| AT-232 | conformance command is registered | `caseforge conformance --help` | help output contains "spec-vs-implementation" | ✅ PASS |
+| AT-233 | conformance --spec required | `caseforge conformance --target http://localhost:8080 2>&1 || true` | output contains "required flag" | ✅ PASS |
+| AT-234 | conformance --target required | `caseforge conformance --spec cmd/testdata/crud.yaml 2>&1 || true` | output contains "required flag" | ✅ PASS |
+| AT-235 | conformance fails gracefully without LLM | `caseforge conformance --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true` | output contains "LLM provider not available" | ✅ PASS |
 
 ---
 

@@ -1422,6 +1422,16 @@ run "AT-230" "tokenizeFieldName camelCase" \
 run "AT-231" "chain_sequence detects non-CRUD chain" \
   "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestChainSequenceTechnique_DetectsNonCRUDChain -v)"
 
+# AT-232–AT-235: conformance command
+contains "AT-232" "conformance command registered" "spec-vs-implementation" \
+  "$BIN conformance --help"
+contains "AT-233" "conformance --spec required" "required flag" \
+  "$BIN conformance --target http://localhost:8080 2>&1 || true"
+contains "AT-234" "conformance --target required" "required flag" \
+  "(cd $REPO_ROOT && $BIN conformance --spec cmd/testdata/crud.yaml 2>&1 || true)"
+contains "AT-235" "conformance no LLM fails gracefully" "LLM provider not available" \
+  "(cd $REPO_ROOT && $BIN conformance --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true)"
+
 echo ""
 
 # -------------------------------------------------------
