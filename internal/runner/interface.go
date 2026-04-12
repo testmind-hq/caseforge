@@ -2,7 +2,7 @@
 package runner
 
 // FailureCategory describes why a test case failed.
-type FailureCategory = string
+type FailureCategory string
 
 const (
 	CategoryServerError        FailureCategory = "server_error"

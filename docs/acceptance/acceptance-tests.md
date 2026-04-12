@@ -510,7 +510,13 @@
 | positive_examples | 4 | 4 | 0 |
 | import har | 6 | 6 | 0 |
 | gen — auth-bootstrap | 4 | 4 | 0 |
-| **Total** | **126** | **126** | **0** |
+| run — failure classification | 4 | 4 | 0 |
+| score — fill-gaps | 4 | 4 | 0 |
+| oracle | 4 | 4 | 0 |
+| business_rule_violation | 4 | 4 | 0 |
+| chain_sequence | 4 | 4 | 0 |
+| conformance | 4 | 4 | 0 |
+| **Total** | **150** | **150** | **0** |
 
 ---
 
