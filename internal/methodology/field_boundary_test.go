@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testmind-hq/caseforge/internal/score"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -90,7 +91,7 @@ func TestFieldBoundaryTechnique_Generate_ValidBoundaryExpects2xx(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, tc := range cases {
-		if tc.Source.Scenario != "FIELD_BOUNDARY_VALID" {
+		if tc.Source.Scenario != score.ScenarioFieldBoundaryValid {
 			continue
 		}
 		assertions := tc.Steps[0].Assertions
@@ -109,7 +110,7 @@ func TestFieldBoundaryTechnique_Generate_InvalidBoundaryExpects4xx(t *testing.T)
 	require.NoError(t, err)
 
 	for _, tc := range cases {
-		if tc.Source.Scenario != "FIELD_BOUNDARY_INVALID" {
+		if tc.Source.Scenario != score.ScenarioFieldBoundaryInvalid {
 			continue
 		}
 		assertions := tc.Steps[0].Assertions

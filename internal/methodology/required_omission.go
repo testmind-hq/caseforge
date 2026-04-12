@@ -8,6 +8,7 @@ import (
 
 	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
+	"github.com/testmind-hq/caseforge/internal/score"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -56,7 +57,7 @@ func (t *RequiredOmissionTechnique) Generate(op *spec.Operation) ([]schema.TestC
 			Technique: "required_omission",
 			SpecPath:  specPath,
 			Rationale: fmt.Sprintf("required field %q omitted entirely (not null) — server must reject with 4xx", fieldName),
-			Scenario:  "REQUIRED_OMISSION",
+			Scenario:  score.ScenarioRequiredOmission,
 		}
 		cases = append(cases, tc)
 	}

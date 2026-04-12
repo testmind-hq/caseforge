@@ -9,6 +9,7 @@ import (
 
 	"github.com/testmind-hq/caseforge/internal/datagen"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
+	"github.com/testmind-hq/caseforge/internal/score"
 	"github.com/testmind-hq/caseforge/internal/spec"
 )
 
@@ -103,27 +104,27 @@ func (t *FieldBoundaryTechnique) Generate(op *spec.Operation) ([]schema.TestCase
 		case "integer", "number":
 			if fs.Minimum != nil {
 				bcs = append(bcs,
-					boundCase{"valid_min", t.gen.GenerateBoundary(fs, datagen.BoundaryMin), true, "FIELD_BOUNDARY_VALID"},
-					boundCase{"invalid_below_min", t.gen.GenerateBoundary(fs, datagen.BoundaryMinMinusOne), false, "FIELD_BOUNDARY_INVALID"},
+					boundCase{"valid_min", t.gen.GenerateBoundary(fs, datagen.BoundaryMin), true, score.ScenarioFieldBoundaryValid},
+					boundCase{"invalid_below_min", t.gen.GenerateBoundary(fs, datagen.BoundaryMinMinusOne), false, score.ScenarioFieldBoundaryInvalid},
 				)
 			}
 			if fs.Maximum != nil {
 				bcs = append(bcs,
-					boundCase{"valid_max", t.gen.GenerateBoundary(fs, datagen.BoundaryMax), true, "FIELD_BOUNDARY_VALID"},
-					boundCase{"invalid_above_max", t.gen.GenerateBoundary(fs, datagen.BoundaryMaxPlusOne), false, "FIELD_BOUNDARY_INVALID"},
+					boundCase{"valid_max", t.gen.GenerateBoundary(fs, datagen.BoundaryMax), true, score.ScenarioFieldBoundaryValid},
+					boundCase{"invalid_above_max", t.gen.GenerateBoundary(fs, datagen.BoundaryMaxPlusOne), false, score.ScenarioFieldBoundaryInvalid},
 				)
 			}
 		case "string":
 			if fs.MinLength != nil {
 				bcs = append(bcs,
-					boundCase{"valid_min", strings.Repeat("a", int(*fs.MinLength)), true, "FIELD_BOUNDARY_VALID"},
-					boundCase{"invalid_below_min", strings.Repeat("a", max(0, int(*fs.MinLength)-1)), false, "FIELD_BOUNDARY_INVALID"},
+					boundCase{"valid_min", strings.Repeat("a", int(*fs.MinLength)), true, score.ScenarioFieldBoundaryValid},
+					boundCase{"invalid_below_min", strings.Repeat("a", max(0, int(*fs.MinLength)-1)), false, score.ScenarioFieldBoundaryInvalid},
 				)
 			}
 			if fs.MaxLength != nil {
 				bcs = append(bcs,
-					boundCase{"valid_max", strings.Repeat("a", int(*fs.MaxLength)), true, "FIELD_BOUNDARY_VALID"},
-					boundCase{"invalid_above_max", strings.Repeat("a", int(*fs.MaxLength)+1), false, "FIELD_BOUNDARY_INVALID"},
+					boundCase{"valid_max", strings.Repeat("a", int(*fs.MaxLength)), true, score.ScenarioFieldBoundaryValid},
+					boundCase{"invalid_above_max", strings.Repeat("a", int(*fs.MaxLength)+1), false, score.ScenarioFieldBoundaryInvalid},
 				)
 			}
 		}
