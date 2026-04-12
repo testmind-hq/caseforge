@@ -1390,6 +1390,18 @@ run "AT-218" "score --fill-gaps prints gen commands" \
 run "AT-219" "score ComputeGaps unit tests" \
   "(cd $REPO_ROOT && go test ./internal/score/ -run TestComputeGaps -v)"
 
+run "AT-220" "gen --with-oracles noop LLM" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --with-oracles --output /tmp/at220)"
+
+run "AT-221" "oracle Mine noop returns empty" \
+  "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestMine_NoopProvider -v)"
+
+run "AT-222" "oracle ToAssertions exists" \
+  "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestConstraintToAssertion_Exists -v)"
+
+run "AT-223" "oracle InjectIntoCase skips 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestInjectIntoCase_Skips4xx -v)"
+
 echo ""
 
 # -------------------------------------------------------

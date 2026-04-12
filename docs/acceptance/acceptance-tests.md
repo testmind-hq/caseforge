@@ -274,6 +274,10 @@
 | AT-217 | score --fill-gaps runs without panic | `caseforge score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true` | exits without panic | ✅ PASS |
 | AT-218 | score --fill-gaps prints gen commands for gaps | `caseforge score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true` | exits 0 | ✅ PASS |
 | AT-219 | score ComputeGaps unit tests pass | `go test ./internal/score/ -run TestComputeGaps -v` | all gap tests pass | ✅ PASS |
+| AT-220 | gen --with-oracles accepted without error (noop LLM) | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --with-oracles --output /tmp/at220` | exits 0 | ✅ PASS |
+| AT-221 | oracle Mine returns empty for NoopProvider | `go test ./internal/oracle/ -run TestMine_NoopProvider -v` | TestMine_NoopProvider_ReturnsEmpty passes | ✅ PASS |
+| AT-222 | oracle ToAssertions exists produces exists operator | `go test ./internal/oracle/ -run TestConstraintToAssertion_Exists -v` | passes | ✅ PASS |
+| AT-223 | oracle InjectIntoCase skips 4xx cases | `go test ./internal/oracle/ -run TestInjectIntoCase_Skips4xx -v` | passes | ✅ PASS |
 
 ---
 

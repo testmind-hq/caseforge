@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/testmind-hq/caseforge/internal/event"
 	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/methodology"
+	"github.com/testmind-hq/caseforge/internal/oracle"
 	"github.com/testmind-hq/caseforge/internal/output/render"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/output/writer"
@@ -49,6 +51,7 @@ var (
 	genIncludeTag  string
 	genExcludeTag  string
 	genAuthBootstrap bool
+	genWithOracles   bool
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -100,6 +103,7 @@ func init() {
 	genCmd.Flags().StringVar(&genIncludeTag, "include-tag", "", "Comma-separated OpenAPI tags to include (e.g. 'users,auth')")
 	genCmd.Flags().StringVar(&genExcludeTag, "exclude-tag", "", "Comma-separated OpenAPI tags to exclude (e.g. 'deprecated,internal')")
 	genCmd.Flags().BoolVar(&genAuthBootstrap, "auth-bootstrap", false, "Wrap all secured-endpoint cases with an auth setup step")
+	genCmd.Flags().BoolVar(&genWithOracles, "with-oracles", false, "Mine response body constraints via LLM and inject as assertions (requires LLM)")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -384,6 +388,42 @@ func runGen(cmd *cobra.Command, args []string) error {
 	// --auth-bootstrap: wrap secured-endpoint cases with an auth setup step.
 	if genAuthBootstrap {
 		cases = methodology.BootstrapAuth(cases, parsedSpec)
+	}
+
+	// --with-oracles: mine response body constraints via OC prompting and inject assertions.
+	if genWithOracles && provider.IsAvailable() {
+		constraintCache := map[string][]oracle.Constraint{}
+		for i, tc := range cases {
+			if tc.Priority != "P0" && tc.Priority != "P1" {
+				continue
+			}
+			opKey := tc.Source.SpecPath
+			parts := strings.Fields(opKey)
+			if len(parts) < 2 {
+				continue
+			}
+			baseKey := parts[0] + " " + parts[1]
+			if _, cached := constraintCache[baseKey]; !cached {
+				for _, op := range parsedSpec.Operations {
+					if op.Method+" "+op.Path == baseKey {
+						constraints, mineErr := oracle.Mine(context.Background(), op, provider)
+						if mineErr != nil {
+							fmt.Fprintf(os.Stderr, "warn: oracle mining failed for %s: %v\n", baseKey, mineErr)
+							constraintCache[baseKey] = nil
+						} else {
+							constraintCache[baseKey] = constraints
+						}
+						break
+					}
+				}
+				if _, cached := constraintCache[baseKey]; !cached {
+					constraintCache[baseKey] = nil
+				}
+			}
+			if constraints := constraintCache[baseKey]; len(constraints) > 0 {
+				cases[i] = oracle.InjectIntoCase(tc, constraints)
+			}
+		}
 	}
 
 	// Write index.json
