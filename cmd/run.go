@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/runner"
 )
 
@@ -73,12 +74,39 @@ func runRun(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("running tests: %w", err)
 	}
 
+	// Load index.json to enable failure classification
+	caseMap := map[string]schema.TestCase{}
+	if indexData, loadErr := os.ReadFile(filepath.Join(runCases, "index.json")); loadErr == nil {
+		var indexFile struct {
+			TestCases []schema.TestCase `json:"test_cases"`
+		}
+		if jsonErr := json.Unmarshal(indexData, &indexFile); jsonErr == nil {
+			for _, tc := range indexFile.TestCases {
+				caseMap[tc.ID] = tc
+			}
+		}
+	}
+	// Classify failures
+	for i, c := range result.Cases {
+		if !c.Passed {
+			if tc, ok := caseMap[c.ID]; ok {
+				result.Cases[i].Category = classifyFailure(tc)
+			} else {
+				result.Cases[i].Category = runner.CategoryServerError
+			}
+		}
+	}
+
 	out := cmd.OutOrStdout()
 	for _, c := range result.Cases {
 		if c.Passed {
 			color.New(color.FgGreen).Fprintf(out, "  ✓ [%s] %s\n", c.ID, c.Title)
 		} else {
-			color.New(color.FgRed).Fprintf(out, "  ✗ [%s] %s\n", c.ID, c.Title)
+			label := ""
+			if c.Category != "" {
+				label = fmt.Sprintf(" [%s]", c.Category)
+			}
+			color.New(color.FgRed).Fprintf(out, "  ✗ [%s] %s%s\n", c.ID, c.Title, label)
 		}
 	}
 	total := result.Passed + result.Failed
@@ -115,6 +143,49 @@ type runReport struct {
 	PassPct     int               `json:"pass_pct"`
 	Cases       []runner.CaseResult `json:"cases"`
 	GeneratedAt string            `json:"generated_at"`
+}
+
+// classifyFailure returns the failure category for a test case based on its
+// design intent (technique + expected assertions), not the actual HTTP status.
+func classifyFailure(tc schema.TestCase) runner.FailureCategory {
+	securityTechniques := map[string]bool{
+		"owasp_api_top10": true, "owasp_api_top10_spec": true,
+		"mass_assignment": true, "idor": true,
+	}
+	if tc.Source.Technique == "auth_chain" {
+		return runner.CategoryAuthFailure
+	}
+	if securityTechniques[tc.Source.Technique] {
+		return runner.CategorySecurityRegression
+	}
+	// Check if any step expects a 4xx status code
+	for _, step := range tc.Steps {
+		for _, a := range step.Assertions {
+			if a.Target != "status_code" {
+				continue
+			}
+			n, ok := toInt(a.Expected)
+			if !ok {
+				continue
+			}
+			if (a.Operator == "gte" || a.Operator == "eq") && n >= 400 {
+				return runner.CategoryMissingValidation
+			}
+		}
+	}
+	return runner.CategoryServerError
+}
+
+func toInt(v any) (int, bool) {
+	switch x := v.(type) {
+	case int:
+		return x, true
+	case int64:
+		return int(x), true
+	case float64:
+		return int(x), true
+	}
+	return 0, false
 }
 
 func writeRunReport(outputDir, target, casesDir, format string, result runner.RunResult) error {

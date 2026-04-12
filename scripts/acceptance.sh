@@ -1364,6 +1364,19 @@ run "AT-210" "gen --auth-bootstrap output directory non-empty" \
 run "AT-211" "gen --auth-bootstrap preserves non-secured op cases" \
   "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at211 2>/dev/null && ls /tmp/at211/)"
 
+# AT-212–AT-215: run failure classification
+run "AT-212" "classifyFailure unit tests pass" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure -count=1)"
+
+run "AT-213" "classifyFailure server_error for happy-path technique" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_ServerError -count=1)"
+
+run "AT-214" "classifyFailure missing_validation for mutation technique" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_MissingValidation -count=1)"
+
+run "AT-215" "classifyFailure security_regression for owasp technique" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_SecurityRegression -count=1)"
+
 echo ""
 
 # -------------------------------------------------------

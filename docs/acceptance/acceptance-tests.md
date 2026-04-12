@@ -266,6 +266,10 @@
 | AT-209 | gen --auth-bootstrap skips when no auth op in spec | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at209` | exits 0, no crash | ✅ PASS |
 | AT-210 | gen --auth-bootstrap output directory non-empty | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at210` | output directory non-empty | ✅ PASS |
 | AT-211 | gen --auth-bootstrap preserves non-secured op cases | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at211` | output directory non-empty (cases generated normally) | ✅ PASS |
+| AT-212 | classifyFailure unit tests pass | `go test ./cmd/ -run TestClassifyFailure -count=1` | all 4 classification tests pass | ✅ PASS |
+| AT-213 | classifyFailure server_error for happy-path technique | `go test ./cmd/ -run TestClassifyFailure_ServerError -count=1` | PASS | ✅ PASS |
+| AT-214 | classifyFailure missing_validation for mutation technique | `go test ./cmd/ -run TestClassifyFailure_MissingValidation -count=1` | PASS | ✅ PASS |
+| AT-215 | classifyFailure security_regression for owasp technique | `go test ./cmd/ -run TestClassifyFailure_SecurityRegression -count=1` | PASS | ✅ PASS |
 
 ---
 
@@ -454,7 +458,7 @@
 ---
 
 
-## Summary (last run: 2026-04-11)
+## Summary (last run: 2026-04-12)
 
 | Category | Total | Pass | Fail |
 |----------|-------|------|------|
@@ -477,7 +481,7 @@
 | rbt | 15 | 15 | 0 |
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
-| run | 5 | 5 | 0 |
+| run | 9 | 9 | 0 |
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 10 | 10 | 0 |
@@ -486,7 +490,7 @@
 | positive_examples | 4 | 4 | 0 |
 | import har | 6 | 6 | 0 |
 | gen — auth-bootstrap | 4 | 4 | 0 |
-| **Total** | **122** | **122** | **0** |
+| **Total** | **126** | **126** | **0** |
 
 ---
 
