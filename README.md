@@ -402,12 +402,12 @@ X-CaseForge-Signature-256: sha256=<hex>
 | Decision Table | `decision_table` |
 | State Transition | `state_transition` |
 | Pairwise (IPOG) | `pairwise` |
-| Idempotency | `idempotent` |
+| Idempotency | `idempotency` |
 | OWASP API Top 10 (spec-based) | `owasp_api_top10` |
 | OWASP API Top 10 (LLM-annotated) | `owasp_api_top10_spec` |
 | Classification Tree (MBT) | `classification_tree` |
 | Orthogonal Array | `orthogonal_array` |
-| Example Extraction | `examples` |
+| Example Extraction | `example_extraction` |
 | Positive Examples | `positive_examples` |
 | Isolated Negative | `isolated_negative` |
 | Required Field Omission | `required_omission` |

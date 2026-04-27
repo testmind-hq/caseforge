@@ -73,8 +73,8 @@ caseforge lint --spec openapi.yaml
 --technique string    Comma-separated techniques to run:
                         equivalence_partitioning, boundary_value,
                         decision_table, state_transition, pairwise,
-                        idempotent, owasp_api_top10, owasp_api_top10_spec,
-                        classification_tree, orthogonal_array, examples,
+                        idempotency, owasp_api_top10, owasp_api_top10_spec,
+                        classification_tree, orthogonal_array, example_extraction,
                         positive_examples, required_omission, field_boundary,
                         schema_violation, variable_irrelevance,
                         constraint_mutation, mutation, isolated_negative,
