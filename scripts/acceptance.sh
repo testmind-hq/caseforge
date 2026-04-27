@@ -1351,6 +1351,87 @@ run "AT-206" "score --min-score fails when score below threshold" \
 run "AT-207" "score --save-history writes .caseforge-conformance.json" \
   "(cd /tmp && $BIN score --cases $REPO_ROOT/cmd/testdata/score_cases --save-history 2>/dev/null && test -f .caseforge-conformance.json)"
 
+# AT-208–AT-211: gen --auth-bootstrap
+run "AT-208" "gen --auth-bootstrap exits 0 (spec without security)" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at208 2>/dev/null)"
+
+run "AT-209" "gen --auth-bootstrap skips when no auth op in spec" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at209 2>/dev/null)"
+
+run "AT-210" "gen --auth-bootstrap output directory non-empty" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at210 2>/dev/null && ls /tmp/at210/)"
+
+run "AT-211" "gen --auth-bootstrap preserves non-secured op cases" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at211 2>/dev/null && ls /tmp/at211/)"
+
+# AT-212–AT-215: run failure classification
+run "AT-212" "classifyFailure unit tests pass" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure -count=1)"
+
+run "AT-213" "classifyFailure server_error for happy-path technique" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_ServerError -count=1)"
+
+run "AT-214" "classifyFailure missing_validation for mutation technique" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_MissingValidation -count=1)"
+
+run "AT-215" "classifyFailure security_regression for owasp technique" \
+  "(cd $REPO_ROOT && go test ./cmd/ -run TestClassifyFailure_SecurityRegression -count=1)"
+
+# AT-216–AT-219: score --fill-gaps
+contains "AT-216" "score --fill-gaps requires --spec" "fill-gaps requires --spec" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --fill-gaps 2>&1 || true)"
+
+run "AT-217" "score --fill-gaps runs without panic" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true)"
+
+run "AT-218" "score --fill-gaps prints gen commands" \
+  "(cd $REPO_ROOT && $BIN score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true)"
+
+run "AT-219" "score ComputeGaps unit tests" \
+  "(cd $REPO_ROOT && go test ./internal/score/ -run TestComputeGaps -v)"
+
+run "AT-220" "gen --with-oracles noop LLM" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --with-oracles --output /tmp/at220)"
+
+run "AT-221" "oracle Mine noop returns empty" \
+  "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestMine_NoopProvider -v)"
+
+run "AT-222" "oracle ToAssertions exists" \
+  "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestConstraintToAssertion_Exists -v)"
+
+run "AT-223" "oracle InjectIntoCase skips 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/oracle/ -run TestInjectIntoCase_Skips4xx -v)"
+
+run "AT-224" "business_rule_violation technique registered" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique business_rule_violation --output /tmp/at224)"
+
+run "AT-225" "business_rule Applies false no semantic info" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Applies_NoSemanticInfo -v)"
+
+run "AT-226" "business_rule one case per rule" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_OnePerRule -v)"
+
+run "AT-227" "business_rule expects 4xx" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_Expects4xx -v)"
+run "AT-228" "chain_sequence technique registered" \
+  "(cd $REPO_ROOT && $BIN gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_sequence --output /tmp/at228)"
+run "AT-229" "scoreFieldSimilarity positive overlap" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestScoreFieldSimilarity_SameToken -v)"
+run "AT-230" "tokenizeFieldName camelCase" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestTokenizeFieldName_CamelCase -v)"
+run "AT-231" "chain_sequence detects non-CRUD chain" \
+  "(cd $REPO_ROOT && go test ./internal/methodology/ -run TestChainSequenceTechnique_DetectsNonCRUDChain -v)"
+
+# AT-232–AT-235: conformance command
+contains "AT-232" "conformance command registered" "spec-vs-implementation" \
+  "$BIN conformance --help"
+contains "AT-233" "conformance --spec required" "required flag" \
+  "$BIN conformance --target http://localhost:8080 2>&1 || true"
+contains "AT-234" "conformance --target required" "required flag" \
+  "(cd $REPO_ROOT && $BIN conformance --spec cmd/testdata/crud.yaml 2>&1 || true)"
+contains "AT-235" "conformance no LLM fails gracefully" "LLM provider not available" \
+  "(cd $REPO_ROOT && $BIN conformance --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true)"
+
 echo ""
 
 # -------------------------------------------------------

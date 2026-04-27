@@ -32,6 +32,11 @@ CaseForge reads your OpenAPI specification and generates structured, traceable t
 - **CI scaffolding** — generates GitHub Actions, GitLab CI, Jenkins, or shell workflow configs
 - **MCP server** — exposes CaseForge as an MCP tool for AI agent pipelines
 - **Onboarding wizard** — interactive `onboard` command walks through full setup in minutes
+- **Auth bootstrap** — `--auth-bootstrap` prepends an auth setup step to all secured-endpoint cases so every technique works out of the box against authenticated APIs
+- **Response body oracles** — `--with-oracles` uses two-step LLM prompting (Observation-Confirmation) to mine response body constraints and inject them as assertions
+- **Coverage gap filling** — `score --fill-gaps` detects operations missing 2xx or 4xx coverage and auto-generates cases to close the gaps
+- **Failure classification** — failed `run` cases are automatically tagged `server_error` / `missing_validation` / `auth_failure` / `security_regression`
+- **Conformance checking** — `conformance` command mines oracle constraints for all operations and reports spec-vs-implementation mismatches against a live API
 - **Pure algorithm mode** — works without an LLM key using pairwise, boundary-value, and combinatorial analysis
 
 ## Installation
@@ -88,6 +93,7 @@ caseforge lint --spec openapi.yaml
 | `lint` | Lint an OpenAPI spec for quality issues |
 | `diff` | Compare two OpenAPI specs and classify breaking changes |
 | `score` | Score the quality of generated test cases |
+| `conformance` | Check spec-vs-implementation conformance using LLM-mined response body constraints |
 
 ### Analysis
 
@@ -147,6 +153,8 @@ caseforge lint --spec openapi.yaml
 --exclude-path string   Regex to exclude operations by path (e.g. '^/admin')
 --include-tag string    Comma-separated OpenAPI tags to include (e.g. 'users,auth')
 --exclude-tag string    Comma-separated OpenAPI tags to exclude (e.g. 'deprecated')
+--auth-bootstrap      Wrap all secured-endpoint cases with an auth setup step
+--with-oracles        Mine response body constraints via LLM and inject as assertions (requires LLM)
 ```
 
 ### `caseforge run`
@@ -184,6 +192,18 @@ caseforge lint --spec openapi.yaml
 ```
 --cases string    Directory containing index.json (default: ./cases)
 --format string   terminal | json (default: terminal)
+--fill-gaps       Auto-generate cases for operations missing 2xx or 4xx coverage
+--spec string     OpenAPI spec path (required for --fill-gaps)
+--min-score int   Exit non-zero if overall score is below threshold (0 = disabled)
+--save-history    Append score to history file for trend tracking
+```
+
+### `caseforge conformance`
+
+```
+--spec string     OpenAPI spec file (required)
+--target string   API base URL to test against (required)
+--output string   Directory to write conformance-report.json (optional)
 ```
 
 ### `caseforge rbt`
@@ -383,15 +403,29 @@ X-CaseForge-Signature-256: sha256=<hex>
 | State Transition | `state_transition` |
 | Pairwise (IPOG) | `pairwise` |
 | Idempotency | `idempotency` |
-| OWASP API Top 10 | `owasp_api_top10` |
+| OWASP API Top 10 (spec-based) | `owasp_api_top10` |
+| OWASP API Top 10 (LLM-annotated) | `owasp_api_top10_spec` |
 | Classification Tree (MBT) | `classification_tree` |
 | Orthogonal Array | `orthogonal_array` |
 | Example Extraction | `example_extraction` |
+| Positive Parameter Examples | `positive_param_examples` |
+| Positive Examples | `positive_examples` |
 | Isolated Negative | `isolated_negative` |
+| Required Field Omission | `required_omission` |
+| Field Boundary | `field_boundary` |
 | Schema Violation | `schema_violation` |
+| Constraint Mutation | `constraint_mutation` |
 | Variable Irrelevance | `variable_irrelevance` |
 | Mutation | `mutation` |
+| Type Coercion | `type_coercion` |
+| Unicode Fuzzing | `unicode_fuzzing` |
+| Mass Assignment | `mass_assignment` |
+| IDOR | `idor` |
+| Semantic Annotation (nullable/readOnly/writeOnly) | `semantic_annotation` |
 | Auth Chain | `auth_chain` |
+| CRUD Chain | `chain_crud` |
+| Chain Sequence (Jaccard similarity) | `chain_sequence` |
+| Business Rule Violation | `business_rule_violation` |
 
 ---
 

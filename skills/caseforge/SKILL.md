@@ -33,6 +33,7 @@ caseforge lint --spec openapi.yaml
 | `lint` | Check spec for quality issues (missing operationId, no 2xx, etc.) |
 | `diff` | Compare two spec versions; classify breaking changes |
 | `score` | Multi-dimensional quality scoring of generated test cases |
+| `conformance` | Mine oracle constraints via LLM and report spec-vs-implementation mismatches |
 
 ### Analysis
 
@@ -73,12 +74,19 @@ caseforge lint --spec openapi.yaml
                         equivalence_partitioning, boundary_value,
                         decision_table, state_transition, pairwise,
                         idempotency, owasp_api_top10, classification_tree,
-                        orthogonal_array, example_extraction
+                        orthogonal_array, example_extraction,
+                        positive_examples, required_omission, field_boundary,
+                        constraint_mutation, mutation, isolated_negative,
+                        type_coercion, unicode_fuzzing, mass_assignment, idor,
+                        semantic_annotation, auth_chain, chain_crud,
+                        chain_sequence, business_rule_violation
 --priority string     Minimum priority to include: P0 | P1 | P2 | P3
 --operations string   Comma-separated operationIds (default: all)
 --concurrency int     Parallel operations (default: 1)
 --resume              Resume interrupted run from checkpoint
 --no-ai               Algorithm-only mode
+--auth-bootstrap      Prepend auth setup step to all secured-endpoint cases
+--with-oracles        Mine response body constraints via LLM, inject as assertions
 ```
 
 ## Methodologies Applied
@@ -89,9 +97,23 @@ caseforge lint --spec openapi.yaml
 - **State Transition** — one case per state transition (requires AI annotation)
 - **Pairwise (IPOG)** — covering array for 4+ independent parameters
 - **Idempotency** — duplicate request case for write operations
-- **OWASP API Top 10** — injection (SQLi, XSS, path traversal), auth bypass, CORS (`owasp_api_top10`)
+- **OWASP API Top 10** — injection (SQLi, XSS, path traversal), auth bypass, CORS
 - **Classification Tree (MBT)** — structured classification of valid/invalid inputs
 - **Orthogonal Array** — strength-2 orthogonal arrays for large parameter spaces
+- **Required Omission** — one case per required field, field absent (not null) — expects 4xx
+- **Field Boundary** — min/max/over/under boundary cases for constrained fields
+- **Constraint Mutation** — mutates individual field constraints to trigger validation errors
+- **Mutation** — type/format/enum mutations on request fields
+- **Isolated Negative** — one case per invalid parameter in isolation
+- **Type Coercion** — sends wrong-type values (string for int, etc.) — expects 4xx
+- **Unicode Fuzzing** — injects Unicode edge cases (RTL, surrogates, overlong) into string fields
+- **Mass Assignment** — sends extra fields the server should ignore or reject
+- **IDOR** — substitutes IDs with another user's IDs to probe access control
+- **Semantic Annotation** — tests nullable/readOnly/writeOnly field constraints
+- **Auth Chain** — multi-step chain: authenticate, then call secured operation
+- **CRUD Chain** — multi-step create → read → update → delete chain
+- **Chain Sequence** — detects non-CRUD producer-consumer chains via Jaccard field-name similarity
+- **Business Rule Violation** — generates negative cases from LLM-inferred implicit business rules
 
 ## Configuration (`.caseforge.yaml`)
 

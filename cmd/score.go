@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/output/writer"
 	"github.com/testmind-hq/caseforge/internal/score"
 )
@@ -32,6 +33,8 @@ func init() {
 	scoreCmd.Flags().String("format", "terminal", "Output format: terminal or json")
 	scoreCmd.Flags().Int("min-score", 0, "Exit with code 1 if Overall score is below this threshold (0 = disabled)")
 	scoreCmd.Flags().Bool("save-history", false, "Append current score to .caseforge-conformance.json")
+	scoreCmd.Flags().String("spec", "", "OpenAPI spec path (required for --fill-gaps)")
+	scoreCmd.Flags().Bool("fill-gaps", false, "Auto-generate cases for operations missing 2xx or 4xx coverage")
 }
 
 const conformanceHistoryFile = ".caseforge-conformance.json"
@@ -72,6 +75,17 @@ func runScore(cmd *cobra.Command, _ []string) error {
 	if saveHistory {
 		if saveErr := score.SaveHistory(conformanceHistoryFile, history, report.Overall); saveErr != nil {
 			return fmt.Errorf("saving conformance history: %w", saveErr)
+		}
+	}
+
+	fillGaps, _ := cmd.Flags().GetBool("fill-gaps")
+	specPath, _ := cmd.Flags().GetString("spec")
+	if fillGaps {
+		if specPath == "" {
+			return fmt.Errorf("--fill-gaps requires --spec <spec-file>")
+		}
+		if err := runFillGaps(cmd, cases, specPath, casesDir); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "fill-gaps: %v\n", err)
 		}
 	}
 
@@ -118,4 +132,47 @@ func printScoreReport(cmd *cobra.Command, r score.Report, casesDir string) {
 	}
 
 	fmt.Fprintf(out, "\n%d case(s) across %d operation(s)\n", r.TotalCases, r.TotalOps)
+}
+
+func runFillGaps(cmd *cobra.Command, cases []schema.TestCase, specPath, casesDir string) error {
+	gaps := score.ComputeGaps(cases)
+	if len(gaps) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No coverage gaps found.")
+		return nil
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Found %d operation(s) with coverage gaps. Generating...\n", len(gaps))
+
+	seen := map[string]bool{}
+	var techniques []string
+	for _, gap := range gaps {
+		if !gap.Has2xx {
+			for _, t := range []string{"positive_examples", "equivalence_partitioning"} {
+				if !seen[t] {
+					seen[t] = true
+					techniques = append(techniques, t)
+				}
+			}
+		}
+		if !gap.Has4xx {
+			for _, t := range []string{"mutation", "isolated_negative", "required_omission"} {
+				if !seen[t] {
+					seen[t] = true
+					techniques = append(techniques, t)
+				}
+			}
+		}
+	}
+	techniqueFlag := strings.Join(techniques, ",")
+	genArgs := []string{
+		"--spec", specPath,
+		"--no-ai",
+		"--technique", techniqueFlag,
+		"--output", casesDir,
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "  → caseforge gen %s\n", strings.Join(genArgs, " "))
+	genCmd.SetArgs(genArgs)
+	if err := genCmd.Execute(); err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "  warn: gen failed: %v\n", err)
+	}
+	return nil
 }

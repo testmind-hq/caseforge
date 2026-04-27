@@ -194,3 +194,178 @@ func parseLinkExpression(expr string) string {
 	dotPath := strings.ReplaceAll(path, "/", ".")
 	return fmt.Sprintf("jsonpath $.%s", dotPath)
 }
+
+// scoreFieldSimilarity computes Jaccard similarity between tokenized field names.
+func scoreFieldSimilarity(a, b string) float64 {
+	ta := tokenizeFieldName(a)
+	tb := tokenizeFieldName(b)
+	if len(ta) == 0 || len(tb) == 0 {
+		return 0
+	}
+	setA := make(map[string]bool)
+	for _, t := range ta {
+		setA[t] = true
+	}
+	union := make(map[string]bool)
+	for k := range setA {
+		union[k] = true
+	}
+	intersection := 0
+	for _, t := range tb {
+		union[t] = true
+		if setA[t] {
+			intersection++
+		}
+	}
+	return float64(intersection) / float64(len(union))
+}
+
+// tokenizeFieldName splits camelCase, snake_case, kebab-case into lowercase tokens.
+func tokenizeFieldName(name string) []string {
+	var tokens []string
+	var current strings.Builder
+	for i, r := range name {
+		if r == '_' || r == '-' {
+			if current.Len() > 0 {
+				tokens = append(tokens, strings.ToLower(current.String()))
+				current.Reset()
+			}
+			continue
+		}
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			if current.Len() > 0 {
+				tokens = append(tokens, strings.ToLower(current.String()))
+				current.Reset()
+			}
+		}
+		current.WriteRune(r)
+	}
+	if current.Len() > 0 {
+		tokens = append(tokens, strings.ToLower(current.String()))
+	}
+	return tokens
+}
+
+// SimilarityEdge is a dependency inferred by field-name Jaccard similarity.
+type SimilarityEdge struct {
+	Producer    *spec.Operation
+	Consumer    *spec.Operation
+	PathParam   string
+	IDField     string
+	CaptureFrom string
+	Score       float64
+}
+
+// hasPathParam returns true if path contains at least one {param} segment.
+func hasPathParam(path string) bool {
+	return strings.Contains(path, "{")
+}
+
+// firstPathParam returns the first {param} variable name found in path.
+func firstPathParam(path string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	for _, p := range parts {
+		if strings.HasPrefix(p, "{") && strings.HasSuffix(p, "}") {
+			return strings.Trim(p, "{}")
+		}
+	}
+	return ""
+}
+
+// BuildSimilarityEdges finds producer-consumer pairs via field-name similarity
+// where no standard CRUD relationship exists.
+func BuildSimilarityEdges(ops []*spec.Operation, threshold float64) []SimilarityEdge {
+	type opFields struct {
+		op     *spec.Operation
+		fields []string
+	}
+	var creators []opFields
+	for _, op := range ops {
+		if op.Method != "POST" {
+			continue
+		}
+		var fields []string
+		for code, resp := range op.Responses {
+			n := 0
+			fmt.Sscanf(code, "%d", &n)
+			if n < 200 || n >= 300 {
+				continue
+			}
+			mt, ok := resp.Content["application/json"]
+			if !ok || mt == nil || mt.Schema == nil {
+				continue
+			}
+			for name := range mt.Schema.Properties {
+				fields = append(fields, name)
+			}
+		}
+		if len(fields) > 0 {
+			creators = append(creators, opFields{op: op, fields: fields})
+		}
+	}
+
+	var edges []SimilarityEdge
+	seen := make(map[string]bool)
+	for _, op := range ops {
+		// Consumer must have at least one path parameter
+		if !hasPathParam(op.Path) {
+			continue
+		}
+		switch op.Method {
+		case "GET", "PUT", "PATCH", "DELETE", "POST":
+		default:
+			continue
+		}
+		// Skip if already covered by structural CRUD (isItemPath + matching collection creator)
+		if isItemPath(op.Path) {
+			colPath := collectionOf(op.Path)
+			alreadyCovered := false
+			for _, cr := range creators {
+				if cr.op.Path == colPath {
+					alreadyCovered = true
+					break
+				}
+			}
+			if alreadyCovered {
+				continue
+			}
+		}
+
+		pathParam := firstPathParam(op.Path)
+		if pathParam == "" {
+			continue
+		}
+		for _, cr := range creators {
+			// Skip if the creator is the same operation (self-reference)
+			if cr.op.Path == op.Path {
+				continue
+			}
+			for _, field := range cr.fields {
+				sim := scoreFieldSimilarity(field, pathParam)
+				if sim < threshold {
+					continue
+				}
+				key := fmt.Sprintf("%s|%s|%s", cr.op.Path, op.Method, op.Path)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				captureFrom := inferCaptureFrom(cr.op, field)
+				edges = append(edges, SimilarityEdge{
+					Producer:    cr.op,
+					Consumer:    op,
+					PathParam:   pathParam,
+					IDField:     field,
+					CaptureFrom: captureFrom,
+					Score:       sim,
+				})
+			}
+		}
+	}
+	sort.Slice(edges, func(i, j int) bool {
+		ki := edges[i].Producer.Path + edges[i].Consumer.Method + edges[i].Consumer.Path
+		kj := edges[j].Producer.Path + edges[j].Consumer.Method + edges[j].Consumer.Path
+		return ki < kj
+	})
+	return edges
+}

@@ -262,6 +262,34 @@
 | AT-205 | score --min-score passes when score meets threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 0` | exit code 0 | ✅ PASS |
 | AT-206 | score --min-score fails when score below threshold | `caseforge score --cases cmd/testdata/score_cases --min-score 200` | exit code non-zero | ✅ PASS |
 | AT-207 | score --save-history writes .caseforge-conformance.json | `cd /tmp && caseforge score --cases /Users/yuchou/Github/yuchou87/caseforge/cmd/testdata/score_cases --save-history && test -f .caseforge-conformance.json` | file exists | ✅ PASS |
+| AT-208 | gen --auth-bootstrap exits 0 (spec without security) | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at208` | exit code 0 | ✅ PASS |
+| AT-209 | gen --auth-bootstrap skips when no auth op in spec | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at209` | exits 0, no crash | ✅ PASS |
+| AT-210 | gen --auth-bootstrap output directory non-empty | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique equivalence_partitioning --auth-bootstrap --output /tmp/at210` | output directory non-empty | ✅ PASS |
+| AT-211 | gen --auth-bootstrap preserves non-secured op cases | `caseforge gen --spec cmd/testdata/field_boundary.yaml --no-ai --auth-bootstrap --output /tmp/at211` | output directory non-empty (cases generated normally) | ✅ PASS |
+| AT-212 | classifyFailure unit tests pass | `go test ./cmd/ -run TestClassifyFailure -count=1` | all 4 classification tests pass | ✅ PASS |
+| AT-213 | classifyFailure server_error for happy-path technique | `go test ./cmd/ -run TestClassifyFailure_ServerError -count=1` | PASS | ✅ PASS |
+| AT-214 | classifyFailure missing_validation for mutation technique | `go test ./cmd/ -run TestClassifyFailure_MissingValidation -count=1` | PASS | ✅ PASS |
+| AT-215 | classifyFailure security_regression for owasp technique | `go test ./cmd/ -run TestClassifyFailure_SecurityRegression -count=1` | PASS | ✅ PASS |
+| AT-216 | score --fill-gaps requires --spec flag | `caseforge score --cases cmd/testdata/score_cases --fill-gaps 2>&1 || true` | output contains "fill-gaps requires --spec" | ✅ PASS |
+| AT-217 | score --fill-gaps runs without panic | `caseforge score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true` | exits without panic | ✅ PASS |
+| AT-218 | score --fill-gaps prints gen commands for gaps | `caseforge score --cases cmd/testdata/score_cases --fill-gaps --spec cmd/testdata/crud.yaml 2>&1 || true` | exits 0 | ✅ PASS |
+| AT-219 | score ComputeGaps unit tests pass | `go test ./internal/score/ -run TestComputeGaps -v` | all gap tests pass | ✅ PASS |
+| AT-220 | gen --with-oracles accepted without error (noop LLM) | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --with-oracles --output /tmp/at220` | exits 0 | ✅ PASS |
+| AT-221 | oracle Mine returns empty for NoopProvider | `go test ./internal/oracle/ -run TestMine_NoopProvider -v` | TestMine_NoopProvider_ReturnsEmpty passes | ✅ PASS |
+| AT-222 | oracle ToAssertions exists produces exists operator | `go test ./internal/oracle/ -run TestConstraintToAssertion_Exists -v` | passes | ✅ PASS |
+| AT-223 | oracle InjectIntoCase skips 4xx cases | `go test ./internal/oracle/ -run TestInjectIntoCase_Skips4xx -v` | passes | ✅ PASS |
+| AT-224 | business_rule_violation technique registered in gen | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique business_rule_violation --output /tmp/at224` | exits 0 | ✅ PASS |
+| AT-225 | business_rule Applies false without SemanticInfo | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Applies_NoSemanticInfo -v` | passes | ✅ PASS |
+| AT-226 | business_rule generates one case per rule | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_OnePerRule -v` | passes | ✅ PASS |
+| AT-227 | business_rule cases expect 4xx | `go test ./internal/methodology/ -run TestBusinessRuleTechnique_Generate_Expects4xx -v` | passes | ✅ PASS |
+| AT-228 | chain_sequence technique registered in gen | `caseforge gen --spec cmd/testdata/crud.yaml --no-ai --technique chain_sequence --output /tmp/at228` | exits 0 | ✅ PASS |
+| AT-229 | scoreFieldSimilarity positive overlap | `go test ./internal/methodology/ -run TestScoreFieldSimilarity_SameToken -v` | passes | ✅ PASS |
+| AT-230 | tokenizeFieldName camelCase | `go test ./internal/methodology/ -run TestTokenizeFieldName_CamelCase -v` | passes | ✅ PASS |
+| AT-231 | chain_sequence detects non-CRUD chain | `go test ./internal/methodology/ -run TestChainSequenceTechnique_DetectsNonCRUDChain -v` | passes | ✅ PASS |
+| AT-232 | conformance command is registered | `caseforge conformance --help` | help output contains "spec-vs-implementation" | ✅ PASS |
+| AT-233 | conformance --spec required | `caseforge conformance --target http://localhost:8080 2>&1 || true` | output contains "required flag" | ✅ PASS |
+| AT-234 | conformance --target required | `caseforge conformance --spec cmd/testdata/crud.yaml 2>&1 || true` | output contains "required flag" | ✅ PASS |
+| AT-235 | conformance fails gracefully without LLM | `caseforge conformance --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true` | output contains "LLM provider not available" | ✅ PASS |
 
 ---
 
@@ -450,7 +478,7 @@
 ---
 
 
-## Summary (last run: 2026-04-11)
+## Summary (last run: 2026-04-12)
 
 | Category | Total | Pass | Fail |
 |----------|-------|------|------|
@@ -473,7 +501,7 @@
 | rbt | 15 | 15 | 0 |
 | dedupe | 6 | 6 | 0 |
 | onboard | 2 | 2 | 0 |
-| run | 5 | 5 | 0 |
+| run | 9 | 9 | 0 |
 | exit codes | 2 | 2 | 0 |
 | example_extraction | 2 | 2 | 0 |
 | score | 10 | 10 | 0 |
@@ -481,7 +509,14 @@
 | datagen pattern | 2 | 2 | 0 |
 | positive_examples | 4 | 4 | 0 |
 | import har | 6 | 6 | 0 |
-| **Total** | **118** | **118** | **0** |
+| gen — auth-bootstrap | 4 | 4 | 0 |
+| run — failure classification | 4 | 4 | 0 |
+| score — fill-gaps | 4 | 4 | 0 |
+| oracle | 4 | 4 | 0 |
+| business_rule_violation | 4 | 4 | 0 |
+| chain_sequence | 4 | 4 | 0 |
+| conformance | 4 | 4 | 0 |
+| **Total** | **150** | **150** | **0** |
 
 ---
 
