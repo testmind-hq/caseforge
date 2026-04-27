@@ -195,7 +195,7 @@ caseforge lint --spec openapi.yaml
 --fill-gaps       Auto-generate cases for operations missing 2xx or 4xx coverage
 --spec string     OpenAPI spec path (required for --fill-gaps)
 --min-score int   Exit non-zero if overall score is below threshold (0 = disabled)
---save-history    Append score to history file for trend tracking
+--save-history    Append score to .caseforge-conformance.json for trend tracking
 ```
 
 ### `caseforge conformance`
@@ -402,13 +402,12 @@ X-CaseForge-Signature-256: sha256=<hex>
 | Decision Table | `decision_table` |
 | State Transition | `state_transition` |
 | Pairwise (IPOG) | `pairwise` |
-| Idempotency | `idempotency` |
+| Idempotency | `idempotent` |
 | OWASP API Top 10 (spec-based) | `owasp_api_top10` |
 | OWASP API Top 10 (LLM-annotated) | `owasp_api_top10_spec` |
 | Classification Tree (MBT) | `classification_tree` |
 | Orthogonal Array | `orthogonal_array` |
-| Example Extraction | `example_extraction` |
-| Positive Parameter Examples | `positive_param_examples` |
+| Example Extraction | `examples` |
 | Positive Examples | `positive_examples` |
 | Isolated Negative | `isolated_negative` |
 | Required Field Omission | `required_omission` |
