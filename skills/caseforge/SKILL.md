@@ -73,9 +73,10 @@ caseforge lint --spec openapi.yaml
 --technique string    Comma-separated techniques to run:
                         equivalence_partitioning, boundary_value,
                         decision_table, state_transition, pairwise,
-                        idempotency, owasp_api_top10, classification_tree,
-                        orthogonal_array, example_extraction,
+                        idempotency, owasp_api_top10, owasp_api_top10_spec,
+                        classification_tree, orthogonal_array, example_extraction,
                         positive_examples, required_omission, field_boundary,
+                        schema_violation, variable_irrelevance,
                         constraint_mutation, mutation, isolated_negative,
                         type_coercion, unicode_fuzzing, mass_assignment, idor,
                         semantic_annotation, auth_chain, chain_crud,
@@ -109,6 +110,8 @@ caseforge lint --spec openapi.yaml
 - **Unicode Fuzzing** — injects Unicode edge cases (RTL, surrogates, overlong) into string fields
 - **Mass Assignment** — sends extra fields the server should ignore or reject
 - **IDOR** — substitutes IDs with another user's IDs to probe access control
+- **Schema Violation** — sends requests that violate the declared JSON schema structure
+- **Variable Irrelevance** — adds irrelevant parameters that the server should ignore
 - **Semantic Annotation** — tests nullable/readOnly/writeOnly field constraints
 - **Auth Chain** — multi-step chain: authenticate, then call secured operation
 - **CRUD Chain** — multi-step create → read → update → delete chain

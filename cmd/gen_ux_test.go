@@ -53,13 +53,13 @@ func TestGenCompletion_TechniqueCompletionCoversAllRegistered(t *testing.T) {
 		"boundary_value",
 		"decision_table",
 		"state_transition",
-		"idempotent",
+		"idempotency",
 		"pairwise",
 		"classification_tree",
 		"orthogonal_array",
 		"owasp_api_top10",
-		"examples",
-		"chain",
+		"example_extraction",
+		"chain_crud",
 		"owasp_api_top10_spec",
 	}
 	nameSet := make(map[string]bool, len(allTechniqueNames))
