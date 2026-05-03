@@ -394,7 +394,7 @@
 | AT-041 | --format json + --dry-run produces valid JSON | see script | rbt-report.json with diff_base field | ✅ PASS |
 | AT-042 | --fail-on high, dry-run → exit 0 | see script | exit 0 | ✅ PASS |
 | AT-043 | --dry-run skips git/tree-sitter | see script | no git errors | ✅ PASS |
-| AT-044 | doctor shows tree-sitter status | `caseforge doctor` | tree-sitter line present | ✅ PASS |
+| AT-044 | doctor shows AI-disabled warning when no keys set | `ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' caseforge doctor` | "no AI provider key set" present | ✅ PASS |
 | AT-045 | rbt index command registered | `caseforge rbt --help` | `index` listed | ✅ PASS |
 | AT-046 | rbt index --strategy llm writes map file | see script | map.yaml created with mappings: | ✅ PASS |
 | AT-044b | rbt index --out existing without --overwrite fails | see script | error: already exists | ✅ PASS |

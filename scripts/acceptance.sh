@@ -482,8 +482,8 @@ run AT-042 "--fail-on high + dry-run exits 0" \
   "mkdir -p '$WORKDIR/rbt-out2' && '$BIN' rbt --spec '$WORKDIR/petstore.yaml' --dry-run --fail-on high --output '$WORKDIR/rbt-out2'"
 run AT-043 "--dry-run skips git/tree-sitter" \
   "mkdir -p '$WORKDIR/rbt-out3' && '$BIN' rbt --spec '$WORKDIR/petstore.yaml' --dry-run --output '$WORKDIR/rbt-out3'"
-contains AT-044 "doctor shows tree-sitter status" "tree-sitter" \
-  "'$BIN' doctor 2>&1 || true"
+contains AT-044 "doctor shows AI-disabled warning when no keys set" "no AI provider key set" \
+  "ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' doctor 2>&1 || true"
 echo ""
 
 # -------------------------------------------------------
