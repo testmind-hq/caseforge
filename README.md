@@ -1,6 +1,6 @@
 # CaseForge
 
-> AI-powered HTTP API test-case generator from OpenAPI specs
+> Spec-driven HTTP API test-case generator — turn OpenAPI into runnable Hurl, k6, or Postman cases
 
 [![CI](https://github.com/testmind-hq/caseforge/actions/workflows/ci.yml/badge.svg)](https://github.com/testmind-hq/caseforge/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -13,9 +13,11 @@
 
 CaseForge reads your OpenAPI specification and generates structured, traceable test cases covering happy paths, edge cases, boundary values, and OWASP security scenarios. It outputs ready-to-run test files in multiple formats and can execute them against your API.
 
+It works as a pure algorithmic generator out of the box (pairwise, boundary-value, combinatorial). Optionally, you can plug in an LLM (Anthropic / OpenAI / Gemini / any OpenAI-compatible API) to enrich edge-case discovery and mine response-body constraints.
+
 ## Features
 
-- **AI-powered generation** — Anthropic, OpenAI, Gemini, or any OpenAI-compatible API (DeepSeek, Qwen, Moonshot, Azure)
+- **Multiple LLM providers (optional)** — Anthropic, OpenAI, Gemini, or any OpenAI-compatible API (DeepSeek, Qwen, Moonshot, Azure). Disable entirely for pure-algorithm mode.
 - **Multiple output formats** — Hurl, k6, Postman Collection v2.1, Markdown, CSV
 - **OWASP security testing** — injection, auth bypass, and data exposure test cases
 - **Spec linting** — validates OpenAPI specs with configurable severity thresholds and JSON output

@@ -1,6 +1,6 @@
 # CaseForge
 
-> 基于 OpenAPI 规范的 AI 驱动 HTTP API 测试用例生成工具
+> Spec 驱动的 HTTP API 测试用例生成器 — 把 OpenAPI 转成可执行的 Hurl / k6 / Postman 用例
 
 [![CI](https://github.com/testmind-hq/caseforge/actions/workflows/ci.yml/badge.svg)](https://github.com/testmind-hq/caseforge/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -13,9 +13,11 @@
 
 CaseForge 读取你的 OpenAPI 规范，自动生成结构化、可追溯的测试用例，覆盖正常路径、边界值、边缘场景和 OWASP 安全测试场景。支持多种输出格式，并可直接对 API 执行测试。
 
+开箱即用是纯算法生成模式（pairwise / 边界值 / 组合分析）。可选接入 LLM（Anthropic / OpenAI / Gemini / 任意 OpenAI 兼容 API）增强边缘场景发现和响应体约束挖掘。
+
 ## 功能特性
 
-- **AI 驱动生成** — 支持 Anthropic、OpenAI、Gemini，以及任何 OpenAI 兼容 API（DeepSeek、Qwen、Moonshot、Azure）
+- **多 LLM provider（可选）** — Anthropic、OpenAI、Gemini，以及任何 OpenAI 兼容 API（DeepSeek、Qwen、Moonshot、Azure）；可完全关闭走纯算法模式
 - **多种输出格式** — Hurl、k6、Postman Collection v2.1、Markdown、CSV
 - **OWASP 安全测试** — 自动生成注入攻击、认证绕过、数据暴露等安全测试用例
 - **Spec Lint** — 对 OpenAPI 规范进行质量检查，支持可配置的严重级别阈值和 JSON 输出
