@@ -18,9 +18,35 @@ projects is embedded in caseforge:
   (internal/methodology/).
 
 - EvoMaster (https://github.com/EMResearch/EvoMaster) - LGPL-3.0
-  Inspiration for the per-(endpoint x status-code) coverage metric
-  definition (internal/score/scorer.go). Concept-level reference only;
-  no source code is derived from EvoMaster.
+  Concept-level reference only. The following six features are
+  independently implemented in Go using caseforge's own data structures
+  (kin-openapi types, the TestCase/Step/Assertion schema, the Postman
+  Collection v2.1 schema). No source code is derived from EvoMaster's
+  Kotlin codebase, no Kotlin source was translated, and the algorithms
+  are independently designed (e.g. caseforge's exploreWithPriority is a
+  simple two-pass loop, not an evolutionary search; caseforge's
+  DataPool is a single-dimensional map, not a fitness-weighted feeder):
+
+  1. OpenAPI Links parsing for producer-consumer dependency edges
+     (internal/spec/parser.go, internal/methodology/depgraph.go) —
+     concept inspired by EvoMaster's RestLink discovery.
+  2. DELETE teardown step in chain command (cmd/chain.go) —
+     concept inspired by EvoMaster's blackBoxCleanUp flag.
+  3. DataPool for response-derived test values
+     (internal/datagen/pool.go, internal/dea/explorer.go) —
+     concept inspired by EvoMaster's RestResponseFeeder.
+  4. Per-(endpoint x status-code) coverage metric
+     (internal/score/scorer.go) — concept inspired by EvoMaster's
+     coverage targets.
+  5. Postman Collection v2.1 seeding into DataPool
+     (internal/datagen/postman_seed.go) — concept inspired by
+     EvoMaster's PostmanParser.
+  6. Two-pass exploration scheduling (breadth-then-depth)
+     (internal/dea/explorer.go) — concept inspired by EvoMaster's
+     focused-search mode.
+
+  See docs/superpowers/plans/2026-04-11-evomaster-inspired.md for the
+  natural-language plan describing these six concepts.
 
 - OWASP API Security Top 10 (https://owasp.org/API-Security/) - CC-BY-SA-4.0
   Used for security test category names and overall structure. caseforge
