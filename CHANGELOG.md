@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-05-03
+
+### Fixed
+- `caseforge doctor` no longer checks for the `tree-sitter` CLI binary — RBT uses the `gotreesitter` Go library with embedded grammars, not the CLI
+- `caseforge doctor` AI-disabled warning now only fires when all three provider keys (Anthropic, OpenAI, Gemini) are absent; individual provider warnings are per-provider
+
+### Documentation
+- Reframe README around spec-driven workflow, clarifying that LLM is optional
+
 ## [0.6.0] - 2026-03-23
 
 ### Added
