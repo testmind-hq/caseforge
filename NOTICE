@@ -1,0 +1,36 @@
+caseforge
+Copyright 2026 testmind-hq
+
+This product includes software developed at testmind-hq
+(https://github.com/testmind-hq).
+
+== References (no source code embedded) ==
+
+The following projects influenced concepts, design patterns, or specific
+methodologies referenced in code comments. No source code from these
+projects is embedded in caseforge:
+
+- Schemathesis (https://github.com/schemathesis/schemathesis) - Apache 2.0
+  Inspiration for the CoverageScenario concept (internal/score/scenarios.go).
+
+- CATS (https://github.com/Endava/cats) - Apache 2.0
+  Inspiration for mass-assignment and unicode-fuzzing test patterns
+  (internal/methodology/).
+
+- EvoMaster (https://github.com/EMResearch/EvoMaster) - LGPL-3.0
+  Inspiration for the per-(endpoint x status-code) coverage metric
+  definition (internal/score/scorer.go). Concept-level reference only;
+  no source code is derived from EvoMaster.
+
+- OWASP API Security Top 10 (https://owasp.org/API-Security/) - CC-BY-SA-4.0
+  Used for security test category names and overall structure. caseforge
+  does not reproduce OWASP documentation text.
+
+== Output formats supported ==
+
+caseforge generates test files for the following execution environments,
+but no source code from these projects is embedded:
+
+- Hurl (https://hurl.dev) - Apache 2.0
+- k6 (https://k6.io) - AGPL-3.0
+- Postman Collection v2.1 schema (https://www.postman.com) - Apache 2.0

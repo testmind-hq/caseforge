@@ -442,6 +442,17 @@ Run `caseforge doctor` to verify your environment.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Acknowledgements
+
+caseforge was influenced by prior art in the API testing space:
+
+- [Schemathesis](https://github.com/schemathesis/schemathesis) — property-based testing
+- [CATS](https://github.com/Endava/cats) — fuzzing patterns
+- [EvoMaster](https://github.com/EMResearch/EvoMaster) — coverage metrics research
+- [OWASP API Security Top 10](https://owasp.org/API-Security/) — security category structure
+
+See [NOTICE](NOTICE) for full attribution. No source code from these projects is embedded in caseforge.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
