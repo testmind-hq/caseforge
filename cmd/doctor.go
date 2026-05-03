@@ -36,25 +36,28 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		color.Green("  ✓ k6 found")
 	}
 
-	// Check ANTHROPIC_API_KEY
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+	// Check AI provider keys — at least one is required for AI features
+	hasAnthropic := os.Getenv("ANTHROPIC_API_KEY") != ""
+	hasOpenAI := os.Getenv("OPENAI_API_KEY") != ""
+	hasGemini := os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != ""
+
+	if hasAnthropic {
 		color.Green("  ✓ ANTHROPIC_API_KEY set")
 	} else {
-		color.Yellow("  ⚠ ANTHROPIC_API_KEY not set — AI features disabled (use --no-ai or set the key)")
+		color.Yellow("  ⚠ ANTHROPIC_API_KEY not set — anthropic provider unavailable")
 	}
-
-	// Check OPENAI_API_KEY
-	if os.Getenv("OPENAI_API_KEY") != "" {
+	if hasOpenAI {
 		color.Green("  ✓ OPENAI_API_KEY set")
 	} else {
 		color.Yellow("  ⚠ OPENAI_API_KEY not set — openai/openai-compat provider unavailable")
 	}
-
-	// Check GEMINI_API_KEY / GOOGLE_API_KEY
-	if os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != "" {
+	if hasGemini {
 		color.Green("  ✓ Gemini API key set (GEMINI_API_KEY or GOOGLE_API_KEY)")
 	} else {
 		color.Yellow("  ⚠ neither GEMINI_API_KEY nor GOOGLE_API_KEY is set — gemini provider unavailable")
+	}
+	if !hasAnthropic && !hasOpenAI && !hasGemini {
+		color.Yellow("  ⚠ no AI provider key set — AI features disabled (use --no-ai or set at least one key)")
 	}
 
 	if !ok {
