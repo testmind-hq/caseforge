@@ -241,7 +241,12 @@ func computeSecurity(opCases map[opKey][]schema.TestCase, totalOps int) (int, st
 
 // computeStatusCoverage returns the % of operations that have both a 2xx-asserting
 // case (happy path) and a 4xx/5xx-asserting case (error path).
-// Inspired by EvoMaster's per-(endpoint × status-code) coverage targets.
+//
+// The metric concept — that an operation is "covered" only when both happy and
+// error paths are tested — is informed by EvoMaster's research on coverage
+// targets. This implementation is independent: it operates on caseforge's
+// TestCase / Step / Assertion schema, with no source code derived from
+// EvoMaster's Kotlin codebase. See NOTICE for full attribution.
 func computeStatusCoverage(opCases map[opKey][]schema.TestCase, totalOps int) (int, string) {
 	if totalOps == 0 {
 		return 0, "no operations found"

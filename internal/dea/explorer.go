@@ -177,12 +177,17 @@ func (e *Explorer) Explore(ctx context.Context, s *spec.ParsedSpec) (*Exploratio
 	return report, nil
 }
 
-// exploreWithPriority implements a two-pass probe scheduling strategy inspired by
-// EvoMaster's focused-search mode:
+// exploreWithPriority implements a two-pass probe scheduling strategy:
 //
 //	Pass 1: run the first hypothesis for every operation (breadth scan, 1 probe/op).
 //	Pass 2: allocate remaining budget to operations that didn't return 2xx in pass 1,
 //	         running their remaining hypotheses in full before moving to covered ops.
+//
+// The high-level idea (prioritize uncovered operations during exploration) is
+// informed by EvoMaster's focused-search mode. This implementation is
+// independent: a simple two-pass loop, not an evolutionary search; no fitness
+// function, no archive, no mutation operator. No source code is derived from
+// EvoMaster's Kotlin codebase. See NOTICE for full attribution.
 func (e *Explorer) exploreWithPriority(ctx context.Context, s *spec.ParsedSpec, report *ExplorationReport) (*ExplorationReport, error) {
 	type opState struct {
 		op         *spec.Operation
