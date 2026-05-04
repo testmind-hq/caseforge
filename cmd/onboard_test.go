@@ -302,12 +302,32 @@ func TestOnboard_MCPMultiSelect_InstallsMultiple(t *testing.T) {
 }
 
 func TestOnboard_SkillCheckbox_InstallsUniversal(t *testing.T) {
-	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
-	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
+	// Set up a temp src dir with a fake SKILL.md so findSkillFile() returns a path
+	srcDir := t.TempDir()
+	skillDir := filepath.Join(srcDir, "skills", "caseforge")
+	require.NoError(t, os.MkdirAll(skillDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# CaseForge Skill\n"), 0644))
 
-	universalDst := filepath.Join(t.TempDir(), "caseforge.md")
-	require.NoError(t, copySkillFile(skillSrc, universalDst))
+	orig, _ := os.Getwd()
+	require.NoError(t, os.Chdir(srcDir))
+	t.Cleanup(func() { os.Chdir(orig) })
 
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
+
+	// provider=1(anthropic), model=enter, apikey=enter, format=1, mcp=enter(skip), skill=2(universal)
+	onboardCmd.SetIn(strings.NewReader("1\n\n\n1\n\n2\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
+	var buf bytes.Buffer
+	onboardCmd.SetOut(&buf)
+
+	require.NoError(t, runOnboard(onboardCmd, nil))
+
+	universalDst := filepath.Join(home, ".agents", "skills", "caseforge.md")
 	data, err := os.ReadFile(universalDst)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "CaseForge Skill")
