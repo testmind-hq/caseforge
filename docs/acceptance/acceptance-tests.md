@@ -440,8 +440,14 @@
 
 | ID | Scenario | Command | Expected | Status |
 |----|----------|---------|----------|--------|
-| AT-030 | onboard --yes (non-interactive) | `ANTHROPIC_API_KEY=x caseforge onboard --yes` | auto-selects anthropic, writes `.caseforge.yaml` with `provider: anthropic`, prints Next steps | ✅ PASS |
-| AT-031 | onboard skip existing config | `echo n \| caseforge onboard` with existing `.caseforge.yaml` | prompts overwrite, answers n → file unchanged | ✅ PASS |
+| AT-030 | onboard --yes writes config to home dir | `HOME=/tmp/x caseforge onboard --yes` | `~/.caseforge.yaml` written with `provider: anthropic` | ✅ PASS |
+| AT-031 | onboard skips existing config in home dir | `echo n \| caseforge onboard` | "Keeping existing config" printed, file unchanged | ✅ PASS |
+| AT-238 | onboard prompts for model after provider selection | interactive flow | output contains "Model [" | ✅ PASS |
+| AT-239 | onboard --yes uses non-empty model in config | `caseforge onboard --yes` | config `model:` field is present | ✅ PASS |
+| AT-240 | onboard --yes writes to home dir not cwd | `caseforge onboard --yes` from separate cwd | file at `~/` not `./` | ✅ PASS |
+| AT-241 | onboard MCP checkbox shows Claude Desktop option | interactive flow | output contains "Claude Desktop" | ✅ PASS |
+| AT-242 | onboard skill checkbox shows Universal AI CLI option | interactive flow | output contains "Universal AI CLI" | ✅ PASS |
+| AT-243 | onboard skill installs to ~/.agents/skills/ | interactive flow, select option 2 | file exists at universal path | ✅ PASS |
 
 ---
 
