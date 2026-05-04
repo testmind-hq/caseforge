@@ -29,7 +29,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: .caseforge.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: ~/.caseforge.yaml; project .caseforge.yaml takes priority)")
 	rootCmd.Version = Version // read after ldflags can overwrite the var
 }
 
