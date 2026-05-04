@@ -2,6 +2,7 @@
 package llm
 
 import (
+	"context"
 	"os"
 )
 
@@ -51,6 +52,16 @@ func NewProviderWithConfig(cfg ProviderConfig) LLMProvider {
 			return &NoopProvider{}
 		}
 		p, err := newGeminiProvider(key, firstNonEmpty(cfg.Model, "gemini-2.5-flash"))
+		if err != nil {
+			return &NoopProvider{}
+		}
+		return p
+	case "bedrock":
+		region := firstNonEmpty(cfg.Region, os.Getenv("AWS_REGION"))
+		if region == "" {
+			return &NoopProvider{}
+		}
+		p, err := newBedrockProvider(context.Background(), firstNonEmpty(cfg.Model, "us.anthropic.claude-sonnet-4-6"), region)
 		if err != nil {
 			return &NoopProvider{}
 		}
