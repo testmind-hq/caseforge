@@ -186,27 +186,25 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		chosenFormat = formats[choice-1]
 	}
 
-	// Step 6: Install MCP server
+	// Step 6: Install MCP server (multi-select)
 	if !onboardYes {
-		fmt.Fprintln(out, "\nInstall CaseForge as MCP server?")
-		fmt.Fprintln(out, "  [1] Claude Desktop  (~/Library/Application Support/Claude/claude_desktop_config.json)")
-		fmt.Fprintln(out, "  [2] Claude Code     (~/.claude.json)")
-		fmt.Fprintln(out, "  [3] Skip")
-		choice := promptInt(out, in, "MCP install", 1, 3)
-		switch choice {
-		case 1:
-			path := claudeDesktopConfigPath()
-			if err := installMCPToFile(path); err != nil {
-				fmt.Fprintf(out, "  ⚠  MCP install failed: %v\n", err)
+		home, _ := os.UserHomeDir()
+		desktopPath := claudeDesktopConfigPath()
+		claudeCodePath := filepath.Join(home, ".claude.json")
+		codexPath := filepath.Join(home, ".codex", "config.json")
+
+		mcpOpts := []checkboxOption{
+			{label: "Claude Desktop", detail: desktopPath},
+			{label: "Claude Code", detail: claudeCodePath},
+			{label: "Codex CLI", detail: codexPath},
+		}
+		selected := promptCheckbox(out, in, "\nInstall CaseForge as MCP server?", mcpOpts)
+		paths := []string{desktopPath, claudeCodePath, codexPath}
+		for _, idx := range selected {
+			if err := installMCPToFile(paths[idx]); err != nil {
+				fmt.Fprintf(out, "  ⚠  MCP install failed (%s): %v\n", mcpOpts[idx].label, err)
 			} else {
-				fmt.Fprintf(out, "  ✓ Registered in %s\n", path)
-			}
-		case 2:
-			path := claudeCodeConfigPath()
-			if err := installMCPToFile(path); err != nil {
-				fmt.Fprintf(out, "  ⚠  MCP install failed: %v\n", err)
-			} else {
-				fmt.Fprintf(out, "  ✓ Registered in %s\n", path)
+				fmt.Fprintf(out, "  ✓ Registered in %s\n", paths[idx])
 			}
 		}
 	}
@@ -343,11 +341,6 @@ func claudeDesktopConfigPath() string {
 		return filepath.Join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
 	}
 	return filepath.Join(home, ".config", "Claude", "claude_desktop_config.json")
-}
-
-func claudeCodeConfigPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude.json")
 }
 
 func printNextSteps(out io.Writer, format string) {

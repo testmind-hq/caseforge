@@ -24,8 +24,8 @@ func TestOnboard_ProviderSubPrompts_ShowsModelAndKey(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// provider=2(openai), model=gpt-4o, apikey=enter(keep), format=1, mcp=3(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("2\ngpt-4o\n\n1\n3\nn\n"))
+	// provider=2(openai), model=gpt-4o, apikey=enter(keep), format=1, mcp=enter(skip), skill=n
+	onboardCmd.SetIn(strings.NewReader("2\ngpt-4o\n\n1\n\nn\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -127,8 +127,8 @@ func TestOnboard_OverwritesOnConfirm(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep), format=1(hurl), mcp=3(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("y\n1\n\n\n1\n3\nn\n"))
+	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep), format=1(hurl), mcp=enter(skip), skill=n
+	onboardCmd.SetIn(strings.NewReader("y\n1\n\n\n1\n\nn\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -175,8 +175,8 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// provider=5(noop), format=1(hurl), mcp=3(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("5\n1\n3\nn\n"))
+	// provider=5(noop), format=1(hurl), mcp=enter(skip), skill=n
+	onboardCmd.SetIn(strings.NewReader("5\n1\n\nn\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -281,4 +281,22 @@ func TestPromptCheckbox_IgnoresOutOfRange(t *testing.T) {
 		{label: "Option A", detail: "path/a"},
 	})
 	assert.Equal(t, []int{0}, selected) // only valid index
+}
+
+func TestOnboard_MCPMultiSelect_InstallsMultiple(t *testing.T) {
+	claudeCodePath := filepath.Join(t.TempDir(), "claude.json")
+	codexPath := filepath.Join(t.TempDir(), "codex_config.json")
+
+	// installMCPToFile is the helper — test it directly for two paths
+	require.NoError(t, installMCPToFile(claudeCodePath))
+	require.NoError(t, installMCPToFile(codexPath))
+
+	for _, path := range []string{claudeCodePath, codexPath} {
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		var cfg map[string]any
+		require.NoError(t, json.Unmarshal(data, &cfg))
+		servers := cfg["mcpServers"].(map[string]any)
+		assert.NotNil(t, servers["caseforge"], "expected caseforge in %s", path)
+	}
 }
