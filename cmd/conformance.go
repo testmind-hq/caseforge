@@ -68,7 +68,12 @@ func runConformance(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
-	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
+	provider := llm.NewProviderWithConfig(llm.ProviderConfig{
+		APIKey:   cfg.AI.APIKey,
+		Provider: cfg.AI.Provider,
+		Model:    cfg.AI.Model,
+		BaseURL:  cfg.AI.BaseURL,
+	})
 	if !provider.IsAvailable() {
 		return fmt.Errorf("LLM provider not available — conformance requires an LLM (set provider in .caseforge.yaml or use env var)")
 	}
