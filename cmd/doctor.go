@@ -60,6 +60,35 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		color.Yellow("  ⚠ no AI provider key set — AI features disabled (use --no-ai or set at least one key)")
 	}
 
+	// Check AWS/Bedrock credentials
+	fmt.Println()
+	color.White("  AWS Bedrock:")
+	hasRegion := os.Getenv("AWS_REGION") != ""
+	if hasRegion {
+		color.Green("  ✓ AWS_REGION set (%s)", os.Getenv("AWS_REGION"))
+	} else {
+		color.Yellow("  ⚠ AWS_REGION not set — required for bedrock provider")
+	}
+
+	hasBedrockKey := os.Getenv("AWS_BEARER_TOKEN_BEDROCK") != ""
+	hasStaticKey := os.Getenv("AWS_ACCESS_KEY_ID") != ""
+	hasProfile := os.Getenv("AWS_PROFILE") != ""
+	awsCredsFile := os.ExpandEnv("$HOME/.aws/credentials")
+	_, awsFileErr := os.Stat(awsCredsFile)
+	hasCredsFile := awsFileErr == nil
+
+	if hasBedrockKey {
+		color.Green("  ✓ AWS_BEARER_TOKEN_BEDROCK set")
+	} else if hasStaticKey {
+		color.Green("  ✓ AWS_ACCESS_KEY_ID set")
+	} else if hasProfile {
+		color.Green("  ✓ AWS_PROFILE set (%s)", os.Getenv("AWS_PROFILE"))
+	} else if hasCredsFile {
+		color.Green("  ✓ ~/.aws/credentials found")
+	} else {
+		color.Yellow("  ⚠ no AWS credentials found — set AWS_BEARER_TOKEN_BEDROCK, AWS_ACCESS_KEY_ID, AWS_PROFILE, or configure ~/.aws/credentials")
+	}
+
 	if !ok {
 		return fmt.Errorf("environment check failed")
 	}
