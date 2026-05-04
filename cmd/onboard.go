@@ -65,6 +65,34 @@ func promptCheckbox(out io.Writer, in *bufio.Reader, title string, opts []checkb
 	return result
 }
 
+// promptProviderDetails asks for model, api_key (and base_url for openai-compat)
+// after the user has selected a provider.
+func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (model, apiKey, baseURL string) {
+	fmt.Fprintf(out, "Model [%s]: ", p.model)
+	if m := strings.TrimSpace(readLine(in)); m != "" {
+		model = m
+	} else {
+		model = p.model
+	}
+
+	if p.name != "noop" && p.name != "bedrock" {
+		if p.available {
+			fmt.Fprintf(out, "API key: (detected via %s) [Enter to keep, or paste to override]: ", p.envKey)
+		} else {
+			fmt.Fprintf(out, "API key for %s (leave blank to set %s later): ", p.name, p.envKey)
+		}
+		apiKey = strings.TrimSpace(readLine(in))
+	}
+
+	if p.name == "openai-compat" {
+		for baseURL == "" {
+			fmt.Fprint(out, "Base URL (e.g. https://api.deepseek.com/v1): ")
+			baseURL = strings.TrimSpace(readLine(in))
+		}
+	}
+	return
+}
+
 func detectProviders() []providerInfo {
 	providers := []providerInfo{
 		{"anthropic", "ANTHROPIC_API_KEY", os.Getenv("ANTHROPIC_API_KEY") != "", "claude-sonnet-4-6"},
@@ -124,7 +152,7 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		}
 		fmt.Fprintf(out, "Provider: %s (auto-selected)\n", chosenProvider.name)
 	} else {
-		fmt.Fprintln(out, "Choose LLM provider:")
+		fmt.Fprintln(out, "Choose your primary LLM provider:")
 		for i, p := range providers {
 			marker := "  "
 			if p.available && p.name != "noop" {
@@ -136,22 +164,12 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		chosenProvider = providers[choice-1]
 	}
 
-	// Step 3b: base_url for openai-compat
-	baseURL := ""
-	if chosenProvider.name == "openai-compat" && !onboardYes {
-		fmt.Fprint(out, "Enter base_url for openai-compat provider (e.g. https://api.deepseek.com/v1): ")
-		baseURL = strings.TrimSpace(readLine(in))
-	}
-
-	// Step 4: API key if needed
+	// Step 3b+4: model, api_key, base_url sub-prompts
+	model := chosenProvider.model
 	apiKey := ""
-	if chosenProvider.name != "noop" && !chosenProvider.available {
-		if onboardYes {
-			fmt.Fprintf(out, "  ⚠  No API key detected for %s. Set %s env var before using AI features.\n", chosenProvider.name, chosenProvider.envKey)
-		} else {
-			fmt.Fprintf(out, "Enter API key for %s (leave blank to set later via %s): ", chosenProvider.name, chosenProvider.envKey)
-			apiKey = strings.TrimSpace(readLine(in))
-		}
+	baseURL := ""
+	if !onboardYes && chosenProvider.name != "noop" {
+		model, apiKey, baseURL = promptProviderDetails(out, in, chosenProvider)
 	}
 
 	// Step 5: Choose output format
@@ -213,7 +231,7 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Step 8: Write .caseforge.yaml
-	if err := writeOnboardConfig(chosenProvider.name, chosenProvider.model, apiKey, baseURL, chosenFormat); err != nil {
+	if err := writeOnboardConfig(chosenProvider.name, model, apiKey, baseURL, chosenFormat); err != nil {
 		return fmt.Errorf("writing config: %w", err)
 	}
 	fmt.Fprintln(out, "\n✓ .caseforge.yaml written.")

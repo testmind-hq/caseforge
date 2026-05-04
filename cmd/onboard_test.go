@@ -13,6 +13,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestOnboard_ProviderSubPrompts_ShowsModelAndKey(t *testing.T) {
+	dir := t.TempDir()
+	orig, _ := os.Getwd()
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() { os.Chdir(orig) })
+
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "sk-open")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
+
+	// provider=2(openai), model=gpt-4o, apikey=enter(keep), format=1, mcp=3(skip), skill=n
+	onboardCmd.SetIn(strings.NewReader("2\ngpt-4o\n\n1\n3\nn\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
+	var buf bytes.Buffer
+	onboardCmd.SetOut(&buf)
+
+	require.NoError(t, runOnboard(onboardCmd, nil))
+
+	data, err := os.ReadFile(filepath.Join(dir, ".caseforge.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "provider: openai")
+	assert.Contains(t, string(data), "model: gpt-4o")
+}
+
 func TestOnboardCommand_IsRegistered(t *testing.T) {
 	found := false
 	for _, c := range rootCmd.Commands() {
@@ -102,8 +127,8 @@ func TestOnboard_OverwritesOnConfirm(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// y=overwrite, then provider=1(anthropic), format=1(hurl), mcp=3(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("y\n1\n1\n3\nn\n"))
+	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep), format=1(hurl), mcp=3(skip), skill=n
+	onboardCmd.SetIn(strings.NewReader("y\n1\n\n\n1\n3\nn\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
