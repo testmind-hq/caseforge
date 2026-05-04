@@ -39,4 +39,5 @@ docs/design/
 # Git worktrees
 .worktrees/
 
-docs/design/
+# Build output
+bin/
