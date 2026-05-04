@@ -15,7 +15,7 @@ help:
 	@printf "%-15s %s\n" "clean"      "Remove bin/ directory"
 
 build:
-	mkdir -p bin
+	@mkdir -p bin
 	go build -o $(BINARY) .
 
 test:
