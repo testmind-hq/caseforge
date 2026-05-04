@@ -380,14 +380,14 @@ webhooks:
 
 ## 致谢
 
-caseforge 在 API 测试领域的先行项目启发下完成:
+caseforge 的设计参考了 API 测试领域的以下项目:
 
-- [Schemathesis](https://github.com/schemathesis/schemathesis) — 基于属性的测试
-- [CATS](https://github.com/Endava/cats) — fuzzing 模式
-- [EvoMaster](https://github.com/EMResearch/EvoMaster) — 覆盖率指标研究
+- [Schemathesis](https://github.com/schemathesis/schemathesis) — 基于属性的测试方法
+- [CATS](https://github.com/Endava/cats) — fuzzing 技术
+- [EvoMaster](https://github.com/EMResearch/EvoMaster) — 覆盖率指标定义的概念级参考(无源码派生)
 - [OWASP API Security Top 10](https://owasp.org/API-Security/) — 安全测试类目结构
 
-完整署名详见 [NOTICE](NOTICE)。caseforge 未嵌入这些项目的任何源码。
+caseforge 未嵌入这些项目的任何源码。完整署名详见 [NOTICE](NOTICE)。
 
 ## 开源协议
 

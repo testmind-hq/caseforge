@@ -444,14 +444,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
-caseforge was influenced by prior art in the API testing space:
+caseforge's design was informed by the following projects in the API testing space:
 
-- [Schemathesis](https://github.com/schemathesis/schemathesis) — property-based testing
-- [CATS](https://github.com/Endava/cats) — fuzzing patterns
-- [EvoMaster](https://github.com/EMResearch/EvoMaster) — coverage metrics research
+- [Schemathesis](https://github.com/schemathesis/schemathesis) — property-based testing patterns
+- [CATS](https://github.com/Endava/cats) — fuzzing techniques
+- [EvoMaster](https://github.com/EMResearch/EvoMaster) — concept-level reference for coverage metric definition (no source derived)
 - [OWASP API Security Top 10](https://owasp.org/API-Security/) — security category structure
 
-See [NOTICE](NOTICE) for full attribution. No source code from these projects is embedded in caseforge.
+None of these projects' source code is embedded in caseforge. See [NOTICE](NOTICE) for full attribution.
 
 ## License
 
