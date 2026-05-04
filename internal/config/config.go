@@ -28,7 +28,7 @@ type AIConfig struct {
 	Model    string `mapstructure:"model"`
 	APIKey   string `mapstructure:"api_key"`
 	BaseURL  string `mapstructure:"base_url"` // openai-compat only (DeepSeek, Qwen, Azure, etc.)
-	Region   string `mapstructure:"region"`   // bedrock only; falls back to AWS_REGION
+	Region   string `mapstructure:"region"`   // bedrock only; falls back to AWS_REGION, then AWS_DEFAULT_REGION
 }
 
 type OutputConfig struct {

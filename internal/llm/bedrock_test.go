@@ -14,6 +14,8 @@ func TestBedrockProviderName(t *testing.T) {
 }
 
 func TestNewProviderWithConfig_BedrockNoRegion(t *testing.T) {
+	t.Setenv("AWS_REGION", "")
+	t.Setenv("AWS_DEFAULT_REGION", "")
 	p := NewProviderWithConfig(ProviderConfig{Provider: "bedrock", Region: ""})
 	assert.Equal(t, "noop", p.Name())
 }
