@@ -14,11 +14,8 @@ import (
 )
 
 func TestOnboard_ProviderSubPrompts_ShowsModelAndKey(t *testing.T) {
-	dir := t.TempDir()
-	orig, _ := os.Getwd()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) })
-
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "sk-open")
 	t.Setenv("GEMINI_API_KEY", "")
@@ -32,7 +29,7 @@ func TestOnboard_ProviderSubPrompts_ShowsModelAndKey(t *testing.T) {
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
-	data, err := os.ReadFile(filepath.Join(dir, ".caseforge.yaml"))
+	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "provider: openai")
 	assert.Contains(t, string(data), "model: gpt-4o")
@@ -62,10 +59,8 @@ func TestOnboardCommand_HasYesFlag(t *testing.T) {
 }
 
 func TestOnboard_NonInteractive_WritesConfig(t *testing.T) {
-	dir := t.TempDir()
-	orig, _ := os.Getwd()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) })
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test-key")
 	t.Setenv("OPENAI_API_KEY", "")
@@ -80,7 +75,7 @@ func TestOnboard_NonInteractive_WritesConfig(t *testing.T) {
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
-	data, err := os.ReadFile(filepath.Join(dir, ".caseforge.yaml"))
+	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
 	require.NoError(t, err)
 	content := string(data)
 	assert.Contains(t, content, "provider: anthropic")
@@ -88,20 +83,16 @@ func TestOnboard_NonInteractive_WritesConfig(t *testing.T) {
 }
 
 func TestOnboard_SkipsExistingConfig(t *testing.T) {
-	dir := t.TempDir()
-	orig, _ := os.Getwd()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) })
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// Write existing config
-	require.NoError(t, os.WriteFile(".caseforge.yaml", []byte("existing: true\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".caseforge.yaml"), []byte("existing: true\n"), 0644))
 
-	// Inject "n" to skip overwrite
 	onboardCmd.SetIn(strings.NewReader("n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
@@ -109,25 +100,23 @@ func TestOnboard_SkipsExistingConfig(t *testing.T) {
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
-	// Original file must be untouched
-	data, _ := os.ReadFile(".caseforge.yaml")
+	data, _ := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
 	assert.Contains(t, string(data), "existing: true")
 }
 
 func TestOnboard_OverwritesOnConfirm(t *testing.T) {
-	dir := t.TempDir()
-	orig, _ := os.Getwd()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) })
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
-	require.NoError(t, os.WriteFile(".caseforge.yaml", []byte("old: true\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".caseforge.yaml"), []byte("old: true\n"), 0644))
 
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep), format=1(hurl), mcp=enter(skip), skill=enter(skip)
+	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep),
+	// format=1(hurl), mcp=enter(skip), skill=enter(skip)
 	onboardCmd.SetIn(strings.NewReader("y\n1\n\n\n1\n\n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
@@ -135,16 +124,14 @@ func TestOnboard_OverwritesOnConfirm(t *testing.T) {
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
-	data, err := os.ReadFile(".caseforge.yaml")
+	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "provider: anthropic")
 }
 
 func TestOnboard_PrintsNextSteps(t *testing.T) {
-	dir := t.TempDir()
-	orig, _ := os.Getwd()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) })
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
 	t.Setenv("OPENAI_API_KEY", "")
@@ -165,10 +152,8 @@ func TestOnboard_PrintsNextSteps(t *testing.T) {
 }
 
 func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
-	dir := t.TempDir()
-	orig, _ := os.Getwd()
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) })
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
@@ -183,7 +168,7 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
-	data, err := os.ReadFile(".caseforge.yaml")
+	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "provider: noop")
 }
