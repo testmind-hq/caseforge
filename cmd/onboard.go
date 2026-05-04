@@ -209,20 +209,29 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Step 7: Install skill
+	// Step 7: Install skill (multi-select)
 	if !onboardYes {
-		fmt.Fprint(out, "\nInstall CaseForge skill to ~/.claude/commands/caseforge.md? [y/N]: ")
-		ans := readLine(in)
-		if strings.EqualFold(strings.TrimSpace(ans), "y") {
+		home, _ := os.UserHomeDir()
+		claudeDst := filepath.Join(home, ".claude", "commands", "caseforge.md")
+		universalDst := filepath.Join(home, ".agents", "skills", "caseforge.md")
+
+		skillOpts := []checkboxOption{
+			{label: "Claude Code / Desktop", detail: claudeDst},
+			{label: "Universal AI CLI (Gemini, Codex…)", detail: universalDst},
+		}
+		selected := promptCheckbox(out, in, "\nInstall CaseForge skill?", skillOpts)
+		if len(selected) > 0 {
 			src := findSkillFile()
 			if src == "" {
 				fmt.Fprintln(out, "  ⚠  Skill file not found (run from caseforge source directory).")
 			} else {
-				dst := filepath.Join(os.Getenv("HOME"), ".claude", "commands", "caseforge.md")
-				if err := copySkillFile(src, dst); err != nil {
-					fmt.Fprintf(out, "  ⚠  Skill install failed: %v\n", err)
-				} else {
-					fmt.Fprintf(out, "  ✓ Skill installed at %s\n", dst)
+				dsts := []string{claudeDst, universalDst}
+				for _, idx := range selected {
+					if err := copySkillFile(src, dsts[idx]); err != nil {
+						fmt.Fprintf(out, "  ⚠  Skill install failed (%s): %v\n", skillOpts[idx].label, err)
+					} else {
+						fmt.Fprintf(out, "  ✓ Skill installed at %s\n", dsts[idx])
+					}
 				}
 			}
 		}

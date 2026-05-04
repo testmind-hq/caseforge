@@ -24,8 +24,8 @@ func TestOnboard_ProviderSubPrompts_ShowsModelAndKey(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// provider=2(openai), model=gpt-4o, apikey=enter(keep), format=1, mcp=enter(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("2\ngpt-4o\n\n1\n\nn\n"))
+	// provider=2(openai), model=gpt-4o, apikey=enter(keep), format=1, mcp=enter(skip), skill=enter(skip)
+	onboardCmd.SetIn(strings.NewReader("2\ngpt-4o\n\n1\n\n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -127,8 +127,8 @@ func TestOnboard_OverwritesOnConfirm(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep), format=1(hurl), mcp=enter(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("y\n1\n\n\n1\n\nn\n"))
+	// y=overwrite, provider=1(anthropic), model=enter(default), apikey=enter(keep), format=1(hurl), mcp=enter(skip), skill=enter(skip)
+	onboardCmd.SetIn(strings.NewReader("y\n1\n\n\n1\n\n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -175,8 +175,8 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// provider=5(noop), format=1(hurl), mcp=enter(skip), skill=n
-	onboardCmd.SetIn(strings.NewReader("5\n1\n\nn\n"))
+	// provider=5(noop), format=1(hurl), mcp=enter(skip), skill=enter(skip)
+	onboardCmd.SetIn(strings.NewReader("5\n1\n\n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -299,4 +299,16 @@ func TestOnboard_MCPMultiSelect_InstallsMultiple(t *testing.T) {
 		servers := cfg["mcpServers"].(map[string]any)
 		assert.NotNil(t, servers["caseforge"], "expected caseforge in %s", path)
 	}
+}
+
+func TestOnboard_SkillCheckbox_InstallsUniversal(t *testing.T) {
+	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
+
+	universalDst := filepath.Join(t.TempDir(), "caseforge.md")
+	require.NoError(t, copySkillFile(skillSrc, universalDst))
+
+	data, err := os.ReadFile(universalDst)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "CaseForge Skill")
 }
