@@ -106,9 +106,15 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 		if noAI {
 			providerName = "noop"
 		}
-		provider = llm.NewProviderWithConfig(cfg.AI.APIKey, providerName, cfg.AI.Model, cfg.AI.BaseURL)
+		provider = llm.NewProviderWithConfig(llm.ProviderConfig{
+			APIKey:   cfg.AI.APIKey,
+			Provider: providerName,
+			Model:    cfg.AI.Model,
+			BaseURL:  cfg.AI.BaseURL,
+			Region:   cfg.AI.Region,
+		})
 		if !provider.IsAvailable() {
-			provider = llm.NewProviderWithConfig("", "noop", "", "")
+			provider = llm.NewProviderWithConfig(llm.ProviderConfig{Provider: "noop"})
 		}
 
 		// Git diff

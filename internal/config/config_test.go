@@ -35,3 +35,15 @@ func TestLoadBaseURLFromViper(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.deepseek.com/v1", cfg.AI.BaseURL)
 }
+
+func TestConfigBedrockRegionFromEnv(t *testing.T) {
+	viper.Reset()
+	viper.Set("ai.provider", "bedrock")
+	t.Setenv("AWS_REGION", "us-west-2")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	assert.Equal(t, "us-west-2", cfg.AI.Region)
+
+	viper.Reset()
+}

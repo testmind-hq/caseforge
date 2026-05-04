@@ -24,10 +24,11 @@ type WebhookConfig struct {
 }
 
 type AIConfig struct {
-	Provider string `mapstructure:"provider"` // "anthropic"|"openai"|"openai-compat"|"gemini"|"noop"
+	Provider string `mapstructure:"provider"` // "anthropic"|"openai"|"openai-compat"|"gemini"|"bedrock"|"noop"
 	Model    string `mapstructure:"model"`
 	APIKey   string `mapstructure:"api_key"`
 	BaseURL  string `mapstructure:"base_url"` // openai-compat only (DeepSeek, Qwen, Azure, etc.)
+	Region   string `mapstructure:"region"`   // bedrock only; falls back to AWS_REGION, then AWS_DEFAULT_REGION
 }
 
 type OutputConfig struct {
@@ -60,6 +61,12 @@ func Load() (*Config, error) {
 			cfg.AI.APIKey = firstNonEmpty(os.Getenv("GEMINI_API_KEY"), os.Getenv("GOOGLE_API_KEY"))
 		default: // "anthropic" and anything unrecognised
 			cfg.AI.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+		}
+	}
+	// Region override from environment
+	if cfg.AI.Provider == "bedrock" {
+		if cfg.AI.Region == "" {
+			cfg.AI.Region = firstNonEmpty(os.Getenv("AWS_REGION"), os.Getenv("AWS_DEFAULT_REGION"))
 		}
 	}
 	return &cfg, nil

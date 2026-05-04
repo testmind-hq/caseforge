@@ -63,18 +63,22 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	// Check AWS/Bedrock credentials
 	fmt.Println()
 	color.White("  AWS Bedrock:")
-	hasRegion := os.Getenv("AWS_REGION") != ""
+	awsRegion := os.Getenv("AWS_REGION")
+	if awsRegion == "" {
+		awsRegion = os.Getenv("AWS_DEFAULT_REGION")
+	}
+	hasRegion := awsRegion != ""
 	if hasRegion {
-		color.Green("  ✓ AWS_REGION set (%s)", os.Getenv("AWS_REGION"))
+		color.Green("  ✓ AWS region set (%s)", awsRegion)
 	} else {
-		color.Yellow("  ⚠ AWS_REGION not set — required for bedrock provider")
+		color.Yellow("  ⚠ neither AWS_REGION nor AWS_DEFAULT_REGION is set — required for bedrock provider")
 	}
 
 	hasBedrockKey := os.Getenv("AWS_BEARER_TOKEN_BEDROCK") != ""
 	hasStaticKey := os.Getenv("AWS_ACCESS_KEY_ID") != ""
 	hasProfile := os.Getenv("AWS_PROFILE") != ""
-	awsCredsFile := os.ExpandEnv("$HOME/.aws/credentials")
-	_, awsFileErr := os.Stat(awsCredsFile)
+	homeDir, _ := os.UserHomeDir()
+	_, awsFileErr := os.Stat(homeDir + "/.aws/credentials")
 	hasCredsFile := awsFileErr == nil
 
 	if hasBedrockKey {

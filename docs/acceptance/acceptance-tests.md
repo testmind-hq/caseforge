@@ -290,6 +290,8 @@
 | AT-233 | conformance --spec required | `caseforge conformance --target http://localhost:8080 2>&1 || true` | output contains "required flag" | ✅ PASS |
 | AT-234 | conformance --target required | `caseforge conformance --spec cmd/testdata/crud.yaml 2>&1 || true` | output contains "required flag" | ✅ PASS |
 | AT-235 | conformance fails gracefully without LLM | `caseforge conformance --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true` | output contains "LLM provider not available" | ✅ PASS |
+| AT-236 | doctor shows bedrock section | `caseforge doctor` | "AWS Bedrock" in output | ✅ PASS |
+| AT-237 | generate --no-ai works with bedrock config | see script | cases written, no error | ✅ PASS |
 
 ---
 

@@ -142,7 +142,13 @@ func watchRegenerate(cfg *config.Config, specPath, outputDir string) (int, error
 		return 0, fmt.Errorf("loading spec: %w", err)
 	}
 
-	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
+	provider := llm.NewProviderWithConfig(llm.ProviderConfig{
+		APIKey:   cfg.AI.APIKey,
+		Provider: cfg.AI.Provider,
+		Model:    cfg.AI.Model,
+		BaseURL:  cfg.AI.BaseURL,
+		Region:   cfg.AI.Region,
+	})
 
 	allTechniques := []methodology.Technique{
 		methodology.NewEquivalenceTechnique(),

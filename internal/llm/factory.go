@@ -1,45 +1,72 @@
 // internal/llm/factory.go
 package llm
 
-import "os"
+import (
+	"context"
+	"fmt"
+	"os"
+)
 
-// NewProvider returns the appropriate LLMProvider based on config.
-func NewProvider(apiKey, providerName, model string) LLMProvider {
-	return NewProviderWithConfig(apiKey, providerName, model, "")
+// ProviderConfig holds all parameters for constructing an LLMProvider.
+type ProviderConfig struct {
+	APIKey   string
+	Provider string
+	Model    string
+	BaseURL  string // openai-compat only
+	Region   string // bedrock only
 }
 
-// NewProviderWithConfig is like NewProvider but also accepts baseURL for
-// openai-compat providers (DeepSeek, Qwen, Moonshot, Azure, etc.).
-func NewProviderWithConfig(apiKey, providerName, model, baseURL string) LLMProvider {
-	switch providerName {
+// NewProvider is a convenience wrapper for the three common fields.
+func NewProvider(apiKey, providerName, model string) LLMProvider {
+	return NewProviderWithConfig(ProviderConfig{
+		APIKey:   apiKey,
+		Provider: providerName,
+		Model:    model,
+	})
+}
+
+// NewProviderWithConfig constructs an LLMProvider from a ProviderConfig.
+func NewProviderWithConfig(cfg ProviderConfig) LLMProvider {
+	switch cfg.Provider {
 	case "anthropic":
-		key := firstNonEmpty(apiKey, os.Getenv("ANTHROPIC_API_KEY"))
+		key := firstNonEmpty(cfg.APIKey, os.Getenv("ANTHROPIC_API_KEY"))
 		if key == "" {
 			return &NoopProvider{}
 		}
 		return &AnthropicProvider{
 			client: newAnthropicClient(key),
-			model:  firstNonEmpty(model, "claude-sonnet-4-6"),
+			model:  firstNonEmpty(cfg.Model, "claude-sonnet-4-6"),
 		}
 	case "openai", "openai-compat":
-		// Both openai and openai-compat use OPENAI_API_KEY. For compat providers
-		// (DeepSeek, Qwen, Moonshot, Azure) set OPENAI_API_KEY to the provider's key.
-		key := firstNonEmpty(apiKey, os.Getenv("OPENAI_API_KEY"))
+		key := firstNonEmpty(cfg.APIKey, os.Getenv("OPENAI_API_KEY"))
 		if key == "" {
 			return &NoopProvider{}
 		}
 		return NewOpenAIProvider(OpenAIConfig{
 			APIKey:  key,
-			Model:   firstNonEmpty(model, "gpt-4o-mini"),
-			BaseURL: baseURL,
+			Model:   firstNonEmpty(cfg.Model, "gpt-4o-mini"),
+			BaseURL: cfg.BaseURL,
 		})
 	case "gemini":
-		key := firstNonEmpty(apiKey, os.Getenv("GEMINI_API_KEY"), os.Getenv("GOOGLE_API_KEY"))
+		key := firstNonEmpty(cfg.APIKey, os.Getenv("GEMINI_API_KEY"), os.Getenv("GOOGLE_API_KEY"))
 		if key == "" {
 			return &NoopProvider{}
 		}
-		p, err := newGeminiProvider(key, firstNonEmpty(model, "gemini-2.5-flash"))
+		p, err := newGeminiProvider(key, firstNonEmpty(cfg.Model, "gemini-2.5-flash"))
 		if err != nil {
+			return &NoopProvider{}
+		}
+		return p
+	case "bedrock":
+		region := firstNonEmpty(cfg.Region, os.Getenv("AWS_REGION"), os.Getenv("AWS_DEFAULT_REGION"))
+		if region == "" {
+			return &NoopProvider{}
+		}
+		// context.Background() is intentional: AWS SDK config loading is a one-time
+		// startup operation; request-scoped cancellation is handled inside Complete().
+		p, err := newBedrockProvider(context.Background(), firstNonEmpty(cfg.Model, "us.anthropic.claude-sonnet-4-6"), region)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: bedrock provider init failed: %v\n", err)
 			return &NoopProvider{}
 		}
 		return p

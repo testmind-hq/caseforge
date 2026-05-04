@@ -45,7 +45,13 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		cfg.Output.DefaultFormat = askFormat
 	}
 
-	provider := llm.NewProviderWithConfig(cfg.AI.APIKey, cfg.AI.Provider, cfg.AI.Model, cfg.AI.BaseURL)
+	provider := llm.NewProviderWithConfig(llm.ProviderConfig{
+		APIKey:   cfg.AI.APIKey,
+		Provider: cfg.AI.Provider,
+		Model:    cfg.AI.Model,
+		BaseURL:  cfg.AI.BaseURL,
+		Region:   cfg.AI.Region,
+	})
 
 	gen := ask.NewGenerator(provider)
 
