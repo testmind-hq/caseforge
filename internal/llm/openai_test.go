@@ -24,7 +24,12 @@ func TestNewProvider_OpenAIWithKey(t *testing.T) {
 }
 
 func TestNewProvider_OpenAICompatWithKey(t *testing.T) {
-	p := NewProviderWithConfig("sk-test", "openai-compat", "deepseek-chat", "https://api.deepseek.com/v1")
+	p := NewProviderWithConfig(ProviderConfig{
+		APIKey:   "sk-test",
+		Provider: "openai-compat",
+		Model:    "deepseek-chat",
+		BaseURL:  "https://api.deepseek.com/v1",
+	})
 	assert.Equal(t, "openai-compat:deepseek-chat", p.Name())
 }
 
