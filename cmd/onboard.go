@@ -34,6 +34,37 @@ type providerInfo struct {
 	model     string // default model
 }
 
+type checkboxOption struct {
+	label  string
+	detail string
+}
+
+// promptCheckbox prints a numbered list and lets the user select items by number.
+// Returns 0-based indices of selected items. Blank input selects nothing.
+func promptCheckbox(out io.Writer, in *bufio.Reader, title string, opts []checkboxOption) []int {
+	fmt.Fprintln(out, title)
+	for i, o := range opts {
+		fmt.Fprintf(out, "  [%d] %s  (%s)\n", i+1, o.label, o.detail)
+	}
+	fmt.Fprint(out, "Select [numbers e.g. 1 2], or enter to skip: ")
+	line := strings.TrimSpace(readLine(in))
+
+	seen := make(map[int]bool)
+	for _, field := range strings.Fields(line) {
+		var n int
+		if _, err := fmt.Sscan(field, &n); err == nil && n >= 1 && n <= len(opts) {
+			seen[n-1] = true
+		}
+	}
+	result := make([]int, 0, len(seen))
+	for i := range opts {
+		if seen[i] {
+			result = append(result, i)
+		}
+	}
+	return result
+}
+
 func detectProviders() []providerInfo {
 	providers := []providerInfo{
 		{"anthropic", "ANTHROPIC_API_KEY", os.Getenv("ANTHROPIC_API_KEY") != "", "claude-sonnet-4-6"},

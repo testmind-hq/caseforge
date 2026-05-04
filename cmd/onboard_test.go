@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"os"
@@ -216,4 +217,43 @@ func TestOnboard_InstallSkill_Idempotent(t *testing.T) {
 	data, err := os.ReadFile(dst)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "CaseForge Skill")
+}
+
+func TestPromptCheckbox_NoneSelected(t *testing.T) {
+	var buf bytes.Buffer
+	in := strings.NewReader("\n") // blank = skip all
+	selected := promptCheckbox(&buf, bufio.NewReader(in), "Pick targets:", []checkboxOption{
+		{label: "Option A", detail: "path/a"},
+		{label: "Option B", detail: "path/b"},
+	})
+	assert.Empty(t, selected)
+}
+
+func TestPromptCheckbox_SelectOne(t *testing.T) {
+	var buf bytes.Buffer
+	in := strings.NewReader("2\n")
+	selected := promptCheckbox(&buf, bufio.NewReader(in), "Pick targets:", []checkboxOption{
+		{label: "Option A", detail: "path/a"},
+		{label: "Option B", detail: "path/b"},
+	})
+	assert.Equal(t, []int{1}, selected) // 0-based index
+}
+
+func TestPromptCheckbox_SelectMultiple(t *testing.T) {
+	var buf bytes.Buffer
+	in := strings.NewReader("1 2\n")
+	selected := promptCheckbox(&buf, bufio.NewReader(in), "Pick targets:", []checkboxOption{
+		{label: "Option A", detail: "path/a"},
+		{label: "Option B", detail: "path/b"},
+	})
+	assert.Equal(t, []int{0, 1}, selected)
+}
+
+func TestPromptCheckbox_IgnoresOutOfRange(t *testing.T) {
+	var buf bytes.Buffer
+	in := strings.NewReader("0 5 1\n")
+	selected := promptCheckbox(&buf, bufio.NewReader(in), "Pick targets:", []checkboxOption{
+		{label: "Option A", detail: "path/a"},
+	})
+	assert.Equal(t, []int{0}, selected) // only valid index
 }
