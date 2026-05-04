@@ -1445,7 +1445,7 @@ contains AT-236 "doctor shows bedrock section" "AWS Bedrock" \
 # AT-237: --no-ai must bypass AI entirely even when provider=bedrock is configured
 run AT-237 "generate --no-ai works with bedrock config" \
   "mkdir -p '$WORKDIR/at237' && \
-   printf 'ai:\n  provider: bedrock\n  region: us-east-1\n' > '$WORKDIR/at237/caseforge.yaml' && \
+   printf 'ai:\n  provider: bedrock\n  region: us-east-1\n' > '$WORKDIR/at237/.caseforge.yaml' && \
    cd '$WORKDIR/at237' && \
    '$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --output '$WORKDIR/at237/cases'"
 echo ""

@@ -63,9 +63,13 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	// Check AWS/Bedrock credentials
 	fmt.Println()
 	color.White("  AWS Bedrock:")
-	hasRegion := os.Getenv("AWS_REGION") != ""
+	awsRegion := os.Getenv("AWS_REGION")
+	if awsRegion == "" {
+		awsRegion = os.Getenv("AWS_DEFAULT_REGION")
+	}
+	hasRegion := awsRegion != ""
 	if hasRegion {
-		color.Green("  ✓ AWS_REGION set (%s)", os.Getenv("AWS_REGION"))
+		color.Green("  ✓ AWS region set (%s)", awsRegion)
 	} else {
 		color.Yellow("  ⚠ AWS_REGION not set — required for bedrock provider")
 	}

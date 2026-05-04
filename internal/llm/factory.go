@@ -58,7 +58,7 @@ func NewProviderWithConfig(cfg ProviderConfig) LLMProvider {
 		}
 		return p
 	case "bedrock":
-		region := firstNonEmpty(cfg.Region, os.Getenv("AWS_REGION"))
+		region := firstNonEmpty(cfg.Region, os.Getenv("AWS_REGION"), os.Getenv("AWS_DEFAULT_REGION"))
 		if region == "" {
 			return &NoopProvider{}
 		}

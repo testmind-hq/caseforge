@@ -66,7 +66,7 @@ func Load() (*Config, error) {
 	// Region override from environment
 	if cfg.AI.Provider == "bedrock" {
 		if cfg.AI.Region == "" {
-			cfg.AI.Region = os.Getenv("AWS_REGION")
+			cfg.AI.Region = firstNonEmpty(os.Getenv("AWS_REGION"), os.Getenv("AWS_DEFAULT_REGION"))
 		}
 	}
 	return &cfg, nil

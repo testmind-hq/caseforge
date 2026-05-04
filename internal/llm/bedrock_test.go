@@ -18,6 +18,20 @@ func TestNewProviderWithConfig_BedrockNoRegion(t *testing.T) {
 	assert.Equal(t, "noop", p.Name())
 }
 
+func TestNewProviderWithConfig_BedrockRegionFromAWSREGION(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+	p := NewProviderWithConfig(ProviderConfig{Provider: "bedrock", Region: ""})
+	assert.Equal(t, "bedrock:us.anthropic.claude-sonnet-4-6", p.Name())
+}
+
+func TestNewProviderWithConfig_BedrockRegionFromAWS_DEFAULT_REGION(t *testing.T) {
+	t.Setenv("AWS_REGION", "")
+	t.Setenv("AWS_DEFAULT_REGION", "eu-west-1")
+	p := NewProviderWithConfig(ProviderConfig{Provider: "bedrock", Region: ""})
+	assert.Equal(t, "bedrock:us.anthropic.claude-sonnet-4-6", p.Name())
+}
+
 func TestNewProviderWithConfig_BedrockWithRegion(t *testing.T) {
 	p := NewProviderWithConfig(ProviderConfig{
 		Provider: "bedrock",
