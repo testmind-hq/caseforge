@@ -73,8 +73,8 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	hasBedrockKey := os.Getenv("AWS_BEARER_TOKEN_BEDROCK") != ""
 	hasStaticKey := os.Getenv("AWS_ACCESS_KEY_ID") != ""
 	hasProfile := os.Getenv("AWS_PROFILE") != ""
-	awsCredsFile := os.ExpandEnv("$HOME/.aws/credentials")
-	_, awsFileErr := os.Stat(awsCredsFile)
+	homeDir, _ := os.UserHomeDir()
+	_, awsFileErr := os.Stat(homeDir + "/.aws/credentials")
 	hasCredsFile := awsFileErr == nil
 
 	if hasBedrockKey {
