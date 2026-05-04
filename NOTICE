@@ -48,6 +48,51 @@ projects is embedded in caseforge:
   See docs/superpowers/plans/2026-04-11-evomaster-inspired.md for the
   natural-language plan describing these six concepts.
 
+- Tcases (https://github.com/Cornutum/tcases) - MIT
+  Concept-level reference for the isolated negative test principle, the
+  schema-violation enumeration approach, and the variable irrelevance /
+  NA-marking idea. Implemented independently in Go in
+  internal/methodology/{isolated_negative,schema_violation,variable_irrelevance}.go.
+  See docs/superpowers/plans/2026-04-10-tcases-inspired-techniques.md for the
+  natural-language plan.
+
+- RESTler (https://github.com/microsoft/restler-fuzzer) - MIT
+  Concept-level reference for the dependency-graph + N-step chain approach to
+  stateful REST API testing. Implemented independently in Go in
+  internal/methodology/{depgraph,chain,mutation,auth_chain}.go. RESTler is
+  Python; caseforge does not embed or translate any RESTler source code.
+  See docs/superpowers/plans/2026-04-10-restler-inspired-optimizations.md.
+
+- Portman (https://github.com/apideck-libraries/portman) - MIT
+  Concept-level reference for the semantic-annotation (nullable / readOnly /
+  writeOnly) and field-boundary test patterns. Implemented independently in
+  Go in internal/methodology/{semantic_annotation,field_boundary}.go.
+  See docs/superpowers/plans/2026-04-12-portman-microcks-inspired.md.
+
+- Microcks (https://github.com/microcks/microcks) - Apache 2.0
+  Concept-level reference for HAR-based traffic import and conformance-gate
+  CI patterns. Implemented independently in Go in internal/har/ and the
+  caseforge import / conformance commands. No Java source was viewed during
+  implementation.
+  See docs/superpowers/plans/2026-04-12-portman-microcks-inspired.md.
+
+- RBCTest (academic research)
+  Concept-level reference for the Observation-Confirmation (OC) two-step
+  prompting pattern used for response-body oracle mining. Implemented
+  independently in caseforge's internal/oracle/. No source code derived.
+  See docs/superpowers/plans/2026-04-12-paper-inspired-features.md.
+
+- AutoRestTest (academic research)
+  Concept-level reference for failure classification and coverage-gap
+  filling strategies. Implemented independently in caseforge's run-failure
+  classification and `score --fill-gaps` features. No source code derived.
+
+- RESTifAI (academic research)
+  Concept-level reference for LLM-driven business-rule violation generation
+  and chain-sequence inference. Implemented independently in caseforge's
+  internal/methodology/{business_rule_violation,chain_sequence}.go.
+  No source code derived.
+
 - OWASP API Security Top 10 (https://owasp.org/API-Security/) - CC-BY-SA-4.0
   Used for security test category names and overall structure. caseforge
   does not reproduce OWASP documentation text.

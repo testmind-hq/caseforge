@@ -380,14 +380,29 @@ webhooks:
 
 ## 致谢
 
-caseforge 的设计参考了 API 测试领域的以下项目:
+caseforge 的设计参考了 API 测试领域的以下项目和学术研究:
+
+**开源项目(概念级参考;无源码派生):**
 
 - [Schemathesis](https://github.com/schemathesis/schemathesis) — 基于属性的测试方法
 - [CATS](https://github.com/Endava/cats) — fuzzing 技术
-- [EvoMaster](https://github.com/EMResearch/EvoMaster) — 覆盖率指标定义的概念级参考(无源码派生)
+- [EvoMaster](https://github.com/EMResearch/EvoMaster) — 覆盖率指标定义
+- [Tcases](https://github.com/Cornutum/tcases) — 孤立负向测试与 N 路覆盖原则
+- [RESTler](https://github.com/microsoft/restler-fuzzer) — 依赖图与 N 步链式测试
+- [Portman](https://github.com/apideck-libraries/portman) — 语义注解与字段边界测试模式
+- [Microcks](https://github.com/microcks/microcks) — HAR 流量导入与一致性 CI 门控
+
+**学术研究(概念级参考):**
+
+- RBCTest — 响应体 oracle 挖掘的 Observation-Confirmation 提示模式
+- AutoRestTest — 失败分类与覆盖缺口填充
+- RESTifAI — LLM 驱动的业务规则违反与链路序列推断
+
+**标准:**
+
 - [OWASP API Security Top 10](https://owasp.org/API-Security/) — 安全测试类目结构
 
-caseforge 未嵌入这些项目的任何源码。完整署名详见 [NOTICE](NOTICE)。
+caseforge 未嵌入这些项目的任何源码。完整署名详见 [NOTICE](NOTICE),其中包含明确的"无源码派生"声明。
 
 ## 开源协议
 

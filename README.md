@@ -444,14 +444,29 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
-caseforge's design was informed by the following projects in the API testing space:
+caseforge's design was informed by the following projects and academic research in the API testing space:
+
+**Open-source projects (concept-level references; no source code derived):**
 
 - [Schemathesis](https://github.com/schemathesis/schemathesis) — property-based testing patterns
 - [CATS](https://github.com/Endava/cats) — fuzzing techniques
-- [EvoMaster](https://github.com/EMResearch/EvoMaster) — concept-level reference for coverage metric definition (no source derived)
+- [EvoMaster](https://github.com/EMResearch/EvoMaster) — coverage metric definition
+- [Tcases](https://github.com/Cornutum/tcases) — isolated negative testing and N-way coverage principles
+- [RESTler](https://github.com/microsoft/restler-fuzzer) — dependency-graph and N-step chain testing
+- [Portman](https://github.com/apideck-libraries/portman) — semantic annotation and field-boundary patterns
+- [Microcks](https://github.com/microcks/microcks) — HAR-based traffic import and conformance gating
+
+**Academic research (concept-level references):**
+
+- RBCTest — Observation-Confirmation prompting pattern for response-body oracle mining
+- AutoRestTest — failure classification and coverage-gap filling
+- RESTifAI — LLM-driven business-rule violation and chain-sequence inference
+
+**Standards:**
+
 - [OWASP API Security Top 10](https://owasp.org/API-Security/) — security category structure
 
-None of these projects' source code is embedded in caseforge. See [NOTICE](NOTICE) for full attribution.
+None of these projects' source code is embedded in caseforge. See [NOTICE](NOTICE) for full attribution and the explicit "no source derived" declaration.
 
 ## License
 
