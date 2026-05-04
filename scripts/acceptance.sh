@@ -472,8 +472,8 @@ contains AT-241 "onboard MCP checkbox shows Claude Desktop option" "Claude Deskt
 contains AT-242 "onboard skill checkbox shows Universal AI CLI option" "Universal AI CLI" \
   "mkdir -p '$WORKDIR/at242' && printf '1\n\n\n1\n\n\n' | HOME='$WORKDIR/at242' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
 
-run AT-243 "onboard skill installs to ~/.agents/skills/" \
-  "mkdir -p '$WORKDIR/at243-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at243-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at243-home' && printf '1\n\n\n1\n\n2\n' | HOME='$WORKDIR/at243-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -f '$WORKDIR/at243-home/.agents/skills/caseforge.md'"
+run AT-243 "onboard skill installs to ~/.agents/skills/caseforge/SKILL.md" \
+  "mkdir -p '$WORKDIR/at243-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at243-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at243-home' && printf '1\n\n\n1\n\n2\n' | HOME='$WORKDIR/at243-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -f '$WORKDIR/at243-home/.agents/skills/caseforge/SKILL.md'"
 echo ""
 
 # -------------------------------------------------------

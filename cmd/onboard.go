@@ -219,8 +219,8 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 
 	// Step 7: Install skill (multi-select)
 	if !onboardYes {
-		claudeDst := filepath.Join(home, ".claude", "commands", "caseforge.md")
-		universalDst := filepath.Join(home, ".agents", "skills", "caseforge.md")
+		claudeDst := filepath.Join(home, ".claude", "skills", "caseforge", "SKILL.md")
+		universalDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
 
 		skillOpts := []checkboxOption{
 			{label: "Claude Code / Desktop", detail: claudeDst},

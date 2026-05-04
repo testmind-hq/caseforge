@@ -447,7 +447,7 @@
 | AT-240 | onboard --yes writes to home dir not cwd | `caseforge onboard --yes` from separate cwd | file at `~/` not `./` | ✅ PASS |
 | AT-241 | onboard MCP checkbox shows Claude Desktop option | interactive flow | output contains "Claude Desktop" | ✅ PASS |
 | AT-242 | onboard skill checkbox shows Universal AI CLI option | interactive flow | output contains "Universal AI CLI" | ✅ PASS |
-| AT-243 | onboard skill installs to ~/.agents/skills/ | interactive flow, select option 2 | file exists at universal path | ✅ PASS |
+| AT-243 | onboard skill installs to ~/.agents/skills/caseforge/SKILL.md | interactive flow, select option 2 | file exists at `~/.agents/skills/caseforge/SKILL.md` | ✅ PASS |
 
 ---
 

@@ -312,7 +312,7 @@ func TestOnboard_SkillCheckbox_InstallsUniversal(t *testing.T) {
 
 	require.NoError(t, runOnboard(onboardCmd, nil))
 
-	universalDst := filepath.Join(home, ".agents", "skills", "caseforge.md")
+	universalDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
 	data, err := os.ReadFile(universalDst)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "CaseForge Skill")
