@@ -147,6 +147,7 @@ func watchRegenerate(cfg *config.Config, specPath, outputDir string) (int, error
 		Provider: cfg.AI.Provider,
 		Model:    cfg.AI.Model,
 		BaseURL:  cfg.AI.BaseURL,
+		Region:   cfg.AI.Region,
 	})
 
 	allTechniques := []methodology.Technique{

@@ -111,6 +111,7 @@ func runRBT(cmd *cobra.Command, _ []string) error {
 			Provider: providerName,
 			Model:    cfg.AI.Model,
 			BaseURL:  cfg.AI.BaseURL,
+			Region:   cfg.AI.Region,
 		})
 		if !provider.IsAvailable() {
 			provider = llm.NewProviderWithConfig(llm.ProviderConfig{Provider: "noop"})

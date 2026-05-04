@@ -184,6 +184,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 		Provider: cfg.AI.Provider,
 		Model:    cfg.AI.Model,
 		BaseURL:  cfg.AI.BaseURL,
+		Region:   cfg.AI.Region,
 	})
 	if cfg.AI.Provider != "noop" && !provider.IsAvailable() {
 		if !genNoAI {

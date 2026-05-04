@@ -50,6 +50,7 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		Provider: cfg.AI.Provider,
 		Model:    cfg.AI.Model,
 		BaseURL:  cfg.AI.BaseURL,
+		Region:   cfg.AI.Region,
 	})
 
 	gen := ask.NewGenerator(provider)
