@@ -40,7 +40,9 @@ func initConfig() {
 		viper.SetConfigName(".caseforge")
 		viper.SetConfigType("yaml")
 		viper.AddConfigPath(".")
-		viper.AddConfigPath(os.Getenv("HOME"))
+		if home, err := os.UserHomeDir(); err == nil {
+			viper.AddConfigPath(home)
+		}
 	}
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

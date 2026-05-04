@@ -75,6 +75,9 @@ func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (mod
 		model = p.model
 	}
 
+	// bedrock uses the AWS credential chain — no api_key prompt needed.
+	// noop has no provider at all. Both are excluded from the wizard for now;
+	// this guard future-proofs the function for when bedrock is added to detectProviders.
 	if p.name != "noop" && p.name != "bedrock" {
 		if p.available {
 			fmt.Fprintf(out, "API key: (detected via %s) [Enter to keep, or paste to override]: ", p.envKey)
