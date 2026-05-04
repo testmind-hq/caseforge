@@ -3,6 +3,7 @@ package llm
 
 import (
 	"context"
+	"fmt"
 	"os"
 )
 
@@ -61,8 +62,11 @@ func NewProviderWithConfig(cfg ProviderConfig) LLMProvider {
 		if region == "" {
 			return &NoopProvider{}
 		}
+		// context.Background() is intentional: AWS SDK config loading is a one-time
+		// startup operation; request-scoped cancellation is handled inside Complete().
 		p, err := newBedrockProvider(context.Background(), firstNonEmpty(cfg.Model, "us.anthropic.claude-sonnet-4-6"), region)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: bedrock provider init failed: %v\n", err)
 			return &NoopProvider{}
 		}
 		return p
