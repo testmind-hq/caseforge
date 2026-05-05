@@ -36,6 +36,7 @@ func resetGenGlobals(t *testing.T) func() {
 		genOperations = ""
 		genConcurrency = 1
 		genResume = false
+		genForce = false
 		genTupleLevel = 2
 		genSeed = 0
 	}
@@ -455,3 +456,45 @@ func TestGen_Format_HurlRendersFile(t *testing.T) {
 	validateHurlFilesExist(t, outDir)
 }
 
+
+// TestGen_SpecUnchanged_SkipsRegeneration verifies that a second gen run with the
+// same spec and matching index.json spec_hash exits early without regenerating.
+func TestGen_SpecUnchanged_SkipsRegeneration(t *testing.T) {
+	t.Cleanup(resetGenGlobals(t))
+	outDir := runMiniGen(t)
+	firstCases := readCases(t, outDir)
+	require.NotEmpty(t, firstCases)
+
+	// Second run: spec unchanged, no --force — must short-circuit and return nil.
+	genSpec = miniSpec
+	genOutput = outDir
+	genNoAI = true
+	err := runGen(genCmd, nil)
+	require.NoError(t, err)
+
+	// Output must still contain the same cases (not doubled).
+	secondCases := readCases(t, outDir)
+	assert.Equal(t, len(firstCases), len(secondCases),
+		"second run on unchanged spec must not duplicate cases")
+}
+
+// TestGen_Force_RegeneratesEvenWhenSpecUnchanged verifies that --force bypasses
+// the spec-hash short-circuit and regenerates all cases.
+func TestGen_Force_RegeneratesEvenWhenSpecUnchanged(t *testing.T) {
+	t.Cleanup(resetGenGlobals(t))
+	outDir := runMiniGen(t)
+	firstCases := readCases(t, outDir)
+	require.NotEmpty(t, firstCases)
+
+	// Second run with --force: must regenerate even though spec is unchanged.
+	genSpec = miniSpec
+	genOutput = outDir
+	genNoAI = true
+	genForce = true
+	err := runGen(genCmd, nil)
+	require.NoError(t, err)
+
+	// Output must still be valid and non-empty.
+	secondCases := readCases(t, outDir)
+	assert.NotEmpty(t, secondCases)
+}

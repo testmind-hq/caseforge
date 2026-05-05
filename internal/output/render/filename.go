@@ -3,7 +3,6 @@ package render
 
 import (
 	"strings"
-	"unicode"
 
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 )
@@ -180,7 +179,7 @@ func titleSlug(title string) string {
 	prevUnderscore := true // suppress leading underscores
 	for _, r := range strings.ToLower(title) {
 		switch {
-		case unicode.IsLetter(r) || unicode.IsDigit(r):
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
 			b.WriteRune(r)
 			prevUnderscore = false
 		default:

@@ -3,23 +3,55 @@ package llm
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
-// retryDelays defines the wait before attempt i+1 (index = attempt number, 0-based).
-// Attempt 0 runs immediately. Before attempt 1: 0 ms. Before attempt 2: 500 ms.
+// retryDelays defines the wait before attempt i+1 for normal transient errors.
 var retryDelays = []time.Duration{0, 500 * time.Millisecond}
 
+// rateLimitDelays defines exponential backoff waits for 429 rate-limit responses.
+var rateLimitDelays = []time.Duration{
+	5 * time.Second,
+	15 * time.Second,
+	30 * time.Second,
+	60 * time.Second,
+}
+
+// isRateLimitErr reports whether err looks like a 429 / rate-limit response.
+// Checked by string because each SDK wraps HTTP errors differently.
+func isRateLimitErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "429") ||
+		strings.Contains(msg, "rate limit") ||
+		strings.Contains(msg, "too many requests") ||
+		strings.Contains(msg, "ratelimit")
+}
+
 // Retry calls fn up to maxAttempts times, returning the first successful result.
-// Between attempts it waits according to retryDelays; context cancellation aborts the wait.
-// Returns (nil, nil) when maxAttempts <= 0.
+// Between attempts it waits according to retryDelays for normal errors, or
+// rateLimitDelays for 429 / rate-limit responses.
+// Context cancellation aborts the wait. Returns (nil, nil) when maxAttempts <= 0.
 func Retry(ctx context.Context, maxAttempts int, fn func() (*CompletionResponse, error)) (*CompletionResponse, error) {
 	var lastErr error
+	rlIdx := 0 // index into rateLimitDelays for successive 429s
 	for i := 0; i < maxAttempts; i++ {
 		if i > 0 {
-			delay := retryDelays[len(retryDelays)-1]
-			if i-1 < len(retryDelays) {
-				delay = retryDelays[i-1]
+			var delay time.Duration
+			if isRateLimitErr(lastErr) {
+				delay = rateLimitDelays[min(rlIdx, len(rateLimitDelays)-1)]
+				rlIdx++
+			} else {
+				rlIdx = 0
+				idx := i - 1
+				if idx < len(retryDelays) {
+					delay = retryDelays[idx]
+				} else {
+					delay = retryDelays[len(retryDelays)-1]
+				}
 			}
 			if delay > 0 {
 				select {
@@ -28,8 +60,6 @@ func Retry(ctx context.Context, maxAttempts int, fn func() (*CompletionResponse,
 				case <-time.After(delay):
 				}
 			} else {
-				// Zero-delay retry: non-blocking check so a cancelled context
-				// is detected without racing against time.After(0).
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
@@ -44,4 +74,11 @@ func Retry(ctx context.Context, maxAttempts int, fn func() (*CompletionResponse,
 		lastErr = err
 	}
 	return nil, lastErr
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

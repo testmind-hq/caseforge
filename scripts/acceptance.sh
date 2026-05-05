@@ -1029,7 +1029,7 @@ AT247DIR=$(mktemp -d)
 run "AT-247" "hurl filenames are path-first (no TC- prefix, resource slug leads)" \
   "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --format hurl --output '$AT247DIR' && \
    ls '$AT247DIR'/*.hurl | grep -qv 'TC-' && \
-   ls '$AT247DIR'/*.hurl | grep -q '^.*/pet_'"
+   ls '$AT247DIR'/*.hurl | grep -q '^.*/pets_'"
 
 AT248DIR=$(mktemp -d)
 run "AT-248" "k6 group names contain case title not raw ID" \

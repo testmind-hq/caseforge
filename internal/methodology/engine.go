@@ -233,7 +233,10 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 	if !e.llm.IsAvailable() {
 		return // NoopProvider: skip annotation, SemanticInfo stays nil
 	}
-	for _, op := range ops {
+	for i, op := range ops {
+		if i > 0 {
+			time.Sleep(500 * time.Millisecond) // throttle to reduce rate-limit pressure
+		}
 		annotation, err := e.annotateOperation(op)
 		if err != nil {
 			e.warn("warn: LLM annotation failed for %s %s: %v\n", op.Method, op.Path, err)
@@ -263,7 +266,7 @@ func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation
 		Messages:  []llm.Message{{Role: "user", Content: prompt}},
 		MaxTokens: 512,
 	}
-	resp, err := llm.Retry(ctx, 3, func() (*llm.CompletionResponse, error) {
+	resp, err := llm.Retry(ctx, 5, func() (*llm.CompletionResponse, error) {
 		return e.llm.Complete(ctx, req)
 	})
 	if err != nil {

@@ -89,3 +89,13 @@ func TestRetry_ZeroMaxAttempts_ReturnsNil(t *testing.T) {
 	assert.Nil(t, err)
 	assert.False(t, called)
 }
+
+func TestIsRateLimitErr(t *testing.T) {
+	assert.True(t, isRateLimitErr(errors.New("request failed with status 429")))
+	assert.True(t, isRateLimitErr(errors.New("Rate limit exceeded")))
+	assert.True(t, isRateLimitErr(errors.New("too many requests")))
+	assert.True(t, isRateLimitErr(errors.New("ratelimit reached")))
+	assert.False(t, isRateLimitErr(errors.New("connection refused")))
+	assert.False(t, isRateLimitErr(errors.New("timeout")))
+	assert.False(t, isRateLimitErr(nil))
+}
