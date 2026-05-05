@@ -6,11 +6,12 @@ package event
 type EventType string
 
 const (
-	EventSpecLoaded    EventType = "spec.loaded"
-	EventOperationDone EventType = "operation.done"
-	EventCaseGenerated EventType = "case.generated"
-	EventRenderDone    EventType = "render.done"
-	EventError         EventType = "error"
+	EventSpecLoaded          EventType = "spec.loaded"
+	EventOperationAnnotating EventType = "operation.annotating"
+	EventOperationDone       EventType = "operation.done"
+	EventCaseGenerated       EventType = "case.generated"
+	EventRenderDone          EventType = "render.done"
+	EventError               EventType = "error"
 )
 
 // Event carries data about something that happened.

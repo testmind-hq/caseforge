@@ -37,10 +37,11 @@ type PrintMsg struct{ Text string }
 
 // ProgressModel is the Bubble Tea model that shows generation progress.
 type ProgressModel struct {
-	total    int
-	done     int
-	finished bool
-	rows     []opRow
+	total      int
+	annotated  int // operations annotated by LLM so far
+	done       int // operations fully generated so far
+	finished   bool
+	rows       []opRow
 }
 
 // NewProgressModel creates a model that expects `total` operations to complete.
@@ -56,6 +57,8 @@ func (m ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case EventMsg:
 		switch msg.Type {
+		case event.EventOperationAnnotating:
+			m.annotated++
 		case event.EventOperationDone:
 			m.done++
 			if p, ok := msg.Payload.(event.OperationDonePayload); ok {
@@ -95,10 +98,13 @@ func (m ProgressModel) View() string {
 	}
 
 	// Progress / summary line.
-	if m.finished {
+	spinner := styleSpinner.Render("⠋")
+	switch {
+	case m.finished:
 		b.WriteString(styleSummary.Render(fmt.Sprintf("Done — %d/%d operations", m.done, m.total)) + "\n")
-	} else {
-		spinner := styleSpinner.Render("⠋")
+	case m.annotated > 0 && m.done == 0:
+		b.WriteString(fmt.Sprintf("%s Annotating with AI... %d/%d\n", spinner, m.annotated, m.total))
+	default:
 		b.WriteString(fmt.Sprintf("%s Generating cases... %d/%d\n", spinner, m.done, m.total))
 	}
 
