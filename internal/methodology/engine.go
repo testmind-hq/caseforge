@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -40,13 +41,29 @@ type Engine struct {
 	specTechniques []SpecTechnique
 	llm            llm.LLMProvider
 	sink           event.Sink
-	concurrency    int   // 0 or 1 = serial; >1 = parallel worker pool
-	seed           int64 // 0 = random
-	maxCasesPerOp  int   // 0 = unlimited
+	warnWriter     io.Writer // destination for warn: lines; defaults to os.Stderr
+	concurrency    int       // 0 or 1 = serial; >1 = parallel worker pool
+	seed           int64     // 0 = random
+	maxCasesPerOp  int       // 0 = unlimited
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
 	return &Engine{techniques: techniques, llm: provider}
+}
+
+// SetWarnWriter redirects warn-level log lines. When TUI is active, pass a
+// writer that calls prog.Printf so messages appear above the TUI view.
+func (e *Engine) SetWarnWriter(w io.Writer) {
+	e.warnWriter = w
+}
+
+// warn writes a formatted message to warnWriter (or os.Stderr when unset).
+func (e *Engine) warn(format string, args ...any) {
+	w := e.warnWriter
+	if w == nil {
+		w = os.Stderr
+	}
+	fmt.Fprintf(w, format, args...)
 }
 
 // SetConcurrency sets the number of operations processed concurrently.
@@ -219,7 +236,7 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 	for _, op := range ops {
 		annotation, err := e.annotateOperation(op)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warn: LLM annotation failed for %s %s: %v\n", op.Method, op.Path, err)
+			e.warn("warn: LLM annotation failed for %s %s: %v\n", op.Method, op.Path, err)
 			continue
 		}
 		op.SemanticInfo = annotation

@@ -318,15 +318,16 @@ func runGen(cmd *cobra.Command, args []string) error {
 
 	// Wire TUI if stderr is a terminal
 	var tuiDone <-chan struct{}
+	var tuiProg *tea.Program
 	if isatty.IsTerminal(os.Stderr.Fd()) {
 		model := tui.NewProgressModel(len(parsedSpec.Operations))
-		prog := tea.NewProgram(model, tea.WithOutput(os.Stderr))
-		sink := tui.NewTUISink(prog)
+		tuiProg = tea.NewProgram(model, tea.WithOutput(os.Stderr))
+		sink := tui.NewTUISink(tuiProg)
 		bus.Subscribe(sink)
 		doneCh := make(chan struct{})
 		go func() {
 			defer close(doneCh)
-			_, _ = prog.Run()
+			_, _ = tuiProg.Run()
 		}()
 		tuiDone = doneCh
 	}
@@ -375,6 +376,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 		engine.AddSpecTechnique(st)
 	}
 	engine.SetSink(bus)
+	if tuiProg != nil {
+		engine.SetWarnWriter(&tuiWriter{tuiProg})
+	}
 	engine.SetConcurrency(genConcurrency)
 	if genSeed != 0 {
 		engine.SetSeed(genSeed)
@@ -418,7 +422,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 					if op.Method+" "+op.Path == baseKey {
 						constraints, mineErr := oracle.Mine(context.Background(), op, provider)
 						if mineErr != nil {
-							fmt.Fprintf(os.Stderr, "warn: oracle mining failed for %s: %v\n", baseKey, mineErr)
+							warnf(tuiProg, "warn: oracle mining failed for %s: %v\n", baseKey, mineErr)
 							constraintCache[baseKey] = nil
 						} else {
 							constraintCache[baseKey] = constraints
@@ -476,6 +480,26 @@ func runGen(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
 	return nil
+}
+
+// warnf writes a formatted warn line to the TUI when active, otherwise to stderr.
+func warnf(prog *tea.Program, format string, args ...any) {
+	if prog != nil {
+		prog.Send(tui.PrintMsg{Text: strings.TrimRight(fmt.Sprintf(format, args...), "\n")})
+	} else {
+		fmt.Fprintf(os.Stderr, format, args...)
+	}
+}
+
+// tuiWriter bridges io.Writer to the TUI via prog.Send(tui.PrintMsg).
+// Send (not Printf) is used because it respects the program's ctx.Done guard
+// and cannot deadlock after the TUI exits (e.g. on ctrl+c).
+// Trailing newlines are trimmed so tea.Println does not produce blank lines.
+type tuiWriter struct{ prog *tea.Program }
+
+func (w *tuiWriter) Write(b []byte) (int, error) {
+	w.prog.Send(tui.PrintMsg{Text: strings.TrimRight(string(b), "\n")})
+	return len(b), nil
 }
 
 // loadExistingCases reads previously generated cases from index.json in outputDir.
