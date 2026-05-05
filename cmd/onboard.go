@@ -11,7 +11,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,6 +39,59 @@ type providerInfo struct {
 type checkboxOption struct {
 	label  string
 	detail string
+}
+
+// isTTY reports whether stdin is an interactive terminal.
+func isTTY() bool {
+	return term.IsTerminal(int(os.Stdin.Fd()))
+}
+
+// singleSelect presents a single-choice prompt.
+// TTY: arrow-key huh.Select. Non-TTY: numbered list + text input.
+// Returns 0-based index.
+func singleSelect(out io.Writer, in *bufio.Reader, title string, labels []string) (int, error) {
+	if isTTY() {
+		opts := make([]huh.Option[int], len(labels))
+		for i, l := range labels {
+			opts[i] = huh.NewOption(l, i)
+		}
+		var selected int
+		if err := huh.NewSelect[int]().
+			Title(title).
+			Options(opts...).
+			Value(&selected).
+			Run(); err != nil {
+			return 0, err
+		}
+		return selected, nil
+	}
+	fmt.Fprintln(out, title)
+	for i, l := range labels {
+		fmt.Fprintf(out, "  [%d] %s\n", i+1, l)
+	}
+	return promptInt(out, in, "Select", 1, len(labels)) - 1, nil
+}
+
+// multiSelectIdx presents a multi-choice checkbox prompt.
+// TTY: arrow-key + space huh.MultiSelect. Non-TTY: falls back to promptCheckbox.
+// Returns 0-based indices of selected options.
+func multiSelectIdx(out io.Writer, in *bufio.Reader, title string, opts []checkboxOption) ([]int, error) {
+	if isTTY() {
+		huhopts := make([]huh.Option[int], len(opts))
+		for i, o := range opts {
+			huhopts[i] = huh.NewOption(o.label, i)
+		}
+		var selected []int
+		if err := huh.NewMultiSelect[int]().
+			Title(title).
+			Options(huhopts...).
+			Value(&selected).
+			Run(); err != nil {
+			return nil, err
+		}
+		return selected, nil
+	}
+	return promptCheckbox(out, in, title, opts), nil
 }
 
 // promptCheckbox prints a numbered list and lets the user select items by number.
@@ -161,16 +216,18 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		}
 		fmt.Fprintf(out, "Provider: %s (auto-selected)\n", chosenProvider.name)
 	} else {
-		fmt.Fprintln(out, "Choose your primary LLM provider:")
+		labels := make([]string, len(providers))
 		for i, p := range providers {
-			marker := "  "
+			labels[i] = p.name
 			if p.available && p.name != "noop" {
-				marker = "✓ "
+				labels[i] += " (" + p.envKey + " ✓)"
 			}
-			fmt.Fprintf(out, "  [%d] %s%s\n", i+1, marker, p.name)
 		}
-		choice := promptInt(out, in, "Provider", 1, len(providers))
-		chosenProvider = providers[choice-1]
+		idx, err := singleSelect(out, in, "Choose your primary LLM provider:", labels)
+		if err != nil {
+			return err
+		}
+		chosenProvider = providers[idx]
 	}
 
 	// Step 3b+4: model, api_key, base_url sub-prompts
@@ -187,12 +244,11 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	if onboardYes {
 		fmt.Fprintf(out, "Output format: hurl (auto-selected)\n")
 	} else {
-		fmt.Fprintln(out, "\nChoose output format:")
-		for i, f := range formats {
-			fmt.Fprintf(out, "  [%d] %s\n", i+1, f)
+		idx, err := singleSelect(out, in, "\nChoose output format:", formats)
+		if err != nil {
+			return err
 		}
-		choice := promptInt(out, in, "Format", 1, len(formats))
-		chosenFormat = formats[choice-1]
+		chosenFormat = formats[idx]
 	}
 
 	// Step 6: Install MCP server (multi-select)
@@ -200,15 +256,18 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		desktopPath := claudeDesktopConfigPath(home)
 		claudeCodePath := filepath.Join(home, ".claude.json")
 		codexPath := filepath.Join(home, ".codex", "config.json")
+		paths := []string{desktopPath, claudeCodePath, codexPath}
 
 		mcpOpts := []checkboxOption{
 			{label: "Claude Desktop", detail: desktopPath},
 			{label: "Claude Code", detail: claudeCodePath},
 			{label: "Codex CLI", detail: codexPath},
 		}
-		selected := promptCheckbox(out, in, "\nInstall CaseForge as MCP server?", mcpOpts)
-		paths := []string{desktopPath, claudeCodePath, codexPath}
-		for _, idx := range selected {
+		selectedMCP, err := multiSelectIdx(out, in, "\nInstall CaseForge as MCP server?", mcpOpts)
+		if err != nil {
+			return err
+		}
+		for _, idx := range selectedMCP {
 			if err := installMCPToFile(paths[idx]); err != nil {
 				fmt.Fprintf(out, "  ⚠  MCP install failed (%s): %v\n", mcpOpts[idx].label, err)
 			} else {
@@ -226,7 +285,11 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 			{label: "Claude Code / Desktop", detail: claudeSkillLink},
 			{label: "Universal AI CLI (Gemini, Codex…)", detail: universalDst},
 		}
-		selected := promptCheckbox(out, in, "\nInstall CaseForge skill?", skillOpts)
+		selectedSkill, err := multiSelectIdx(out, in, "\nInstall CaseForge skill?", skillOpts)
+		if err != nil {
+			return err
+		}
+		selected := selectedSkill
 		if len(selected) > 0 {
 			src := findSkillFile()
 			if src == "" {
