@@ -235,6 +235,23 @@ func TestOnboard_InstallClaudeCodeSkill_Idempotent(t *testing.T) {
 	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
 	_, err := os.Lstat(claudeLink)
 	require.NoError(t, err)
+	target, err := os.Readlink(claudeLink)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("..", "..", ".agents", "skills", "caseforge"), target)
+}
+
+func TestOnboard_InstallClaudeCodeSkill_RejectsExistingNonSymlink(t *testing.T) {
+	home := t.TempDir()
+	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
+
+	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
+	require.NoError(t, os.MkdirAll(filepath.Dir(claudeLink), 0755))
+	require.NoError(t, os.WriteFile(claudeLink, []byte("stale content"), 0644))
+
+	err := installClaudeCodeSkill(home, skillSrc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a symlink")
 }
 
 func TestOnboard_SkillCheckbox_InstallsClaudeCode(t *testing.T) {

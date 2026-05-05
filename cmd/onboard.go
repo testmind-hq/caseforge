@@ -340,8 +340,11 @@ func installClaudeCodeSkill(home, src string) error {
 		return err
 	}
 	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
-	if _, err := os.Lstat(claudeLink); err == nil {
-		return nil // already exists — idempotent
+	if info, err := os.Lstat(claudeLink); err == nil {
+		if info.Mode()&os.ModeSymlink == 0 {
+			return fmt.Errorf("%s exists but is not a symlink; remove it and run onboard again", claudeLink)
+		}
+		return nil // symlink already installed — idempotent
 	}
 	if err := os.MkdirAll(filepath.Join(home, ".claude", "skills"), 0755); err != nil {
 		return err
