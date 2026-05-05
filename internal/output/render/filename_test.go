@@ -66,6 +66,14 @@ func TestFilenameFor(t *testing.T) {
 			tc:   schema.TestCase{ID: "TC-3bb73ff9", Title: "POST /users - valid request"},
 			want: "users_post_valid_request_3bb73ff9",
 		},
+		{
+			// no path in title, steps present — falls back to step data
+			tc: schema.TestCase{
+				ID: "TC-11223344", Title: "valid boundary case for email field",
+				Steps: []schema.Step{{Method: "POST", Path: "/users"}},
+			},
+			want: "users_post_valid_boundary_case_for_email_field_11223344",
+		},
 	}
 
 	for _, tc := range cases {
