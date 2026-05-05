@@ -29,7 +29,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: .caseforge.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: ~/.caseforge.yaml; project .caseforge.yaml takes priority)")
 	rootCmd.Version = Version // read after ldflags can overwrite the var
 }
 
@@ -40,7 +40,9 @@ func initConfig() {
 		viper.SetConfigName(".caseforge")
 		viper.SetConfigType("yaml")
 		viper.AddConfigPath(".")
-		viper.AddConfigPath(os.Getenv("HOME"))
+		if home, err := os.UserHomeDir(); err == nil {
+			viper.AddConfigPath(home)
+		}
 	}
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

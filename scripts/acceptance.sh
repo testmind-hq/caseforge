@@ -446,13 +446,43 @@ contains AT-038 "explore missing target returns error" "target" \
 echo ""
 
 # -------------------------------------------------------
-# AT-030 – AT-031: onboard
+# AT-030 – AT-031: onboard (home-dir config)
 # -------------------------------------------------------
 echo "--- onboard ---"
-contains AT-030 "onboard --yes writes config" "provider: anthropic" \
-  "mkdir -p '$WORKDIR/onboard-yes' && cd '$WORKDIR/onboard-yes' && ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard --yes && cat .caseforge.yaml"
-contains AT-031 "onboard skips existing config" "Keeping existing config" \
-  "mkdir -p '$WORKDIR/onboard-skip' && echo 'existing: true' > '$WORKDIR/onboard-skip/.caseforge.yaml' && cd '$WORKDIR/onboard-skip' && echo n | ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
+contains AT-030 "onboard --yes writes config to home dir" "provider: anthropic" \
+  "mkdir -p '$WORKDIR/onboard-home' && HOME='$WORKDIR/onboard-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard --yes && cat '$WORKDIR/onboard-home/.caseforge.yaml'"
+contains AT-031 "onboard skips existing config in home dir" "Keeping existing config" \
+  "mkdir -p '$WORKDIR/onboard-skip' && printf 'existing: true\n' > '$WORKDIR/onboard-skip/.caseforge.yaml' && echo n | HOME='$WORKDIR/onboard-skip' ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
+
+# AT-238 – AT-243: onboard wizard improvements
+echo "--- onboard wizard improvements ---"
+
+contains AT-238 "onboard prompts for model after provider selection" "Model \[" \
+  "mkdir -p '$WORKDIR/at238' && printf '2\n\ngpt-4o-test\n1\n\n\n' | HOME='$WORKDIR/at238' ANTHROPIC_API_KEY='' OPENAI_API_KEY='sk-test' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
+
+contains AT-239 "onboard --yes uses non-empty model in config" "model:" \
+  "mkdir -p '$WORKDIR/at239' && HOME='$WORKDIR/at239' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard --yes && cat '$WORKDIR/at239/.caseforge.yaml'"
+
+run AT-240 "onboard --yes writes to home dir not cwd" \
+  "mkdir -p '$WORKDIR/at240-home' '$WORKDIR/at240-cwd' && cd '$WORKDIR/at240-cwd' && HOME='$WORKDIR/at240-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard --yes && test -f '$WORKDIR/at240-home/.caseforge.yaml' && ! test -f '$WORKDIR/at240-cwd/.caseforge.yaml'"
+
+contains AT-241 "onboard MCP checkbox shows Claude Desktop option" "Claude Desktop" \
+  "mkdir -p '$WORKDIR/at241' && printf '1\n\n\n1\n\n\n' | HOME='$WORKDIR/at241' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
+
+contains AT-242 "onboard skill checkbox shows Universal AI CLI option" "Universal AI CLI" \
+  "mkdir -p '$WORKDIR/at242' && printf '1\n\n\n1\n\n\n' | HOME='$WORKDIR/at242' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
+
+run AT-243 "onboard skill installs to ~/.agents/skills/caseforge/SKILL.md" \
+  "mkdir -p '$WORKDIR/at243-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at243-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at243-home' && printf '1\n\n\n1\n\n2\n' | HOME='$WORKDIR/at243-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -f '$WORKDIR/at243-home/.agents/skills/caseforge/SKILL.md'"
+
+run AT-244 "onboard skill Claude Code option creates symlink at ~/.claude/skills/caseforge" \
+  "mkdir -p '$WORKDIR/at244-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at244-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at244-home' && printf '1\n\n\n1\n\n1\n' | HOME='$WORKDIR/at244-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -L '$WORKDIR/at244-home/.claude/skills/caseforge'"
+
+contains AT-245 "onboard bedrock prompts for AWS region" "AWS Region" \
+  "mkdir -p '$WORKDIR/at245' && printf '5\n\n\n1\n\n\n' | HOME='$WORKDIR/at245' ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' AWS_ACCESS_KEY_ID='AKIATEST' AWS_DEFAULT_REGION='us-west-2' '$BIN' onboard 2>&1"
+
+run AT-246 "onboard bedrock --yes writes region and omits api_key" \
+  "mkdir -p '$WORKDIR/at246' && HOME='$WORKDIR/at246' ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' AWS_ACCESS_KEY_ID='AKIATEST' AWS_DEFAULT_REGION='eu-central-1' '$BIN' onboard --yes && grep -q 'region: eu-central-1' '$WORKDIR/at246/.caseforge.yaml' && ! grep -q 'api_key' '$WORKDIR/at246/.caseforge.yaml'"
 echo ""
 
 # -------------------------------------------------------

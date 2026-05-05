@@ -122,8 +122,8 @@ caseforge lint --spec openapi.yaml
 
 | Command | Description |
 |---------|-------------|
-| `onboard` | Interactive setup wizard |
-| `init` | Write a `.caseforge.yaml` config file |
+| `onboard` | Interactive setup wizard — writes `~/.caseforge.yaml` (global) |
+| `init` | Write a `.caseforge.yaml` in the current directory (project-level override) |
 | `config show` | Print the effective configuration |
 | `doctor` | Check environment dependencies |
 | `mcp` | Start CaseForge as an MCP server (stdio transport) |
@@ -345,7 +345,14 @@ via `--data-pool` to seed realistic field values into generated chain probes.
 
 ## Configuration
 
-Create `.caseforge.yaml` in your project root:
+CaseForge uses a two-level config lookup:
+
+1. **Global** — `~/.caseforge.yaml` (created by `caseforge onboard`, applies to all projects)
+2. **Project** — `./.caseforge.yaml` in the current directory (created by `caseforge init`, takes priority)
+
+Use `--config <path>` to point to an explicit file instead.
+
+Example config:
 
 ```yaml
 ai:

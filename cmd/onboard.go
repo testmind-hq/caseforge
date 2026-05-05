@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/charmbracelet/huh"
+	isatty "github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -34,12 +36,138 @@ type providerInfo struct {
 	model     string // default model
 }
 
+type checkboxOption struct {
+	label  string
+	detail string
+}
+
+// isTTY reports whether stdin is an interactive terminal.
+func isTTY() bool {
+	return isatty.IsTerminal(os.Stdin.Fd())
+}
+
+// singleSelect presents a single-choice prompt.
+// TTY: arrow-key huh.Select. Non-TTY: numbered list + text input.
+// Returns 0-based index.
+func singleSelect(out io.Writer, in *bufio.Reader, title string, labels []string) (int, error) {
+	if isTTY() {
+		opts := make([]huh.Option[int], len(labels))
+		for i, l := range labels {
+			opts[i] = huh.NewOption(l, i)
+		}
+		var selected int
+		if err := huh.NewSelect[int]().
+			Title(title).
+			Options(opts...).
+			Value(&selected).
+			Run(); err != nil {
+			return 0, err
+		}
+		return selected, nil
+	}
+	fmt.Fprintln(out, title)
+	for i, l := range labels {
+		fmt.Fprintf(out, "  [%d] %s\n", i+1, l)
+	}
+	return promptInt(out, in, "Select", 1, len(labels)) - 1, nil
+}
+
+// multiSelectIdx presents a multi-choice checkbox prompt.
+// TTY: arrow-key + space huh.MultiSelect. Non-TTY: falls back to promptCheckbox.
+// Returns 0-based indices of selected options.
+func multiSelectIdx(out io.Writer, in *bufio.Reader, title string, opts []checkboxOption) ([]int, error) {
+	if isTTY() {
+		huhopts := make([]huh.Option[int], len(opts))
+		for i, o := range opts {
+			huhopts[i] = huh.NewOption(o.label, i)
+		}
+		var selected []int
+		if err := huh.NewMultiSelect[int]().
+			Title(title).
+			Options(huhopts...).
+			Value(&selected).
+			Run(); err != nil {
+			return nil, err
+		}
+		return selected, nil
+	}
+	return promptCheckbox(out, in, title, opts), nil
+}
+
+// promptCheckbox prints a numbered list and lets the user select items by number.
+// Returns 0-based indices of selected items. Blank input selects nothing.
+func promptCheckbox(out io.Writer, in *bufio.Reader, title string, opts []checkboxOption) []int {
+	fmt.Fprintln(out, title)
+	for i, o := range opts {
+		fmt.Fprintf(out, "  [%d] %s  (%s)\n", i+1, o.label, o.detail)
+	}
+	fmt.Fprint(out, "Select [numbers e.g. 1 2], or enter to skip: ")
+	line := strings.TrimSpace(readLine(in))
+
+	seen := make(map[int]bool)
+	for _, field := range strings.Fields(line) {
+		var n int
+		if _, err := fmt.Sscan(field, &n); err == nil && n >= 1 && n <= len(opts) {
+			seen[n-1] = true
+		}
+	}
+	result := make([]int, 0, len(seen))
+	for i := range opts {
+		if seen[i] {
+			result = append(result, i)
+		}
+	}
+	return result
+}
+
+// promptProviderDetails asks for base_url (openai-compat only), api_key or region (bedrock), then model.
+func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (model, apiKey, baseURL, region string) {
+	// base_url first for openai-compat — defines the endpoint before asking for credentials
+	if p.name == "openai-compat" {
+		for baseURL == "" {
+			fmt.Fprint(out, "Base URL (e.g. https://api.deepseek.com/v1): ")
+			baseURL = strings.TrimSpace(readLine(in))
+		}
+	}
+
+	if p.name == "bedrock" {
+		// Bedrock uses the AWS credential chain — ask for region instead of api_key.
+		defaultRegion := os.Getenv("AWS_DEFAULT_REGION")
+		if defaultRegion == "" {
+			defaultRegion = "us-east-1"
+		}
+		fmt.Fprintf(out, "AWS Region [%s]: ", defaultRegion)
+		if r := strings.TrimSpace(readLine(in)); r != "" {
+			region = r
+		} else {
+			region = defaultRegion
+		}
+	} else {
+		if p.available {
+			fmt.Fprintf(out, "API key: (detected via %s) [Enter to keep, or paste to override]: ", p.envKey)
+		} else {
+			fmt.Fprintf(out, "API key for %s (leave blank to set %s later): ", p.name, p.envKey)
+		}
+		apiKey = strings.TrimSpace(readLine(in))
+	}
+
+	fmt.Fprintf(out, "Model [%s]: ", p.model)
+	if m := strings.TrimSpace(readLine(in)); m != "" {
+		model = m
+	} else {
+		model = p.model
+	}
+	return
+}
+
 func detectProviders() []providerInfo {
+	awsAvailable := os.Getenv("AWS_ACCESS_KEY_ID") != "" || os.Getenv("AWS_PROFILE") != ""
 	providers := []providerInfo{
 		{"anthropic", "ANTHROPIC_API_KEY", os.Getenv("ANTHROPIC_API_KEY") != "", "claude-sonnet-4-6"},
 		{"openai", "OPENAI_API_KEY", os.Getenv("OPENAI_API_KEY") != "", "gpt-4o-mini"},
 		{"gemini", "GEMINI_API_KEY", os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != "", "gemini-2.5-flash"},
 		{"openai-compat", "OPENAI_API_KEY", os.Getenv("OPENAI_API_KEY") != "", "gpt-4o-mini"},
+		{"bedrock", "", awsAvailable, "us.amazon.nova-pro-v1:0"},
 		{"noop", "", true, ""},
 	}
 	return providers
@@ -50,16 +178,22 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	in := bufio.NewReader(cmd.InOrStdin())
 
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("resolving home directory: %w", err)
+	}
+	configPath := filepath.Join(home, ".caseforge.yaml")
+
 	fmt.Fprintln(out, "Welcome to CaseForge!")
 	fmt.Fprintln(out, "This wizard will set up your environment in a few steps.")
 	fmt.Fprintln(out)
 
 	// Step 1: Check existing config
-	if _, err := os.Stat(".caseforge.yaml"); err == nil {
+	if _, err := os.Stat(configPath); err == nil {
 		if onboardYes {
-			fmt.Fprintln(out, "⚠  .caseforge.yaml already exists — overwriting (--yes).")
+			fmt.Fprintf(out, "⚠  %s already exists — overwriting (--yes).\n", configPath)
 		} else {
-			fmt.Fprint(out, ".caseforge.yaml already exists. Overwrite? [y/N]: ")
+			fmt.Fprintf(out, "%s already exists. Overwrite? [y/N]: ", configPath)
 			ans := readLine(in)
 			if !strings.EqualFold(strings.TrimSpace(ans), "y") {
 				fmt.Fprintln(out, "Keeping existing config. Done.")
@@ -68,138 +202,180 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Step 2: Detect providers
+	// Step 1 of 4: LLM Provider — detect + choose + configure
+	if !onboardYes {
+		fmt.Fprintln(out, "[1/4] LLM Provider")
+	}
 	providers := detectProviders()
 	fmt.Fprintln(out, "Detected LLM providers:")
-	for _, p := range providers[:4] { // exclude noop from detection display
+	for _, p := range providers[:5] { // exclude noop from detection display
 		status := "✗ not available"
 		if p.available {
-			status = "✓ available (" + p.envKey + " is set)"
+			if p.name == "bedrock" {
+				status = "✓ available (AWS credentials detected)"
+			} else {
+				status = "✓ available (" + p.envKey + " is set)"
+			}
 		}
 		fmt.Fprintf(out, "  %-14s %s\n", p.name, status)
 	}
 	fmt.Fprintln(out)
 
-	// Step 3: Choose provider
 	var chosenProvider providerInfo
 	if onboardYes {
 		// Pick first available non-noop, fallback to noop
-		chosenProvider = providers[4] // noop default
-		for _, p := range providers[:4] {
-			if p.available {
+		for _, p := range providers {
+			if p.name == "noop" {
+				chosenProvider = p
+				break
+			}
+		}
+		for _, p := range providers {
+			if p.name != "noop" && p.available {
 				chosenProvider = p
 				break
 			}
 		}
 		fmt.Fprintf(out, "Provider: %s (auto-selected)\n", chosenProvider.name)
 	} else {
-		fmt.Fprintln(out, "Choose LLM provider:")
+		labels := make([]string, len(providers))
 		for i, p := range providers {
-			marker := "  "
+			labels[i] = p.name
 			if p.available && p.name != "noop" {
-				marker = "✓ "
+				if p.name == "bedrock" {
+					labels[i] += " (AWS credentials ✓)"
+				} else {
+					labels[i] += " (" + p.envKey + " ✓)"
+				}
 			}
-			fmt.Fprintf(out, "  [%d] %s%s\n", i+1, marker, p.name)
 		}
-		choice := promptInt(out, in, "Provider", 1, len(providers))
-		chosenProvider = providers[choice-1]
+		idx, err := singleSelect(out, in, "Choose your primary LLM provider:", labels)
+		if err != nil {
+			return err
+		}
+		chosenProvider = providers[idx]
 	}
 
-	// Step 3b: base_url for openai-compat
-	baseURL := ""
-	if chosenProvider.name == "openai-compat" && !onboardYes {
-		fmt.Fprint(out, "Enter base_url for openai-compat provider (e.g. https://api.deepseek.com/v1): ")
-		baseURL = strings.TrimSpace(readLine(in))
-	}
-
-	// Step 4: API key if needed
+	model := chosenProvider.model
 	apiKey := ""
-	if chosenProvider.name != "noop" && !chosenProvider.available {
-		if onboardYes {
-			fmt.Fprintf(out, "  ⚠  No API key detected for %s. Set %s env var before using AI features.\n", chosenProvider.name, chosenProvider.envKey)
-		} else {
-			fmt.Fprintf(out, "Enter API key for %s (leave blank to set later via %s): ", chosenProvider.name, chosenProvider.envKey)
-			apiKey = strings.TrimSpace(readLine(in))
+	baseURL := ""
+	region := ""
+	if !onboardYes && chosenProvider.name != "noop" {
+		model, apiKey, baseURL, region = promptProviderDetails(out, in, chosenProvider)
+	} else if onboardYes && chosenProvider.name == "bedrock" {
+		region = os.Getenv("AWS_DEFAULT_REGION")
+		if region == "" {
+			region = "us-east-1"
 		}
 	}
 
-	// Step 5: Choose output format
+	// Step 2 of 4: Output Format
 	formats := []string{"hurl", "postman", "k6", "markdown", "csv"}
 	chosenFormat := "hurl"
 	if onboardYes {
 		fmt.Fprintf(out, "Output format: hurl (auto-selected)\n")
 	} else {
-		fmt.Fprintln(out, "\nChoose output format:")
-		for i, f := range formats {
-			fmt.Fprintf(out, "  [%d] %s\n", i+1, f)
+		fmt.Fprintln(out, "\n[2/4] Output Format")
+		idx, err := singleSelect(out, in, "Choose output format:", formats)
+		if err != nil {
+			return err
 		}
-		choice := promptInt(out, in, "Format", 1, len(formats))
-		chosenFormat = formats[choice-1]
+		chosenFormat = formats[idx]
 	}
 
-	// Step 6: Install MCP server
+	// Step 3 of 4: MCP Server
 	if !onboardYes {
-		fmt.Fprintln(out, "\nInstall CaseForge as MCP server?")
-		fmt.Fprintln(out, "  [1] Claude Desktop  (~/Library/Application Support/Claude/claude_desktop_config.json)")
-		fmt.Fprintln(out, "  [2] Claude Code     (~/.claude.json)")
-		fmt.Fprintln(out, "  [3] Skip")
-		choice := promptInt(out, in, "MCP install", 1, 3)
-		switch choice {
-		case 1:
-			path := claudeDesktopConfigPath()
-			if err := installMCPToFile(path); err != nil {
-				fmt.Fprintf(out, "  ⚠  MCP install failed: %v\n", err)
+		fmt.Fprintln(out, "\n[3/4] MCP Server")
+		desktopPath := claudeDesktopConfigPath(home)
+		claudeCodePath := filepath.Join(home, ".claude.json")
+		codexPath := filepath.Join(home, ".codex", "config.json")
+		paths := []string{desktopPath, claudeCodePath, codexPath}
+
+		mcpOpts := []checkboxOption{
+			{label: "Claude Desktop", detail: desktopPath},
+			{label: "Claude Code", detail: claudeCodePath},
+			{label: "Codex CLI", detail: codexPath},
+		}
+		selectedMCP, err := multiSelectIdx(out, in, "\nInstall CaseForge as MCP server?", mcpOpts)
+		if err != nil {
+			return err
+		}
+		for _, idx := range selectedMCP {
+			if err := installMCPToFile(paths[idx]); err != nil {
+				fmt.Fprintf(out, "  ⚠  MCP install failed (%s): %v\n", mcpOpts[idx].label, err)
 			} else {
-				fmt.Fprintf(out, "  ✓ Registered in %s\n", path)
-			}
-		case 2:
-			path := claudeCodeConfigPath()
-			if err := installMCPToFile(path); err != nil {
-				fmt.Fprintf(out, "  ⚠  MCP install failed: %v\n", err)
-			} else {
-				fmt.Fprintf(out, "  ✓ Registered in %s\n", path)
+				fmt.Fprintf(out, "  ✓ Registered in %s\n", paths[idx])
 			}
 		}
 	}
 
-	// Step 7: Install skill
+	// Step 4 of 4: Skill
 	if !onboardYes {
-		fmt.Fprint(out, "\nInstall CaseForge skill to ~/.claude/commands/caseforge.md? [y/N]: ")
-		ans := readLine(in)
-		if strings.EqualFold(strings.TrimSpace(ans), "y") {
+		fmt.Fprintln(out, "\n[4/4] Skill")
+		claudeSkillLink := filepath.Join(home, ".claude", "skills", "caseforge")
+		universalDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
+
+		skillOpts := []checkboxOption{
+			{label: "Claude Code / Desktop", detail: claudeSkillLink},
+			{label: "Universal AI CLI (Gemini, Codex…)", detail: universalDst},
+		}
+		selectedSkill, err := multiSelectIdx(out, in, "\nInstall CaseForge skill?", skillOpts)
+		if err != nil {
+			return err
+		}
+		if len(selectedSkill) > 0 {
 			src := findSkillFile()
 			if src == "" {
 				fmt.Fprintln(out, "  ⚠  Skill file not found (run from caseforge source directory).")
 			} else {
-				dst := filepath.Join(os.Getenv("HOME"), ".claude", "commands", "caseforge.md")
-				if err := copySkillFile(src, dst); err != nil {
-					fmt.Fprintf(out, "  ⚠  Skill install failed: %v\n", err)
-				} else {
-					fmt.Fprintf(out, "  ✓ Skill installed at %s\n", dst)
+				for _, idx := range selectedSkill {
+					var installErr error
+					var displayPath string
+					if idx == 0 {
+						installErr = installClaudeCodeSkill(home, src)
+						displayPath = claudeSkillLink
+					} else {
+						installErr = copySkillFile(src, universalDst)
+						displayPath = universalDst
+					}
+					if installErr != nil {
+						fmt.Fprintf(out, "  ⚠  Skill install failed (%s): %v\n", skillOpts[idx].label, installErr)
+					} else {
+						fmt.Fprintf(out, "  ✓ Skill installed at %s\n", displayPath)
+					}
 				}
 			}
 		}
 	}
 
-	// Step 8: Write .caseforge.yaml
-	if err := writeOnboardConfig(chosenProvider.name, chosenProvider.model, apiKey, baseURL, chosenFormat); err != nil {
+	// Step 8: Write config
+	if err := writeOnboardConfig(configPath, chosenProvider.name, model, apiKey, baseURL, chosenFormat, region); err != nil {
 		return fmt.Errorf("writing config: %w", err)
 	}
-	fmt.Fprintln(out, "\n✓ .caseforge.yaml written.")
+	fmt.Fprintf(out, "\n✓ %s written.\n", configPath)
+	fmt.Fprintln(out, "  Tip: place a .caseforge.yaml in any project directory to override the global config.")
 
 	// Next steps
 	printNextSteps(out, chosenFormat)
 	return nil
 }
 
-func writeOnboardConfig(provider, model, apiKey, baseURL, format string) error {
+func writeOnboardConfig(path, provider, model, apiKey, baseURL, format, region string) error {
+	aiSection := map[string]any{
+		"provider": provider,
+		"model":    model,
+	}
+	if apiKey != "" {
+		aiSection["api_key"] = apiKey
+	}
+	if baseURL != "" {
+		aiSection["base_url"] = baseURL
+	}
+	if region != "" {
+		aiSection["region"] = region
+	}
 	cfg := map[string]any{
-		"ai": map[string]any{
-			"provider": provider,
-			"model":    model,
-			"api_key":  apiKey,
-			"base_url": baseURL,
-		},
+		"ai":     aiSection,
 		"output": map[string]any{
 			"default_format": format,
 			"dir":            "./cases",
@@ -212,8 +388,11 @@ func writeOnboardConfig(provider, model, apiKey, baseURL, format string) error {
 	if err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
 	header := []byte("# .caseforge.yaml — generated by caseforge onboard\n")
-	return os.WriteFile(".caseforge.yaml", append(header, data...), 0644)
+	return os.WriteFile(path, append(header, data...), 0644)
 }
 
 // installMCPToFile merges the caseforge MCP entry into a JSON config file.
@@ -256,6 +435,28 @@ func installMCPToFile(path string) error {
 	return os.WriteFile(path, out, 0644)
 }
 
+// installClaudeCodeSkill copies src to ~/.agents/skills/caseforge/SKILL.md and
+// creates a relative symlink ~/.claude/skills/caseforge → ../../.agents/skills/caseforge,
+// matching the convention used by other Claude Code skills.
+func installClaudeCodeSkill(home, src string) error {
+	agentsDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
+	if err := copySkillFile(src, agentsDst); err != nil {
+		return err
+	}
+	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
+	if info, err := os.Lstat(claudeLink); err == nil {
+		if info.Mode()&os.ModeSymlink == 0 {
+			return fmt.Errorf("%s exists but is not a symlink; remove it and run onboard again", claudeLink)
+		}
+		return nil // symlink already installed — idempotent
+	}
+	if err := os.MkdirAll(filepath.Join(home, ".claude", "skills"), 0755); err != nil {
+		return err
+	}
+	// Relative target: from ~/.claude/skills/, ../../.agents/skills/caseforge resolves to ~/.agents/skills/caseforge
+	return os.Symlink(filepath.Join("..", "..", ".agents", "skills", "caseforge"), claudeLink)
+}
+
 // copySkillFile copies src → dst, creating parent dirs as needed.
 func copySkillFile(src, dst string) error {
 	if _, err := os.Stat(dst); err == nil {
@@ -288,17 +489,11 @@ func findSkillFile() string {
 	return ""
 }
 
-func claudeDesktopConfigPath() string {
-	home, _ := os.UserHomeDir()
+func claudeDesktopConfigPath(home string) string {
 	if runtime.GOOS == "darwin" {
 		return filepath.Join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
 	}
 	return filepath.Join(home, ".config", "Claude", "claude_desktop_config.json")
-}
-
-func claudeCodeConfigPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude.json")
 }
 
 func printNextSteps(out io.Writer, format string) {
