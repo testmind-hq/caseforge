@@ -318,15 +318,16 @@ func runGen(cmd *cobra.Command, args []string) error {
 
 	// Wire TUI if stderr is a terminal
 	var tuiDone <-chan struct{}
+	var tuiProg *tea.Program
 	if isatty.IsTerminal(os.Stderr.Fd()) {
 		model := tui.NewProgressModel(len(parsedSpec.Operations))
-		prog := tea.NewProgram(model, tea.WithOutput(os.Stderr))
-		sink := tui.NewTUISink(prog)
+		tuiProg = tea.NewProgram(model, tea.WithOutput(os.Stderr))
+		sink := tui.NewTUISink(tuiProg)
 		bus.Subscribe(sink)
 		doneCh := make(chan struct{})
 		go func() {
 			defer close(doneCh)
-			_, _ = prog.Run()
+			_, _ = tuiProg.Run()
 		}()
 		tuiDone = doneCh
 	}
@@ -375,6 +376,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 		engine.AddSpecTechnique(st)
 	}
 	engine.SetSink(bus)
+	if tuiProg != nil {
+		engine.SetWarnWriter(&tuiWriter{tuiProg})
+	}
 	engine.SetConcurrency(genConcurrency)
 	if genSeed != 0 {
 		engine.SetSeed(genSeed)
@@ -476,6 +480,15 @@ func runGen(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
 	return nil
+}
+
+// tuiWriter bridges io.Writer to tea.Program.Printf so warn lines printed
+// during generation appear above the TUI view instead of corrupting it.
+type tuiWriter struct{ prog *tea.Program }
+
+func (w *tuiWriter) Write(b []byte) (int, error) {
+	w.prog.Printf("%s", b)
+	return len(b), nil
 }
 
 // loadExistingCases reads previously generated cases from index.json in outputDir.
