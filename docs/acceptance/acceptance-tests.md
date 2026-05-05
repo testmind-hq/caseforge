@@ -448,6 +448,7 @@
 | AT-241 | onboard MCP checkbox shows Claude Desktop option | interactive flow | output contains "Claude Desktop" | ✅ PASS |
 | AT-242 | onboard skill checkbox shows Universal AI CLI option | interactive flow | output contains "Universal AI CLI" | ✅ PASS |
 | AT-243 | onboard skill installs to ~/.agents/skills/caseforge/SKILL.md | interactive flow, select option 2 | file exists at `~/.agents/skills/caseforge/SKILL.md` | ✅ PASS |
+| AT-244 | onboard skill Claude Code option creates symlink at ~/.claude/skills/caseforge | interactive flow, select option 1 | `test -L ~/.claude/skills/caseforge` | ✅ PASS |
 
 ---
 

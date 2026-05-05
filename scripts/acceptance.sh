@@ -474,6 +474,9 @@ contains AT-242 "onboard skill checkbox shows Universal AI CLI option" "Universa
 
 run AT-243 "onboard skill installs to ~/.agents/skills/caseforge/SKILL.md" \
   "mkdir -p '$WORKDIR/at243-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at243-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at243-home' && printf '1\n\n\n1\n\n2\n' | HOME='$WORKDIR/at243-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -f '$WORKDIR/at243-home/.agents/skills/caseforge/SKILL.md'"
+
+run AT-244 "onboard skill Claude Code option creates symlink at ~/.claude/skills/caseforge" \
+  "mkdir -p '$WORKDIR/at244-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at244-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at244-home' && printf '1\n\n\n1\n\n1\n' | HOME='$WORKDIR/at244-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -L '$WORKDIR/at244-home/.claude/skills/caseforge'"
 echo ""
 
 # -------------------------------------------------------

@@ -219,11 +219,11 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 
 	// Step 7: Install skill (multi-select)
 	if !onboardYes {
-		claudeDst := filepath.Join(home, ".claude", "skills", "caseforge", "SKILL.md")
+		claudeSkillLink := filepath.Join(home, ".claude", "skills", "caseforge")
 		universalDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
 
 		skillOpts := []checkboxOption{
-			{label: "Claude Code / Desktop", detail: claudeDst},
+			{label: "Claude Code / Desktop", detail: claudeSkillLink},
 			{label: "Universal AI CLI (Gemini, Codex…)", detail: universalDst},
 		}
 		selected := promptCheckbox(out, in, "\nInstall CaseForge skill?", skillOpts)
@@ -232,12 +232,20 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 			if src == "" {
 				fmt.Fprintln(out, "  ⚠  Skill file not found (run from caseforge source directory).")
 			} else {
-				dsts := []string{claudeDst, universalDst}
 				for _, idx := range selected {
-					if err := copySkillFile(src, dsts[idx]); err != nil {
-						fmt.Fprintf(out, "  ⚠  Skill install failed (%s): %v\n", skillOpts[idx].label, err)
+					var installErr error
+					var displayPath string
+					if idx == 0 {
+						installErr = installClaudeCodeSkill(home, src)
+						displayPath = claudeSkillLink
 					} else {
-						fmt.Fprintf(out, "  ✓ Skill installed at %s\n", dsts[idx])
+						installErr = copySkillFile(src, universalDst)
+						displayPath = universalDst
+					}
+					if installErr != nil {
+						fmt.Fprintf(out, "  ⚠  Skill install failed (%s): %v\n", skillOpts[idx].label, installErr)
+					} else {
+						fmt.Fprintf(out, "  ✓ Skill installed at %s\n", displayPath)
 					}
 				}
 			}
@@ -321,6 +329,25 @@ func installMCPToFile(path string) error {
 		return err
 	}
 	return os.WriteFile(path, out, 0644)
+}
+
+// installClaudeCodeSkill copies src to ~/.agents/skills/caseforge/SKILL.md and
+// creates a relative symlink ~/.claude/skills/caseforge → ../../.agents/skills/caseforge,
+// matching the convention used by other Claude Code skills.
+func installClaudeCodeSkill(home, src string) error {
+	agentsDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
+	if err := copySkillFile(src, agentsDst); err != nil {
+		return err
+	}
+	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
+	if _, err := os.Lstat(claudeLink); err == nil {
+		return nil // already exists — idempotent
+	}
+	if err := os.MkdirAll(filepath.Join(home, ".claude", "skills"), 0755); err != nil {
+		return err
+	}
+	// Relative target: from ~/.claude/skills/, ../../.agents/skills/caseforge resolves to ~/.agents/skills/caseforge
+	return os.Symlink(filepath.Join("..", "..", ".agents", "skills", "caseforge"), claudeLink)
 }
 
 // copySkillFile copies src → dst, creating parent dirs as needed.

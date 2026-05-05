@@ -201,6 +201,78 @@ func TestOnboard_InstallMCP_Idempotent(t *testing.T) {
 	assert.NotNil(t, servers["caseforge"])
 }
 
+func TestOnboard_InstallClaudeCodeSkill_CreatesSymlink(t *testing.T) {
+	home := t.TempDir()
+	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
+
+	require.NoError(t, installClaudeCodeSkill(home, skillSrc))
+
+	// Real file in ~/.agents/
+	agentsDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
+	data, err := os.ReadFile(agentsDst)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "CaseForge Skill")
+
+	// Symlink at ~/.claude/skills/caseforge
+	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
+	info, err := os.Lstat(claudeLink)
+	require.NoError(t, err)
+	assert.NotZero(t, info.Mode()&os.ModeSymlink)
+	target, err := os.Readlink(claudeLink)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("..", "..", ".agents", "skills", "caseforge"), target)
+}
+
+func TestOnboard_InstallClaudeCodeSkill_Idempotent(t *testing.T) {
+	home := t.TempDir()
+	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
+
+	require.NoError(t, installClaudeCodeSkill(home, skillSrc))
+	require.NoError(t, installClaudeCodeSkill(home, skillSrc)) // second call must not error
+
+	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
+	_, err := os.Lstat(claudeLink)
+	require.NoError(t, err)
+}
+
+func TestOnboard_SkillCheckbox_InstallsClaudeCode(t *testing.T) {
+	srcDir := t.TempDir()
+	skillDir := filepath.Join(srcDir, "skills", "caseforge")
+	require.NoError(t, os.MkdirAll(skillDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# CaseForge Skill\n"), 0644))
+
+	orig, _ := os.Getwd()
+	require.NoError(t, os.Chdir(srcDir))
+	t.Cleanup(func() { os.Chdir(orig) })
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
+
+	// provider=1(anthropic), model=enter, apikey=enter, format=1, mcp=enter(skip), skill=1(Claude Code)
+	onboardCmd.SetIn(strings.NewReader("1\n\n\n1\n\n1\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
+	var buf bytes.Buffer
+	onboardCmd.SetOut(&buf)
+
+	require.NoError(t, runOnboard(onboardCmd, nil))
+
+	agentsDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
+	data, err := os.ReadFile(agentsDst)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "CaseForge Skill")
+
+	claudeLink := filepath.Join(home, ".claude", "skills", "caseforge")
+	info, err := os.Lstat(claudeLink)
+	require.NoError(t, err)
+	assert.NotZero(t, info.Mode()&os.ModeSymlink)
+}
+
 func TestOnboard_InstallSkill_CopiesFile(t *testing.T) {
 	skillSrc := filepath.Join(t.TempDir(), "SKILL.md")
 	require.NoError(t, os.WriteFile(skillSrc, []byte("# CaseForge Skill\n"), 0644))
