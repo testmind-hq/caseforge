@@ -42,7 +42,7 @@ func (r *K6Renderer) Render(cases []schema.TestCase, outDir string) error {
 
 func renderK6Group(tc schema.TestCase) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("  group('%s', function () {\n", tc.ID+": "+tc.Title))
+	sb.WriteString(fmt.Sprintf("  group('%s', function () {\n", tc.Title))
 	for i, step := range tc.Steps {
 		resVar := fmt.Sprintf("res%d", i+1)
 		if i == 0 {
