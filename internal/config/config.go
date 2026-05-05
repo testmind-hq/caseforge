@@ -84,15 +84,17 @@ var knownProviders = map[string]bool{
 
 // Validate checks that the AI config fields are self-consistent.
 // It is called automatically by Load() and returns a user-friendly error.
+// Rules run in order of how actionable the hint is to the user.
 func (c *AIConfig) Validate() error {
-	if !knownProviders[c.Provider] {
-		return fmt.Errorf("config: unknown ai.provider %q — valid values: anthropic, openai, gemini, openai-compat, bedrock, noop", c.Provider)
-	}
+	// Check api_key/base_url swap first — most actionable hint for a common mistake.
 	if strings.HasPrefix(c.APIKey, "http://") || strings.HasPrefix(c.APIKey, "https://") {
 		return fmt.Errorf("config: ai.api_key looks like a URL (%q) — did you swap api_key and base_url?", c.APIKey)
 	}
 	if c.BaseURL != "" && !strings.HasPrefix(c.BaseURL, "http://") && !strings.HasPrefix(c.BaseURL, "https://") {
 		return fmt.Errorf("config: ai.base_url %q has no HTTP scheme — it must start with https:// (or http://)", c.BaseURL)
+	}
+	if !knownProviders[c.Provider] {
+		return fmt.Errorf("config: unknown ai.provider %q — valid values: anthropic, openai, gemini, openai-compat, bedrock, noop", c.Provider)
 	}
 	if c.Provider == "openai-compat" && c.BaseURL == "" {
 		return fmt.Errorf("config: provider \"openai-compat\" requires ai.base_url to be set")

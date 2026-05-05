@@ -65,6 +65,16 @@ func TestValidate_UnknownProvider(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown ai.provider")
 }
 
+func TestValidate_OpenAICompatBadScheme_OnlySchemeError(t *testing.T) {
+	// base_url is present but has no scheme — only the scheme error should fire,
+	// not the "requires base_url" error, confirming rule priority is correct.
+	c := &AIConfig{Provider: "openai-compat", BaseURL: "open.bigmodel.cn/api/paas/v4"}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no HTTP scheme")
+	assert.NotContains(t, err.Error(), "requires ai.base_url")
+}
+
 func TestValidate_ValidOpenAICompat(t *testing.T) {
 	c := &AIConfig{Provider: "openai-compat", BaseURL: "https://open.bigmodel.cn/api/paas/v4"}
 	assert.NoError(t, c.Validate())
