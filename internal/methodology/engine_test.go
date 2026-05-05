@@ -2,6 +2,7 @@
 package methodology
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -167,6 +168,49 @@ func TestEngineEmitsEventsToSink(t *testing.T) {
 	}
 	assert.Contains(t, types, event.EventOperationDone)
 	assert.Contains(t, types, event.EventCaseGenerated)
+	// NoopProvider skips annotation — EventOperationAnnotating must NOT be emitted.
+	assert.NotContains(t, types, event.EventOperationAnnotating)
+}
+
+func TestEngineEmitsAnnotatingEventsWhenLLMAvailable(t *testing.T) {
+	var got []event.EventType
+	mu := sync.Mutex{}
+	sink := event.SinkFunc(func(e event.Event) {
+		mu.Lock()
+		got = append(got, e.Type)
+		mu.Unlock()
+	})
+
+	// stubLLM returns an available provider that always succeeds with empty JSON.
+	stub := &stubLLMProvider{}
+	engine := NewEngine(stub, NewEquivalenceTechnique())
+	engine.SetSink(sink)
+
+	ps := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{OperationID: "op1", Method: "GET", Path: "/a",
+			Responses: map[string]*spec.Response{"200": {}}},
+		{OperationID: "op2", Method: "POST", Path: "/b",
+			Responses: map[string]*spec.Response{"201": {}}},
+	}}
+	_, err := engine.Generate(ps)
+	require.NoError(t, err)
+
+	var annotatingCount int
+	for _, typ := range got {
+		if typ == event.EventOperationAnnotating {
+			annotatingCount++
+		}
+	}
+	assert.Equal(t, 2, annotatingCount, "one EventOperationAnnotating per operation")
+}
+
+// stubLLMProvider is an available provider that returns empty JSON for any call.
+type stubLLMProvider struct{}
+
+func (s *stubLLMProvider) IsAvailable() bool                      { return true }
+func (s *stubLLMProvider) Name() string                            { return "stub" }
+func (s *stubLLMProvider) Complete(_ context.Context, _ *llm.CompletionRequest) (*llm.CompletionResponse, error) {
+	return &llm.CompletionResponse{Text: "{}"}, nil
 }
 
 func TestEngineConcurrentProducesSameResults(t *testing.T) {

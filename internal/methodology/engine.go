@@ -237,9 +237,14 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 		annotation, err := e.annotateOperation(op)
 		if err != nil {
 			e.warn("warn: LLM annotation failed for %s %s: %v\n", op.Method, op.Path, err)
-			continue
+		} else {
+			op.SemanticInfo = annotation
 		}
-		op.SemanticInfo = annotation
+		e.emit(event.Event{Type: event.EventOperationAnnotating, Payload: event.OperationDonePayload{
+			OperationID: op.OperationID,
+			Method:      op.Method,
+			Path:        op.Path,
+		}})
 	}
 }
 
