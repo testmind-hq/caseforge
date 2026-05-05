@@ -458,7 +458,7 @@ contains AT-031 "onboard skips existing config in home dir" "Keeping existing co
 echo "--- onboard wizard improvements ---"
 
 contains AT-238 "onboard prompts for model after provider selection" "Model \[" \
-  "mkdir -p '$WORKDIR/at238' && printf '2\ngpt-4o-test\n\n1\n\n\n' | HOME='$WORKDIR/at238' ANTHROPIC_API_KEY='' OPENAI_API_KEY='sk-test' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
+  "mkdir -p '$WORKDIR/at238' && printf '2\n\ngpt-4o-test\n1\n\n\n' | HOME='$WORKDIR/at238' ANTHROPIC_API_KEY='' OPENAI_API_KEY='sk-test' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1"
 
 contains AT-239 "onboard --yes uses non-empty model in config" "model:" \
   "mkdir -p '$WORKDIR/at239' && HOME='$WORKDIR/at239' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard --yes && cat '$WORKDIR/at239/.caseforge.yaml'"

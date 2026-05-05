@@ -120,20 +120,18 @@ func promptCheckbox(out io.Writer, in *bufio.Reader, title string, opts []checkb
 	return result
 }
 
-// promptProviderDetails asks for model, api_key (and base_url for openai-compat)
-// after the user has selected a provider.
+// promptProviderDetails asks for base_url (openai-compat only), api_key, then model.
 func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (model, apiKey, baseURL string) {
-	fmt.Fprintf(out, "Model [%s]: ", p.model)
-	if m := strings.TrimSpace(readLine(in)); m != "" {
-		model = m
-	} else {
-		model = p.model
+	// base_url first for openai-compat — defines the endpoint before asking for credentials
+	if p.name == "openai-compat" {
+		for baseURL == "" {
+			fmt.Fprint(out, "Base URL (e.g. https://api.deepseek.com/v1): ")
+			baseURL = strings.TrimSpace(readLine(in))
+		}
 	}
 
 	// bedrock uses the AWS credential chain — no api_key prompt needed.
-	// noop has no provider at all. Both are excluded from the wizard for now;
-	// this guard future-proofs the function for when bedrock is added to detectProviders.
-	if p.name != "noop" && p.name != "bedrock" {
+	if p.name != "bedrock" {
 		if p.available {
 			fmt.Fprintf(out, "API key: (detected via %s) [Enter to keep, or paste to override]: ", p.envKey)
 		} else {
@@ -142,11 +140,11 @@ func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (mod
 		apiKey = strings.TrimSpace(readLine(in))
 	}
 
-	if p.name == "openai-compat" {
-		for baseURL == "" {
-			fmt.Fprint(out, "Base URL (e.g. https://api.deepseek.com/v1): ")
-			baseURL = strings.TrimSpace(readLine(in))
-		}
+	fmt.Fprintf(out, "Model [%s]: ", p.model)
+	if m := strings.TrimSpace(readLine(in)); m != "" {
+		model = m
+	} else {
+		model = p.model
 	}
 	return
 }
@@ -191,7 +189,10 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Step 2: Detect providers
+	// Step 1 of 4: LLM Provider — detect + choose + configure
+	if !onboardYes {
+		fmt.Fprintln(out, "[1/4] LLM Provider")
+	}
 	providers := detectProviders()
 	fmt.Fprintln(out, "Detected LLM providers:")
 	for _, p := range providers[:4] { // exclude noop from detection display
@@ -203,7 +204,6 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	}
 	fmt.Fprintln(out)
 
-	// Step 3: Choose provider
 	var chosenProvider providerInfo
 	if onboardYes {
 		// Pick first available non-noop, fallback to noop
@@ -230,7 +230,6 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		chosenProvider = providers[idx]
 	}
 
-	// Step 3b+4: model, api_key, base_url sub-prompts
 	model := chosenProvider.model
 	apiKey := ""
 	baseURL := ""
@@ -238,21 +237,23 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		model, apiKey, baseURL = promptProviderDetails(out, in, chosenProvider)
 	}
 
-	// Step 5: Choose output format
+	// Step 2 of 4: Output Format
 	formats := []string{"hurl", "postman", "k6", "markdown", "csv"}
 	chosenFormat := "hurl"
 	if onboardYes {
 		fmt.Fprintf(out, "Output format: hurl (auto-selected)\n")
 	} else {
-		idx, err := singleSelect(out, in, "\nChoose output format:", formats)
+		fmt.Fprintln(out, "\n[2/4] Output Format")
+		idx, err := singleSelect(out, in, "Choose output format:", formats)
 		if err != nil {
 			return err
 		}
 		chosenFormat = formats[idx]
 	}
 
-	// Step 6: Install MCP server (multi-select)
+	// Step 3 of 4: MCP Server
 	if !onboardYes {
+		fmt.Fprintln(out, "\n[3/4] MCP Server")
 		desktopPath := claudeDesktopConfigPath(home)
 		claudeCodePath := filepath.Join(home, ".claude.json")
 		codexPath := filepath.Join(home, ".codex", "config.json")
@@ -276,8 +277,9 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Step 7: Install skill (multi-select)
+	// Step 4 of 4: Skill
 	if !onboardYes {
+		fmt.Fprintln(out, "\n[4/4] Skill")
 		claudeSkillLink := filepath.Join(home, ".claude", "skills", "caseforge")
 		universalDst := filepath.Join(home, ".agents", "skills", "caseforge", "SKILL.md")
 

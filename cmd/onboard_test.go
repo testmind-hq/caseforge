@@ -21,8 +21,8 @@ func TestOnboard_ProviderSubPrompts_ShowsModelAndKey(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// provider=2(openai), model=gpt-4o, apikey=enter(keep), format=1, mcp=enter(skip), skill=enter(skip)
-	onboardCmd.SetIn(strings.NewReader("2\ngpt-4o\n\n1\n\n\n"))
+	// provider=2(openai), apikey=enter(keep), model=gpt-4o, format=1, mcp=enter(skip), skill=enter(skip)
+	onboardCmd.SetIn(strings.NewReader("2\n\ngpt-4o\n1\n\n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
