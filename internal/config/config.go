@@ -2,7 +2,9 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -69,7 +71,33 @@ func Load() (*Config, error) {
 			cfg.AI.Region = firstNonEmpty(os.Getenv("AWS_REGION"), os.Getenv("AWS_DEFAULT_REGION"))
 		}
 	}
+	if err := cfg.AI.Validate(); err != nil {
+		return nil, err
+	}
 	return &cfg, nil
+}
+
+var knownProviders = map[string]bool{
+	"anthropic": true, "openai": true, "gemini": true,
+	"openai-compat": true, "bedrock": true, "noop": true,
+}
+
+// Validate checks that the AI config fields are self-consistent.
+// It is called automatically by Load() and returns a user-friendly error.
+func (c *AIConfig) Validate() error {
+	if !knownProviders[c.Provider] {
+		return fmt.Errorf("config: unknown ai.provider %q — valid values: anthropic, openai, gemini, openai-compat, bedrock, noop", c.Provider)
+	}
+	if strings.HasPrefix(c.APIKey, "http://") || strings.HasPrefix(c.APIKey, "https://") {
+		return fmt.Errorf("config: ai.api_key looks like a URL (%q) — did you swap api_key and base_url?", c.APIKey)
+	}
+	if c.BaseURL != "" && !strings.HasPrefix(c.BaseURL, "http://") && !strings.HasPrefix(c.BaseURL, "https://") {
+		return fmt.Errorf("config: ai.base_url %q has no HTTP scheme — it must start with https:// (or http://)", c.BaseURL)
+	}
+	if c.Provider == "openai-compat" && c.BaseURL == "" {
+		return fmt.Errorf("config: provider \"openai-compat\" requires ai.base_url to be set")
+	}
+	return nil
 }
 
 func firstNonEmpty(vals ...string) string {
