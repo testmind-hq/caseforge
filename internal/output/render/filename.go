@@ -45,8 +45,8 @@ func titleSlug(title string) string {
 		}
 	}
 	slug := strings.TrimRight(b.String(), "_")
-	if len(slug) > 80 {
-		slug = strings.TrimRight(slug[:80], "_")
+	if len([]rune(slug)) > 80 {
+		slug = strings.TrimRight(string([]rune(slug)[:80]), "_")
 	}
 	return slug
 }

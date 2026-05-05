@@ -312,7 +312,3 @@ func formatHurlValue(v any) string {
 		return fmt.Sprintf("%v", v)
 	}
 }
-
-func sanitizeFilename(id string) string {
-	return strings.ReplaceAll(id, "/", "_")
-}

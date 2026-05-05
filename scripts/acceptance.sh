@@ -1021,6 +1021,24 @@ run "AT-098" "k6 output has no unrendered assertion comments" \
 echo ""
 
 # -------------------------------------------------------
+# Readable case names (AT-247–AT-248)
+# -------------------------------------------------------
+echo "--- readable case names ---"
+
+AT247DIR=$(mktemp -d)
+run "AT-247" "hurl filenames contain title slug" \
+  "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --format hurl --output '$AT247DIR' && \
+   ls '$AT247DIR'/*.hurl | grep -qv 'TC-'"
+
+AT248DIR=$(mktemp -d)
+run "AT-248" "k6 group names contain case title not raw ID" \
+  "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --format k6 --output '$AT248DIR' && \
+   grep -q \"group('\" '$AT248DIR/k6_tests.js' && \
+   ! grep -q \"group('TC-\" '$AT248DIR/k6_tests.js'"
+
+echo ""
+
+# -------------------------------------------------------
 # Phase 2 CLI — watch / stats / ci (AT-099–AT-104)
 # -------------------------------------------------------
 echo "--- phase 2 cli commands ---"

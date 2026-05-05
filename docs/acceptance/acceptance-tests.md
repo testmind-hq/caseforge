@@ -137,6 +137,15 @@
 
 ---
 
+### Readable Case Names (feat/readable-case-names)
+
+| ID | Scenario | Command / Setup | Expected | Status |
+|----|----------|-----------------|----------|--------|
+| AT-247 | Hurl filenames contain title slug | `caseforge gen --no-ai --format hurl --spec petstore.yaml --output /tmp/at247` | `.hurl` files named like `get_pets_<hash>.hurl`, not `TC-<hash>.hurl` | ✅ PASS |
+| AT-248 | k6 group names contain case title | `caseforge gen --no-ai --format k6 --spec petstore.yaml --output /tmp/at248` | k6 JS contains `group('` followed by a human-readable title, not a raw `TC-` id | ✅ PASS |
+
+---
+
 ### Phase 2 CLI commands — watch / stats / ci
 
 | ID | Scenario | Command / Setup | Expected | Status |
