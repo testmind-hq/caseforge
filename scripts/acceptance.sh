@@ -477,6 +477,9 @@ run AT-243 "onboard skill installs to ~/.agents/skills/caseforge/SKILL.md" \
 
 run AT-244 "onboard skill Claude Code option creates symlink at ~/.claude/skills/caseforge" \
   "mkdir -p '$WORKDIR/at244-home/skills/caseforge' && printf '# CaseForge Skill\n' > '$WORKDIR/at244-home/skills/caseforge/SKILL.md' && cd '$WORKDIR/at244-home' && printf '1\n\n\n1\n\n1\n' | HOME='$WORKDIR/at244-home' ANTHROPIC_API_KEY=sk-test OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' '$BIN' onboard 2>&1 && test -L '$WORKDIR/at244-home/.claude/skills/caseforge'"
+
+contains AT-245 "onboard bedrock prompts for AWS region" "AWS Region" \
+  "mkdir -p '$WORKDIR/at245' && printf '5\n\n\n1\n\n\n' | HOME='$WORKDIR/at245' ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' AWS_ACCESS_KEY_ID='AKIATEST' AWS_DEFAULT_REGION='us-west-2' '$BIN' onboard 2>&1"
 echo ""
 
 # -------------------------------------------------------

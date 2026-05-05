@@ -160,8 +160,8 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GOOGLE_API_KEY", "")
 
-	// provider=5(noop), format=1(hurl), mcp=enter(skip), skill=enter(skip)
-	onboardCmd.SetIn(strings.NewReader("5\n1\n\n\n"))
+	// provider=6(noop), format=1(hurl), mcp=enter(skip), skill=enter(skip)
+	onboardCmd.SetIn(strings.NewReader("6\n1\n\n\n"))
 	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
 	var buf bytes.Buffer
 	onboardCmd.SetOut(&buf)
@@ -171,6 +171,33 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "provider: noop")
+}
+
+func TestOnboard_BedrockProvider_PromptRegion(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
+	t.Setenv("AWS_ACCESS_KEY_ID", "AKIATEST")
+	t.Setenv("AWS_PROFILE", "")
+	t.Setenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+
+	// provider=5(bedrock), region=enter(use default), model=enter(default), format=1, mcp=enter, skill=enter
+	onboardCmd.SetIn(strings.NewReader("5\n\n\n1\n\n\n"))
+	t.Cleanup(func() { onboardCmd.SetIn(os.Stdin); onboardCmd.SetOut(os.Stdout) })
+	var buf bytes.Buffer
+	onboardCmd.SetOut(&buf)
+
+	require.NoError(t, runOnboard(onboardCmd, nil))
+
+	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
+	require.NoError(t, err)
+	content := string(data)
+	assert.Contains(t, content, "provider: bedrock")
+	assert.Contains(t, content, "region: ap-northeast-1")
+	assert.NotContains(t, content, "api_key")
 }
 
 func TestOnboard_InstallMCP_WritesJSON(t *testing.T) {

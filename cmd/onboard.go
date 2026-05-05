@@ -120,8 +120,8 @@ func promptCheckbox(out io.Writer, in *bufio.Reader, title string, opts []checkb
 	return result
 }
 
-// promptProviderDetails asks for base_url (openai-compat only), api_key, then model.
-func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (model, apiKey, baseURL string) {
+// promptProviderDetails asks for base_url (openai-compat only), api_key or region (bedrock), then model.
+func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (model, apiKey, baseURL, region string) {
 	// base_url first for openai-compat — defines the endpoint before asking for credentials
 	if p.name == "openai-compat" {
 		for baseURL == "" {
@@ -130,8 +130,19 @@ func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (mod
 		}
 	}
 
-	// bedrock uses the AWS credential chain — no api_key prompt needed.
-	if p.name != "bedrock" {
+	if p.name == "bedrock" {
+		// Bedrock uses the AWS credential chain — ask for region instead of api_key.
+		defaultRegion := os.Getenv("AWS_DEFAULT_REGION")
+		if defaultRegion == "" {
+			defaultRegion = "us-east-1"
+		}
+		fmt.Fprintf(out, "AWS Region [%s]: ", defaultRegion)
+		if r := strings.TrimSpace(readLine(in)); r != "" {
+			region = r
+		} else {
+			region = defaultRegion
+		}
+	} else {
 		if p.available {
 			fmt.Fprintf(out, "API key: (detected via %s) [Enter to keep, or paste to override]: ", p.envKey)
 		} else {
@@ -150,11 +161,13 @@ func promptProviderDetails(out io.Writer, in *bufio.Reader, p providerInfo) (mod
 }
 
 func detectProviders() []providerInfo {
+	awsAvailable := os.Getenv("AWS_ACCESS_KEY_ID") != "" || os.Getenv("AWS_PROFILE") != ""
 	providers := []providerInfo{
 		{"anthropic", "ANTHROPIC_API_KEY", os.Getenv("ANTHROPIC_API_KEY") != "", "claude-sonnet-4-6"},
 		{"openai", "OPENAI_API_KEY", os.Getenv("OPENAI_API_KEY") != "", "gpt-4o-mini"},
 		{"gemini", "GEMINI_API_KEY", os.Getenv("GEMINI_API_KEY") != "" || os.Getenv("GOOGLE_API_KEY") != "", "gemini-2.5-flash"},
 		{"openai-compat", "OPENAI_API_KEY", os.Getenv("OPENAI_API_KEY") != "", "gpt-4o-mini"},
+		{"bedrock", "", awsAvailable, "us.amazon.nova-pro-v1:0"},
 		{"noop", "", true, ""},
 	}
 	return providers
@@ -195,10 +208,14 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	}
 	providers := detectProviders()
 	fmt.Fprintln(out, "Detected LLM providers:")
-	for _, p := range providers[:4] { // exclude noop from detection display
+	for _, p := range providers[:5] { // exclude noop from detection display
 		status := "✗ not available"
 		if p.available {
-			status = "✓ available (" + p.envKey + " is set)"
+			if p.name == "bedrock" {
+				status = "✓ available (AWS credentials detected)"
+			} else {
+				status = "✓ available (" + p.envKey + " is set)"
+			}
 		}
 		fmt.Fprintf(out, "  %-14s %s\n", p.name, status)
 	}
@@ -207,8 +224,8 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	var chosenProvider providerInfo
 	if onboardYes {
 		// Pick first available non-noop, fallback to noop
-		chosenProvider = providers[4] // noop default
-		for _, p := range providers[:4] {
+		chosenProvider = providers[5] // noop default
+		for _, p := range providers[:5] {
 			if p.available {
 				chosenProvider = p
 				break
@@ -220,7 +237,11 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		for i, p := range providers {
 			labels[i] = p.name
 			if p.available && p.name != "noop" {
-				labels[i] += " (" + p.envKey + " ✓)"
+				if p.name == "bedrock" {
+					labels[i] += " (AWS credentials ✓)"
+				} else {
+					labels[i] += " (" + p.envKey + " ✓)"
+				}
 			}
 		}
 		idx, err := singleSelect(out, in, "Choose your primary LLM provider:", labels)
@@ -233,8 +254,9 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	model := chosenProvider.model
 	apiKey := ""
 	baseURL := ""
+	region := ""
 	if !onboardYes && chosenProvider.name != "noop" {
-		model, apiKey, baseURL = promptProviderDetails(out, in, chosenProvider)
+		model, apiKey, baseURL, region = promptProviderDetails(out, in, chosenProvider)
 	}
 
 	// Step 2 of 4: Output Format
@@ -317,7 +339,7 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Step 8: Write config
-	if err := writeOnboardConfig(configPath, chosenProvider.name, model, apiKey, baseURL, chosenFormat); err != nil {
+	if err := writeOnboardConfig(configPath, chosenProvider.name, model, apiKey, baseURL, chosenFormat, region); err != nil {
 		return fmt.Errorf("writing config: %w", err)
 	}
 	fmt.Fprintf(out, "\n✓ %s written.\n", configPath)
@@ -328,14 +350,22 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func writeOnboardConfig(path, provider, model, apiKey, baseURL, format string) error {
+func writeOnboardConfig(path, provider, model, apiKey, baseURL, format, region string) error {
+	aiSection := map[string]any{
+		"provider": provider,
+		"model":    model,
+	}
+	if apiKey != "" {
+		aiSection["api_key"] = apiKey
+	}
+	if baseURL != "" {
+		aiSection["base_url"] = baseURL
+	}
+	if region != "" {
+		aiSection["region"] = region
+	}
 	cfg := map[string]any{
-		"ai": map[string]any{
-			"provider": provider,
-			"model":    model,
-			"api_key":  apiKey,
-			"base_url": baseURL,
-		},
+		"ai":     aiSection,
 		"output": map[string]any{
 			"default_format": format,
 			"dir":            "./cases",
