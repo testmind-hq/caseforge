@@ -31,7 +31,7 @@ func (r *HurlRenderer) Render(cases []schema.TestCase, outDir string) error {
 	}
 	for _, tc := range cases {
 		content := r.renderCase(tc)
-		filename := sanitizeFilename(tc.ID) + ".hurl"
+		filename := FilenameFor(tc) + ".hurl"
 		if err := os.WriteFile(filepath.Join(outDir, filename), []byte(content), 0644); err != nil {
 			return fmt.Errorf("writing %s: %w", filename, err)
 		}
@@ -311,8 +311,4 @@ func formatHurlValue(v any) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
-}
-
-func sanitizeFilename(id string) string {
-	return strings.ReplaceAll(id, "/", "_")
 }

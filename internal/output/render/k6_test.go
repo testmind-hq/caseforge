@@ -40,7 +40,7 @@ func TestK6RendererSingleCase(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, r.Render([]schema.TestCase{singleCase()}, dir))
 	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
-	assert.Contains(t, content, `group('TC-0001`)
+	assert.Contains(t, content, `group('GET users list [0001]`)
 	assert.Contains(t, content, `http.get(`)
 	assert.Contains(t, content, `r.status === 200`)
 }
@@ -123,7 +123,7 @@ func TestK6RendererChainCase(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, r.Render([]schema.TestCase{chainCase()}, dir))
 	content := readFile(t, filepath.Join(dir, "k6_tests.js"))
-	assert.Contains(t, content, `group('TC-0002`)
+	assert.Contains(t, content, `group('CRUD chain: /users [0002]`)
 	assert.Contains(t, content, `http.post(`)
 	assert.Contains(t, content, `http.get(`)
 }
