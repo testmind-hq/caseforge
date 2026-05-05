@@ -78,6 +78,40 @@ func TestProgressModel_ViewScrollsToLast12Rows(t *testing.T) {
 	// Last 12 rows should be visible
 	assert.Contains(t, view, "GET /op14")
 	assert.Contains(t, view, "GET /op3")
+	// Overflow indicator must appear with the correct hidden count
+	assert.Contains(t, view, "3 more above")
+}
+
+func TestProgressModel_ViewAnnotatingPhase(t *testing.T) {
+	m := NewProgressModel(5)
+	updated, _ := m.Update(EventMsg{event.Event{Type: event.EventOperationAnnotating}})
+	pm := updated.(ProgressModel)
+	assert.Equal(t, 1, pm.annotated)
+	view := pm.View()
+	assert.Contains(t, view, "Annotating with AI...")
+	assert.Contains(t, view, "1/5")
+	assert.NotContains(t, view, "Generating cases...")
+}
+
+func TestProgressModel_ViewSwitchesToGeneratingWhenDoneStarts(t *testing.T) {
+	m := NewProgressModel(5)
+	m.annotated = 5
+	updated, _ := m.Update(EventMsg{event.Event{
+		Type:    event.EventOperationDone,
+		Payload: event.OperationDonePayload{Method: "GET", Path: "/a", CaseCount: 1},
+	}})
+	pm := updated.(ProgressModel)
+	view := pm.View()
+	assert.Contains(t, view, "Generating cases...")
+	assert.NotContains(t, view, "Annotating with AI...")
+}
+
+func TestProgressModel_NoAnnotationEventsShowsGeneratingImmediately(t *testing.T) {
+	// --no-ai path: annotated stays 0, display goes straight to "Generating cases…"
+	m := NewProgressModel(5)
+	view := m.View()
+	assert.Contains(t, view, "Generating cases...")
+	assert.NotContains(t, view, "Annotating with AI...")
 }
 
 func TestProgressModel_WindowSizeMsg(t *testing.T) {

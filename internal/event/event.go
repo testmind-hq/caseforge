@@ -20,7 +20,8 @@ type Event struct {
 	Payload any
 }
 
-// OperationDonePayload is the structured payload for EventOperationDone.
+// OperationDonePayload is the structured payload for EventOperationDone and
+// EventOperationAnnotating. CaseCount is zero for annotation events.
 type OperationDonePayload struct {
 	OperationID string
 	Method      string
