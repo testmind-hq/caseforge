@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	isatty "github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,7 +43,7 @@ type checkboxOption struct {
 
 // isTTY reports whether stdin is an interactive terminal.
 func isTTY() bool {
-	return term.IsTerminal(int(os.Stdin.Fd()))
+	return isatty.IsTerminal(os.Stdin.Fd())
 }
 
 // singleSelect presents a single-choice prompt.
@@ -289,13 +289,12 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		selected := selectedSkill
-		if len(selected) > 0 {
+		if len(selectedSkill) > 0 {
 			src := findSkillFile()
 			if src == "" {
 				fmt.Fprintln(out, "  ⚠  Skill file not found (run from caseforge source directory).")
 			} else {
-				for _, idx := range selected {
+				for _, idx := range selectedSkill {
 					var installErr error
 					var displayPath string
 					if idx == 0 {
