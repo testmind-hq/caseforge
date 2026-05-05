@@ -36,6 +36,55 @@ func TestLoadBaseURLFromViper(t *testing.T) {
 	assert.Equal(t, "https://api.deepseek.com/v1", cfg.AI.BaseURL)
 }
 
+func TestValidate_APIKeyLooksLikeURL(t *testing.T) {
+	c := &AIConfig{Provider: "openai", APIKey: "https://open.bigmodel.cn/api/paas/v4"}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "api_key looks like a URL")
+	assert.Contains(t, err.Error(), "base_url")
+}
+
+func TestValidate_BaseURLMissingScheme(t *testing.T) {
+	c := &AIConfig{Provider: "openai-compat", BaseURL: "open.bigmodel.cn/api/paas/v4"}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no HTTP scheme")
+}
+
+func TestValidate_OpenAICompatMissingBaseURL(t *testing.T) {
+	c := &AIConfig{Provider: "openai-compat", BaseURL: ""}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires ai.base_url")
+}
+
+func TestValidate_UnknownProvider(t *testing.T) {
+	c := &AIConfig{Provider: "unknown-llm"}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown ai.provider")
+}
+
+func TestValidate_OpenAICompatBadScheme_OnlySchemeError(t *testing.T) {
+	// base_url is present but has no scheme — only the scheme error should fire,
+	// not the "requires base_url" error, confirming rule priority is correct.
+	c := &AIConfig{Provider: "openai-compat", BaseURL: "open.bigmodel.cn/api/paas/v4"}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no HTTP scheme")
+	assert.NotContains(t, err.Error(), "requires ai.base_url")
+}
+
+func TestValidate_ValidOpenAICompat(t *testing.T) {
+	c := &AIConfig{Provider: "openai-compat", BaseURL: "https://open.bigmodel.cn/api/paas/v4"}
+	assert.NoError(t, c.Validate())
+}
+
+func TestValidate_ValidAnthropicNoBaseURL(t *testing.T) {
+	c := &AIConfig{Provider: "anthropic", APIKey: "sk-ant-test"}
+	assert.NoError(t, c.Validate())
+}
+
 func TestConfigBedrockRegionFromEnv(t *testing.T) {
 	viper.Reset()
 	viper.Set("ai.provider", "bedrock")
