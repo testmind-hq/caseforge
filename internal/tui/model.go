@@ -89,6 +89,8 @@ func (m ProgressModel) View() string {
 	// Scrolling operation list: show the last maxVisibleRows completed rows.
 	visible := m.rows
 	if len(visible) > maxVisibleRows {
+		hidden := len(visible) - maxVisibleRows
+		b.WriteString(styleCount.Render(fmt.Sprintf("  … %d more above\n", hidden)))
 		visible = visible[len(visible)-maxVisibleRows:]
 	}
 	for _, r := range visible {
