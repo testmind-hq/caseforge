@@ -30,6 +30,11 @@ type opRow struct {
 // EventMsg wraps a CaseForge event for the Bubble Tea message loop.
 type EventMsg struct{ event.Event }
 
+// PrintMsg prints a line above the TUI view via tea.Println.
+// Always send with prog.Send (not prog.Printf) — Send has a ctx.Done guard
+// that prevents deadlocks after the program exits.
+type PrintMsg struct{ Text string }
+
 // ProgressModel is the Bubble Tea model that shows generation progress.
 type ProgressModel struct {
 	total    int
@@ -64,6 +69,8 @@ func (m ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.finished = true
 			return m, tea.Quit
 		}
+	case PrintMsg:
+		return m, tea.Println(msg.Text)
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit

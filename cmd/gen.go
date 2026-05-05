@@ -422,7 +422,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 					if op.Method+" "+op.Path == baseKey {
 						constraints, mineErr := oracle.Mine(context.Background(), op, provider)
 						if mineErr != nil {
-							fmt.Fprintf(os.Stderr, "warn: oracle mining failed for %s: %v\n", baseKey, mineErr)
+							warnf(tuiProg, "warn: oracle mining failed for %s: %v\n", baseKey, mineErr)
 							constraintCache[baseKey] = nil
 						} else {
 							constraintCache[baseKey] = constraints
@@ -482,12 +482,23 @@ func runGen(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// tuiWriter bridges io.Writer to tea.Program.Printf so warn lines printed
-// during generation appear above the TUI view instead of corrupting it.
+// warnf writes a formatted warn line to the TUI when active, otherwise to stderr.
+func warnf(prog *tea.Program, format string, args ...any) {
+	if prog != nil {
+		prog.Send(tui.PrintMsg{Text: strings.TrimRight(fmt.Sprintf(format, args...), "\n")})
+	} else {
+		fmt.Fprintf(os.Stderr, format, args...)
+	}
+}
+
+// tuiWriter bridges io.Writer to the TUI via prog.Send(tui.PrintMsg).
+// Send (not Printf) is used because it respects the program's ctx.Done guard
+// and cannot deadlock after the TUI exits (e.g. on ctrl+c).
+// Trailing newlines are trimmed so tea.Println does not produce blank lines.
 type tuiWriter struct{ prog *tea.Program }
 
 func (w *tuiWriter) Write(b []byte) (int, error) {
-	w.prog.Printf("%s", b)
+	w.prog.Send(tui.PrintMsg{Text: strings.TrimRight(string(b), "\n")})
 	return len(b), nil
 }
 

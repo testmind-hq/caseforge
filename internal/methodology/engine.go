@@ -57,6 +57,7 @@ func (e *Engine) SetWarnWriter(w io.Writer) {
 	e.warnWriter = w
 }
 
+// warn writes a formatted message to warnWriter (or os.Stderr when unset).
 func (e *Engine) warn(format string, args ...any) {
 	w := e.warnWriter
 	if w == nil {
