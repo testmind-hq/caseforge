@@ -173,6 +173,33 @@ func TestOnboard_NoopProvider_SkipsAPIKeyPrompt(t *testing.T) {
 	assert.Contains(t, string(data), "provider: noop")
 }
 
+func TestOnboard_NonInteractive_BedrockAutoSelected(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GOOGLE_API_KEY", "")
+	t.Setenv("AWS_ACCESS_KEY_ID", "AKIATEST")
+	t.Setenv("AWS_PROFILE", "")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+
+	var buf bytes.Buffer
+	onboardCmd.SetOut(&buf)
+	t.Cleanup(func() { onboardCmd.SetOut(os.Stdout) })
+	require.NoError(t, onboardCmd.Flags().Set("yes", "true"))
+	t.Cleanup(func() { onboardCmd.Flags().Set("yes", "false") })
+
+	require.NoError(t, runOnboard(onboardCmd, nil))
+
+	data, err := os.ReadFile(filepath.Join(home, ".caseforge.yaml"))
+	require.NoError(t, err)
+	content := string(data)
+	assert.Contains(t, content, "provider: bedrock")
+	assert.Contains(t, content, "region: us-east-1") // fallback when AWS_DEFAULT_REGION unset
+	assert.NotContains(t, content, "api_key")
+}
+
 func TestOnboard_BedrockProvider_PromptRegion(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

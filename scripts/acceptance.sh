@@ -480,6 +480,9 @@ run AT-244 "onboard skill Claude Code option creates symlink at ~/.claude/skills
 
 contains AT-245 "onboard bedrock prompts for AWS region" "AWS Region" \
   "mkdir -p '$WORKDIR/at245' && printf '5\n\n\n1\n\n\n' | HOME='$WORKDIR/at245' ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' AWS_ACCESS_KEY_ID='AKIATEST' AWS_DEFAULT_REGION='us-west-2' '$BIN' onboard 2>&1"
+
+run AT-246 "onboard bedrock --yes writes region and omits api_key" \
+  "mkdir -p '$WORKDIR/at246' && HOME='$WORKDIR/at246' ANTHROPIC_API_KEY='' OPENAI_API_KEY='' GEMINI_API_KEY='' GOOGLE_API_KEY='' AWS_ACCESS_KEY_ID='AKIATEST' AWS_DEFAULT_REGION='eu-central-1' '$BIN' onboard --yes && grep -q 'region: eu-central-1' '$WORKDIR/at246/.caseforge.yaml' && ! grep -q 'api_key' '$WORKDIR/at246/.caseforge.yaml'"
 echo ""
 
 # -------------------------------------------------------

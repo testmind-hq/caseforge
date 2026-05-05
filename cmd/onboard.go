@@ -224,9 +224,14 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	var chosenProvider providerInfo
 	if onboardYes {
 		// Pick first available non-noop, fallback to noop
-		chosenProvider = providers[5] // noop default
-		for _, p := range providers[:5] {
-			if p.available {
+		for _, p := range providers {
+			if p.name == "noop" {
+				chosenProvider = p
+				break
+			}
+		}
+		for _, p := range providers {
+			if p.name != "noop" && p.available {
 				chosenProvider = p
 				break
 			}
@@ -257,6 +262,11 @@ func runOnboard(cmd *cobra.Command, _ []string) error {
 	region := ""
 	if !onboardYes && chosenProvider.name != "noop" {
 		model, apiKey, baseURL, region = promptProviderDetails(out, in, chosenProvider)
+	} else if onboardYes && chosenProvider.name == "bedrock" {
+		region = os.Getenv("AWS_DEFAULT_REGION")
+		if region == "" {
+			region = "us-east-1"
+		}
 	}
 
 	// Step 2 of 4: Output Format
