@@ -73,13 +73,13 @@ func (r *HurlRenderer) renderSingleCase(tc schema.TestCase) string {
 		b.WriteString(singleLineSep(caseTitle))
 		b.WriteString("\n")
 		b.WriteString(fmt.Sprintf("# case_id=%s\n", tc.ID))
+		b.WriteString(fmt.Sprintf("# case_name=%s\n", caseTitle))
 		b.WriteString(fmt.Sprintf("# step_id=%s\n", step.ID))
 		b.WriteString(fmt.Sprintf("# step_type=%s\n", step.Type))
 		if tc.Source.Technique != "" {
 			b.WriteString(fmt.Sprintf("# technique=%s\n", tc.Source.Technique))
 		}
 		b.WriteString(fmt.Sprintf("# priority=%s\n", tc.Priority))
-		b.WriteString(fmt.Sprintf("# title=%s\n", caseTitle))
 		b.WriteString("\n")
 
 		b.WriteString(r.renderStep(step))
@@ -96,6 +96,7 @@ func (r *HurlRenderer) renderChainCase(tc schema.TestCase) string {
 	b.WriteString("\n")
 	b.WriteString(fmt.Sprintf("# %s\n", tc.Title))
 	b.WriteString(fmt.Sprintf("# case_id=%s\n", tc.ID))
+	b.WriteString(fmt.Sprintf("# case_name=%s\n", tc.Title))
 	b.WriteString("# case_kind=chain\n")
 	b.WriteString(fmt.Sprintf("# priority=%s\n", tc.Priority))
 	b.WriteString(chainSep)

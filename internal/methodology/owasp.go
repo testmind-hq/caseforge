@@ -87,8 +87,8 @@ func buildAPI1Case(op *spec.Operation) schema.TestCase {
 		},
 	}
 	return owaspCase(op, "api1-bola",
-		fmt.Sprintf("[OWASP-API1] %s %s — BOLA 越权访问", op.Method, op.Path),
-		"路径含 ID 参数，需验证对象级授权：用合法 token 访问他人资源应返回 403",
+		fmt.Sprintf("[OWASP-API1] %s %s — BOLA unauthorized access", op.Method, op.Path),
+		"Path contains an ID parameter; verify object-level authorization: accessing another user's resource with a valid token should return 403",
 		step)
 }
 
@@ -104,8 +104,8 @@ func buildAPI2Case(op *spec.Operation) schema.TestCase {
 		},
 	}
 	return owaspCase(op, "api2-broken-auth",
-		fmt.Sprintf("[OWASP-API2] %s %s — 认证机制失效", op.Method, op.Path),
-		"接口声明了安全方案，去除 Authorization header 应返回 401",
+		fmt.Sprintf("[OWASP-API2] %s %s — broken authentication", op.Method, op.Path),
+		"Endpoint declares a security scheme; removing the Authorization header should return 401",
 		step)
 }
 
@@ -131,8 +131,8 @@ func (t *SecurityTechnique) buildAPI3Case(op *spec.Operation) schema.TestCase {
 		},
 	}
 	return owaspCase(op, "api3-bopla",
-		fmt.Sprintf("[OWASP-API3] %s %s — BOPLA 属性级越权", op.Method, op.Path),
-		"PATCH/PUT 注入特权字段，响应中这些字段不应被修改或返回",
+		fmt.Sprintf("[OWASP-API3] %s %s — BOPLA property-level access", op.Method, op.Path),
+		"PATCH/PUT with injected privileged fields; those fields must not be modified or reflected in the response",
 		step)
 }
 
@@ -161,8 +161,8 @@ func buildAPI4Case(op *spec.Operation) schema.TestCase {
 		},
 	}
 	return owaspCase(op, "api4-resource-consumption",
-		fmt.Sprintf("[OWASP-API4] %s %s — 资源消耗无限制", op.Method, op.Path),
-		"注入极大分页值 99999，服务器若返回 200 则存在性能风险（正确实现应返回 400）",
+		fmt.Sprintf("[OWASP-API4] %s %s — unrestricted resource consumption", op.Method, op.Path),
+		"Inject extreme pagination value 99999; a 200 response indicates a performance risk (correct implementation should return 400)",
 		step)
 }
 
@@ -198,8 +198,8 @@ func (t *SecurityTechnique) buildAPI6Case(op *spec.Operation) schema.TestCase {
 		Body:    body, Assertions: assertions,
 	}
 	return owaspCase(op, "api6-mass-assignment",
-		fmt.Sprintf("[OWASP-API6] %s %s — 批量赋值", op.Method, op.Path),
-		"注入只读字段 id/createdAt/updatedAt，响应中这些字段不应被接受并返回注入值",
+		fmt.Sprintf("[OWASP-API6] %s %s — mass assignment", op.Method, op.Path),
+		"Inject read-only fields id/createdAt/updatedAt; the response must not accept or reflect the injected values",
 		step)
 }
 
@@ -276,8 +276,8 @@ func buildAPI7Cases(op *spec.Operation) []schema.TestCase {
 			},
 		}
 		tc := owaspCase(op, "api7-injection",
-			fmt.Sprintf("[OWASP-API7] %s %s — 注入 (%s)", op.Method, op.Path, inj.label),
-			fmt.Sprintf("注入 %s payload，服务器应拒绝并返回 400", inj.label),
+			fmt.Sprintf("[OWASP-API7] %s %s — injection (%s)", op.Method, op.Path, inj.label),
+			fmt.Sprintf("Inject %s payload; server must reject and return 400", inj.label),
 			step)
 		cases = append(cases, tc)
 	}
@@ -337,7 +337,7 @@ func buildAPI10Case(op *spec.Operation) schema.TestCase {
 	}
 	return owaspCase(op, "api10-ssrf",
 		fmt.Sprintf("[OWASP-API10] %s %s — SSRF", op.Method, op.Path),
-		"注入内网 URL http://127.0.0.1，服务器应验证并拒绝 (400)",
+		"Inject internal URL http://127.0.0.1; server must validate and reject (400)",
 		step)
 }
 

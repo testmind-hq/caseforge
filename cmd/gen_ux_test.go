@@ -17,6 +17,13 @@ func TestGenResume_FlagExists(t *testing.T) {
 	assert.Equal(t, "bool", f.Value.Type())
 }
 
+// TestGenForce_FlagExists verifies that --force is registered on genCmd.
+func TestGenForce_FlagExists(t *testing.T) {
+	f := genCmd.Flags().Lookup("force")
+	require.NotNil(t, f, "--force flag must be registered")
+	assert.Equal(t, "bool", f.Value.Type())
+}
+
 // TestGenCompletion_FlagsHaveCompletionFuncs verifies that --operations,
 // --technique, --format, and --priority have completion functions registered.
 func TestGenCompletion_FlagsHaveCompletionFuncs(t *testing.T) {

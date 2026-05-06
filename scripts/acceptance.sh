@@ -1029,13 +1029,31 @@ AT247DIR=$(mktemp -d)
 run "AT-247" "hurl filenames are path-first (no TC- prefix, resource slug leads)" \
   "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --format hurl --output '$AT247DIR' && \
    ls '$AT247DIR'/*.hurl | grep -qv 'TC-' && \
-   ls '$AT247DIR'/*.hurl | grep -q '^.*/pet_'"
+   ls '$AT247DIR'/*.hurl | grep -q '^.*/pets_'"
 
 AT248DIR=$(mktemp -d)
 run "AT-248" "k6 group names contain case title not raw ID" \
   "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --format k6 --output '$AT248DIR' && \
    grep -q \"group('\" '$AT248DIR/k6_tests.js' && \
    ! grep -q \"group('TC-\" '$AT248DIR/k6_tests.js'"
+
+# AT-249: hurl single-case output contains case_name field
+AT249DIR=$(mktemp -d)
+run "AT-249" "hurl output contains case_name field" \
+  "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --format hurl --output '$AT249DIR' && \
+   grep -rq '# case_name=' '$AT249DIR'/*.hurl"
+
+# AT-250: spec-hash dedup — second run on unchanged spec prints skip message
+AT250DIR=$(mktemp -d)
+run "AT-250" "gen skips regeneration when spec is unchanged" \
+  "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --output '$AT250DIR' 2>&1 | grep -q 'Generated' && \
+   '$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --output '$AT250DIR' 2>&1 | grep -q 'unchanged'"
+
+# AT-251: --force bypasses spec-hash dedup and regenerates
+AT251DIR=$(mktemp -d)
+run "AT-251" "gen --force regenerates even when spec is unchanged" \
+  "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --output '$AT251DIR' 2>&1 | grep -q 'Generated' && \
+   '$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --force --output '$AT251DIR' 2>&1 | grep -q 'Generated'"
 
 echo ""
 

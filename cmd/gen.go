@@ -52,6 +52,7 @@ var (
 	genExcludeTag  string
 	genAuthBootstrap bool
 	genWithOracles   bool
+	genForce         bool
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -106,6 +107,7 @@ func init() {
 	genCmd.Flags().StringVar(&genExcludeTag, "exclude-tag", "", "Comma-separated OpenAPI tags to exclude (e.g. 'deprecated,internal')")
 	genCmd.Flags().BoolVar(&genAuthBootstrap, "auth-bootstrap", false, "Wrap all secured-endpoint cases with an auth setup step")
 	genCmd.Flags().BoolVar(&genWithOracles, "with-oracles", false, "Mine response body constraints via LLM and inject as assertions (requires LLM)")
+	genCmd.Flags().BoolVar(&genForce, "force", false, "Regenerate even when spec hash matches existing output")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -239,6 +241,19 @@ func runGen(cmd *cobra.Command, args []string) error {
 	if hashErr != nil && genResume {
 		fmt.Fprintln(os.Stderr, "warning: cannot hash spec (URL or unreadable file) — --resume disabled for this run")
 		genResume = false
+	}
+
+	// Short-circuit: skip regeneration if spec is unchanged and output exists.
+	// Note: this compares only the spec file hash; changes to --operations,
+	// --technique, or other filter flags are not detected — use --force in that case.
+	if specHash != "" && !genForce && !genResume {
+		if existingIndex, readErr := writer.NewJSONSchemaWriter().ReadFull(filepath.Join(genOutput, "index.json")); readErr == nil {
+			if existingIndex.Meta.SpecHash == specHash {
+				fmt.Fprintf(os.Stderr, "✓ Spec unchanged — %d cases already up to date in %s (use --force to regenerate)\n",
+					len(existingIndex.TestCases), genOutput)
+				return nil
+			}
+		}
 	}
 
 	ckptMgr := checkpoint.NewManager(genOutput)

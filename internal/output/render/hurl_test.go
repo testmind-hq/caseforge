@@ -111,10 +111,10 @@ func TestHurlSingleCaseAppendixBFormat(t *testing.T) {
 
 	// New required fields
 	assert.Contains(t, content, "# case_id=TC-0001")
+	assert.Contains(t, content, "# case_name=")
 	assert.Contains(t, content, "# step_id=step-main")
 	assert.Contains(t, content, "# step_type=test")
 	assert.Contains(t, content, "# priority=P0")
-	assert.Contains(t, content, "# title=")
 	assert.Contains(t, content, "# technique=equivalence_partitioning")
 
 	// Old format must be absent
@@ -191,6 +191,7 @@ func TestHurlChainCaseAppendixBFormat(t *testing.T) {
 	// Chain header
 	assert.Contains(t, content, "# ══════")
 	assert.Contains(t, content, "# case_id=TC-chain01")
+	assert.Contains(t, content, "# case_name=CRUD user lifecycle")
 	assert.Contains(t, content, "# case_kind=chain")
 	assert.Contains(t, content, "# priority=P1")
 

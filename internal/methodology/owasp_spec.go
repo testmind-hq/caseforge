@@ -55,10 +55,10 @@ func buildAPI5Cases(s *spec.ParsedSpec) []schema.TestCase {
 		id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 		cases = append(cases, schema.TestCase{
 			Schema: schema.SchemaBaseURL, Version: "1", ID: id,
-			Title:    fmt.Sprintf("[OWASP-API5] %s %s — 功能级授权缺失", op.Method, op.Path),
+			Title:    fmt.Sprintf("[OWASP-API5] %s %s — function-level authorization missing", op.Method, op.Path),
 			Kind:     "single", Priority: "P0",
 			Tags:     []string{"security", "owasp", "api5-function-level-auth"},
-			Source:   schema.CaseSource{Technique: "owasp_api_top10_spec", SpecPath: fmt.Sprintf("%s %s", op.Method, op.Path), Rationale: "用普通用户 token 访问高权限接口应返回 403"},
+			Source:   schema.CaseSource{Technique: "owasp_api_top10_spec", SpecPath: fmt.Sprintf("%s %s", op.Method, op.Path), Rationale: "Accessing a privileged endpoint with a regular user token should return 403"},
 			Steps:       []schema.Step{step},
 			GeneratedAt: time.Now(),
 		})
@@ -86,10 +86,10 @@ func buildAPI8Cases(s *spec.ParsedSpec) []schema.TestCase {
 		id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 		cases = append(cases, schema.TestCase{
 			Schema: schema.SchemaBaseURL, Version: "1", ID: id,
-			Title:    fmt.Sprintf("[OWASP-API8] OPTIONS %s — CORS 安全配置", op.Path),
+			Title:    fmt.Sprintf("[OWASP-API8] OPTIONS %s — CORS security configuration", op.Path),
 			Kind:     "single", Priority: "P0",
 			Tags:     []string{"security", "owasp", "api8-cors"},
-			Source:   schema.CaseSource{Technique: "owasp_api_top10_spec", SpecPath: fmt.Sprintf("OPTIONS %s", op.Path), Rationale: "CORS 响应头 Access-Control-Allow-Origin 不应为 *"},
+			Source:   schema.CaseSource{Technique: "owasp_api_top10_spec", SpecPath: fmt.Sprintf("OPTIONS %s", op.Path), Rationale: "CORS response header Access-Control-Allow-Origin must not be *"},
 			Steps:       []schema.Step{step},
 			GeneratedAt: time.Now(),
 		})
@@ -120,10 +120,10 @@ func buildAPI9Cases(s *spec.ParsedSpec) []schema.TestCase {
 			id := fmt.Sprintf("TC-%s", uuid.New().String()[:8])
 			cases = append(cases, schema.TestCase{
 				Schema: schema.SchemaBaseURL, Version: "1", ID: id,
-				Title:    fmt.Sprintf("[OWASP-API9] %s %s — 旧版本 API 应已下线", op.Method, op.Path),
+				Title:    fmt.Sprintf("[OWASP-API9] %s %s — deprecated API version should be offline", op.Method, op.Path),
 				Kind:     "single", Priority: "P0",
 				Tags:     []string{"security", "owasp", "api9-asset-management"},
-				Source:   schema.CaseSource{Technique: "owasp_api_top10_spec", SpecPath: fmt.Sprintf("%s %s", op.Method, op.Path), Rationale: "Spec 同时含有 v1/v2 路径，旧版本路径应已下线返回 404"},
+				Source:   schema.CaseSource{Technique: "owasp_api_top10_spec", SpecPath: fmt.Sprintf("%s %s", op.Method, op.Path), Rationale: "Spec contains both v1/v2 paths; the old version path should be offline and return 404"},
 				Steps:       []schema.Step{step},
 				GeneratedAt: time.Now(),
 			})
