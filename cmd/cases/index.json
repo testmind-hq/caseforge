@@ -1,0 +1,270 @@
+{
+  "$schema": "https://caseforge.dev/schema/v1/index.json",
+  "version": "1",
+  "generated_at": "2026-05-06T21:53:17.49805+08:00",
+  "meta": {
+    "caseforge_version": "dev",
+    "by_technique": {
+      "ask": 6
+    },
+    "by_priority": {
+      "P0": 1,
+      "P1": 4,
+      "P2": 1
+    },
+    "by_kind": {
+      "chain": 1,
+      "single": 5
+    }
+  },
+  "test_cases": [
+    {
+      "$schema": "https://caseforge.dev/schema/v1/testcase.json",
+      "version": "1",
+      "id": "TC-1bc07161",
+      "title": "Create user with valid data",
+      "kind": "single",
+      "priority": "P0",
+      "tags": [
+        "happy-path",
+        "create"
+      ],
+      "source": {
+        "technique": "ask",
+        "spec_path": "",
+        "rationale": "POST /users - create user"
+      },
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "POST new user with all required fields",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {
+            "email": "john.doe@example.com",
+            "name": "John Doe",
+            "password": "SecurePass123!"
+          },
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 201
+            }
+          ]
+        }
+      ],
+      "generated_at": "2026-05-06T21:53:17.498008+08:00"
+    },
+    {
+      "$schema": "https://caseforge.dev/schema/v1/testcase.json",
+      "version": "1",
+      "id": "TC-20f71db2",
+      "title": "Create user missing required name field",
+      "kind": "single",
+      "priority": "P1",
+      "tags": [
+        "validation",
+        "error"
+      ],
+      "source": {
+        "technique": "ask",
+        "spec_path": "",
+        "rationale": "POST /users - create user"
+      },
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "POST user without name",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {
+            "email": "missing.name@example.com",
+            "password": "SecurePass123!"
+          },
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 400
+            }
+          ]
+        }
+      ],
+      "generated_at": "2026-05-06T21:53:17.49801+08:00"
+    },
+    {
+      "$schema": "https://caseforge.dev/schema/v1/testcase.json",
+      "version": "1",
+      "id": "TC-802bab4d",
+      "title": "Create user with invalid email format",
+      "kind": "single",
+      "priority": "P1",
+      "tags": [
+        "validation",
+        "error"
+      ],
+      "source": {
+        "technique": "ask",
+        "spec_path": "",
+        "rationale": "POST /users - create user"
+      },
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "POST user with malformed email",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {
+            "email": "not-an-email",
+            "name": "Jane Doe",
+            "password": "SecurePass123!"
+          },
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 400
+            }
+          ]
+        }
+      ],
+      "generated_at": "2026-05-06T21:53:17.498011+08:00"
+    },
+    {
+      "$schema": "https://caseforge.dev/schema/v1/testcase.json",
+      "version": "1",
+      "id": "TC-2143a276",
+      "title": "Create user with duplicate email",
+      "kind": "chain",
+      "priority": "P1",
+      "tags": [
+        "duplicate",
+        "error"
+      ],
+      "source": {
+        "technique": "ask",
+        "spec_path": "",
+        "rationale": "POST /users - create user"
+      },
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Create first user",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {
+            "email": "duplicate@example.com",
+            "name": "First User",
+            "password": "SecurePass123!"
+          },
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 201
+            }
+          ]
+        },
+        {
+          "id": "step-2",
+          "title": "Attempt to create second user with same email",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {
+            "email": "duplicate@example.com",
+            "name": "Second User",
+            "password": "DifferentPass456!"
+          },
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 409
+            }
+          ]
+        }
+      ],
+      "generated_at": "2026-05-06T21:53:17.498011+08:00"
+    },
+    {
+      "$schema": "https://caseforge.dev/schema/v1/testcase.json",
+      "version": "1",
+      "id": "TC-ae7a9790",
+      "title": "Create user with empty request body",
+      "kind": "single",
+      "priority": "P1",
+      "tags": [
+        "validation",
+        "error"
+      ],
+      "source": {
+        "technique": "ask",
+        "spec_path": "",
+        "rationale": "POST /users - create user"
+      },
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "POST with empty body",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {},
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 400
+            }
+          ]
+        }
+      ],
+      "generated_at": "2026-05-06T21:53:17.498012+08:00"
+    },
+    {
+      "$schema": "https://caseforge.dev/schema/v1/testcase.json",
+      "version": "1",
+      "id": "TC-61182975",
+      "title": "Create user with weak password",
+      "kind": "single",
+      "priority": "P2",
+      "tags": [
+        "validation",
+        "security"
+      ],
+      "source": {
+        "technique": "ask",
+        "spec_path": "",
+        "rationale": "POST /users - create user"
+      },
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "POST user with short password",
+          "type": "test",
+          "method": "POST",
+          "path": "/users",
+          "body": {
+            "email": "weakpass@example.com",
+            "name": "Weak Pass User",
+            "password": "123"
+          },
+          "assertions": [
+            {
+              "target": "status_code",
+              "operator": "eq",
+              "expected": 400
+            }
+          ]
+        }
+      ],
+      "generated_at": "2026-05-06T21:53:17.498012+08:00"
+    }
+  ]
+}

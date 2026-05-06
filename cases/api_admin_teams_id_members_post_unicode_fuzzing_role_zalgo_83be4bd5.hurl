@@ -1,0 +1,19 @@
+# ── POST /api/admin/teams/{id}/members - [unicode_fuzzing] role zalgo ──
+# case_id=TC-83be4bd5
+# case_name=POST /api/admin/teams/{id}/members - [unicode_fuzzing] role zalgo
+# step_id=step-main
+# step_type=test
+# technique=unicode_fuzzing
+# priority=P3
+
+POST {{base_url}}/api/admin/teams/{id}/members
+Content-Type: application/json
+```json
+{
+  "role": "z̀́̂̃̄̅̆̇a",
+  "userId": "00287abb-135c-4e57-a40f-6a5a00caf19e"
+}
+```
+
+HTTP 400
+

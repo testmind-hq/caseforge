@@ -3,6 +3,7 @@ package methodology
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -345,4 +346,159 @@ func TestEngine_MaxCasesPerOp_TruncatesByPriority(t *testing.T) {
 	require.NoError(t, err)
 	assert.LessOrEqual(t, len(cases), 2,
 		"engine must not produce more than maxCasesPerOp cases for a single operation")
+}
+
+// batchLLMProvider captures LLM calls and returns a canned batch JSON response.
+type batchLLMProvider struct {
+	calls   int
+	muCalls sync.Mutex
+	// responseFor returns the response text for each call (indexed by call number).
+	responseFor func(req string) string
+}
+
+func (b *batchLLMProvider) IsAvailable() bool { return true }
+func (b *batchLLMProvider) Name() string       { return "batch-stub" }
+func (b *batchLLMProvider) Complete(_ context.Context, req *llm.CompletionRequest) (*llm.CompletionResponse, error) {
+	b.muCalls.Lock()
+	n := b.calls
+	b.calls++
+	b.muCalls.Unlock()
+	_ = n
+	text := b.responseFor(req.Messages[0].Content)
+	return &llm.CompletionResponse{Text: text}, nil
+}
+
+func TestEngine_BatchAnnotation_EmitsOneEventPerOp(t *testing.T) {
+	var got []event.EventType
+	mu := sync.Mutex{}
+	sink := event.SinkFunc(func(e event.Event) {
+		mu.Lock()
+		got = append(got, e.Type)
+		mu.Unlock()
+	})
+
+	stub := &batchLLMProvider{responseFor: func(_ string) string {
+		return `[
+			{"operation_id":"op1","resource_type":"pet","action_type":"list"},
+			{"operation_id":"op2","resource_type":"pet","action_type":"create"}
+		]`
+	}}
+	engine := NewEngine(stub, NewEquivalenceTechnique())
+	engine.SetAnnotationBatch(10) // both ops fit in one batch
+	engine.SetSink(sink)
+
+	ps := &spec.ParsedSpec{Operations: []*spec.Operation{
+		{OperationID: "op1", Method: "GET", Path: "/pets", Responses: map[string]*spec.Response{"200": {}}},
+		{OperationID: "op2", Method: "POST", Path: "/pets", Responses: map[string]*spec.Response{"201": {}}},
+	}}
+	_, err := engine.Generate(ps)
+	require.NoError(t, err)
+
+	var annotatingCount int
+	for _, typ := range got {
+		if typ == event.EventOperationAnnotating {
+			annotatingCount++
+		}
+	}
+	assert.Equal(t, 2, annotatingCount, "batch mode must still emit one EventOperationAnnotating per operation")
+}
+
+func TestEngine_BatchAnnotation_AnnotatesOpsCorrectly(t *testing.T) {
+	stub := &batchLLMProvider{responseFor: func(_ string) string {
+		return `[
+			{"operation_id":"createPet","resource_type":"pet","action_type":"create","unique_fields":["name"]},
+			{"operation_id":"listPets","resource_type":"pet","action_type":"list"}
+		]`
+	}}
+	engine := NewEngine(stub)
+	engine.SetAnnotationBatch(10)
+
+	ops := []*spec.Operation{
+		{OperationID: "listPets", Method: "GET", Path: "/pets", Responses: map[string]*spec.Response{"200": {}}},
+		{OperationID: "createPet", Method: "POST", Path: "/pets", Responses: map[string]*spec.Response{"201": {}}},
+	}
+	ps := &spec.ParsedSpec{Operations: ops}
+	_, err := engine.Generate(ps)
+	require.NoError(t, err)
+
+	var listOp, createOp *spec.Operation
+	for _, op := range ops {
+		if op.OperationID == "listPets" {
+			listOp = op
+		} else if op.OperationID == "createPet" {
+			createOp = op
+		}
+	}
+	require.NotNil(t, listOp.SemanticInfo, "listPets should have annotation")
+	assert.Equal(t, "list", listOp.SemanticInfo.ActionType)
+
+	require.NotNil(t, createOp.SemanticInfo, "createPet should have annotation")
+	assert.Equal(t, "create", createOp.SemanticInfo.ActionType)
+	assert.Equal(t, []string{"name"}, createOp.SemanticInfo.UniqueFields)
+}
+
+func TestEngine_BatchAnnotation_BatchFailureIsGraceful(t *testing.T) {
+	// LLM returns invalid JSON — ops should get no annotation but gen still succeeds.
+	stub := &batchLLMProvider{responseFor: func(_ string) string {
+		return `not valid json`
+	}}
+	engine := NewEngine(stub, NewEquivalenceTechnique())
+	engine.SetAnnotationBatch(5)
+
+	ops := []*spec.Operation{
+		{OperationID: "op1", Method: "GET", Path: "/x", Responses: map[string]*spec.Response{"200": {}}},
+	}
+	_, err := engine.Generate(&spec.ParsedSpec{Operations: ops})
+	require.NoError(t, err, "batch annotation failure must not fail generation")
+	assert.Nil(t, ops[0].SemanticInfo, "failed batch should leave SemanticInfo nil")
+}
+
+func TestEngine_BatchAnnotation_SplitsIntoBatches(t *testing.T) {
+	var callCount int
+	mu := sync.Mutex{}
+	stub := &batchLLMProvider{responseFor: func(_ string) string {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		return `[]` // empty but valid
+	}}
+	engine := NewEngine(stub)
+	engine.SetAnnotationBatch(3) // 5 ops → 2 batches
+
+	ops := make([]*spec.Operation, 5)
+	for i := range ops {
+		ops[i] = &spec.Operation{
+			OperationID: fmt.Sprintf("op%d", i),
+			Method:      "GET", Path: fmt.Sprintf("/x%d", i),
+			Responses: map[string]*spec.Response{"200": {}},
+		}
+	}
+	_, err := engine.Generate(&spec.ParsedSpec{Operations: ops})
+	require.NoError(t, err)
+	assert.Equal(t, 2, callCount, "5 ops with batch size 3 should make exactly 2 LLM calls")
+}
+
+func TestParseBatchAnnotations_HandlesValidArray(t *testing.T) {
+	text := `[
+		{"operation_id":"getUser","resource_type":"user","action_type":"read","has_state_machine":false,"unique_fields":["email"],"implicit_rules":["email must be unique"]},
+		{"operation_id":"createUser","resource_type":"user","action_type":"create"}
+	]`
+	result := parseBatchAnnotations(text)
+	require.Len(t, result, 2)
+	assert.Equal(t, "user", result["getUser"].ResourceType)
+	assert.Equal(t, "read", result["getUser"].ActionType)
+	assert.Equal(t, []string{"email"}, result["getUser"].UniqueFields)
+	assert.Equal(t, "create", result["createUser"].ActionType)
+}
+
+func TestParseBatchAnnotations_DropsEntryWithoutOperationID(t *testing.T) {
+	text := `[{"resource_type":"user","action_type":"read"},{"operation_id":"op2","action_type":"list"}]`
+	result := parseBatchAnnotations(text)
+	assert.NotContains(t, result, "", "entry without operation_id must be dropped")
+	assert.Contains(t, result, "op2")
+}
+
+func TestParseBatchAnnotations_InvalidJSONReturnsNil(t *testing.T) {
+	assert.Nil(t, parseBatchAnnotations("not json"))
+	assert.Nil(t, parseBatchAnnotations("{}")) // object not array
 }

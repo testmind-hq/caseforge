@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,14 +38,15 @@ type Seedable interface {
 }
 
 type Engine struct {
-	techniques     []Technique
-	specTechniques []SpecTechnique
-	llm            llm.LLMProvider
-	sink           event.Sink
-	warnWriter     io.Writer // destination for warn: lines; defaults to os.Stderr
-	concurrency    int       // 0 or 1 = serial; >1 = parallel worker pool
-	seed           int64     // 0 = random
-	maxCasesPerOp  int       // 0 = unlimited
+	techniques      []Technique
+	specTechniques  []SpecTechnique
+	llm             llm.LLMProvider
+	sink            event.Sink
+	warnWriter      io.Writer // destination for warn: lines; defaults to os.Stderr
+	concurrency     int       // 0 or 1 = serial; >1 = parallel worker pool
+	seed            int64     // 0 = random
+	maxCasesPerOp   int       // 0 = unlimited
+	annotationBatch int       // 0 = sequential (one call per op); >0 = batch size
 }
 
 func NewEngine(provider llm.LLMProvider, techniques ...Technique) *Engine {
@@ -81,6 +83,14 @@ func (e *Engine) AddSpecTechnique(t SpecTechnique) {
 // When > 0, cases are sorted by priority (P0 first) before truncation.
 func (e *Engine) SetMaxCasesPerOp(n int) {
 	e.maxCasesPerOp = n
+}
+
+// SetAnnotationBatch sets the number of operations to annotate per LLM call.
+// 0 (default) uses sequential mode: one call per operation.
+// Values > 0 batch that many operations into a single call, reducing round-trips
+// at the cost of larger prompts. Recommended range: 5–20.
+func (e *Engine) SetAnnotationBatch(n int) {
+	e.annotationBatch = n
 }
 
 // SetSink registers an event sink for progress events.
@@ -233,6 +243,11 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 	if !e.llm.IsAvailable() {
 		return // NoopProvider: skip annotation, SemanticInfo stays nil
 	}
+	if e.annotationBatch > 1 {
+		e.annotateOperationsBatch(ops, e.annotationBatch)
+		return
+	}
+	// Sequential mode: one LLM call per operation.
 	for i, op := range ops {
 		if i > 0 {
 			time.Sleep(500 * time.Millisecond) // throttle to reduce rate-limit pressure
@@ -249,6 +264,101 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 			Path:        op.Path,
 		}})
 	}
+}
+
+// annotateOperationsBatch sends ops in groups of batchSize to the LLM, each
+// group in a single call. Responses are matched back to ops by operation_id.
+// Failures are per-batch: if a batch call fails, those ops get no annotation
+// and generation continues unaffected (annotation is best-effort).
+func (e *Engine) annotateOperationsBatch(ops []*spec.Operation, batchSize int) {
+	for start := 0; start < len(ops); start += batchSize {
+		end := start + batchSize
+		if end > len(ops) {
+			end = len(ops)
+		}
+		batch := ops[start:end]
+
+		annotations, err := e.annotateBatch(batch)
+		for _, op := range batch {
+			if err != nil {
+				e.warn("warn: batch annotation failed for %s %s: %v\n", op.Method, op.Path, err)
+			} else if a, ok := annotations[op.OperationID]; ok {
+				op.SemanticInfo = a
+			}
+			e.emit(event.Event{Type: event.EventOperationAnnotating, Payload: event.OperationDonePayload{
+				OperationID: op.OperationID,
+				Method:      op.Method,
+				Path:        op.Path,
+			}})
+		}
+	}
+}
+
+// annotateBatch calls the LLM once for a slice of operations, returning a map
+// of operationId → SemanticAnnotation. Unrecognised or unparseable entries are
+// silently omitted so callers can fall through to the no-annotation path.
+func (e *Engine) annotateBatch(ops []*spec.Operation) (map[string]*spec.SemanticAnnotation, error) {
+	// Build prompt listing all operations.
+	var sb strings.Builder
+	sb.WriteString("Analyze these API operations. Return a JSON array — one object per operation, in any order.\n")
+	sb.WriteString("Each object must include \"operation_id\" plus these fields: resource_type, action_type, has_state_machine, state_field, unique_fields, implicit_rules.\n\n")
+	for _, op := range ops {
+		id := op.OperationID
+		if id == "" {
+			id = op.Method + "_" + op.Path
+		}
+		fmt.Fprintf(&sb, "- operation_id: %q  %s %s  summary: %s\n", id, op.Method, op.Path, op.Summary)
+	}
+	sb.WriteString("\nReturn ONLY the JSON array, no other text.")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	req := &llm.CompletionRequest{
+		System:    "You are an API testing expert. Analyze operations and return structured JSON.",
+		Messages:  []llm.Message{{Role: "user", Content: sb.String()}},
+		MaxTokens: 256 * len(ops), // ~256 tokens per op is enough for the annotation fields
+	}
+	resp, err := llm.Retry(ctx, 5, func() (*llm.CompletionResponse, error) {
+		return e.llm.Complete(ctx, req)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return parseBatchAnnotations(resp.Text), nil
+}
+
+// parseBatchAnnotations extracts a JSON array of per-operation annotations from
+// the LLM response and returns a map keyed by operation_id.
+func parseBatchAnnotations(text string) map[string]*spec.SemanticAnnotation {
+	extracted := llm.ExtractJSON(text)
+	var items []struct {
+		OperationID     string   `json:"operation_id"`
+		ResourceType    string   `json:"resource_type"`
+		ActionType      string   `json:"action_type"`
+		HasStateMachine bool     `json:"has_state_machine"`
+		StateField      string   `json:"state_field"`
+		UniqueFields    []string `json:"unique_fields"`
+		ImplicitRules   []string `json:"implicit_rules"`
+	}
+	if err := json.Unmarshal([]byte(extracted), &items); err != nil {
+		return nil
+	}
+	out := make(map[string]*spec.SemanticAnnotation, len(items))
+	for _, item := range items {
+		if item.OperationID == "" {
+			continue
+		}
+		out[item.OperationID] = &spec.SemanticAnnotation{
+			ResourceType:    item.ResourceType,
+			ActionType:      item.ActionType,
+			HasStateMachine: item.HasStateMachine,
+			StateField:      item.StateField,
+			UniqueFields:    item.UniqueFields,
+			ImplicitRules:   item.ImplicitRules,
+		}
+	}
+	return out
 }
 
 func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation, error) {
