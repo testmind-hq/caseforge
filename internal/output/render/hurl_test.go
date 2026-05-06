@@ -191,6 +191,7 @@ func TestHurlChainCaseAppendixBFormat(t *testing.T) {
 	// Chain header
 	assert.Contains(t, content, "# ══════")
 	assert.Contains(t, content, "# case_id=TC-chain01")
+	assert.Contains(t, content, "# case_name=CRUD user lifecycle")
 	assert.Contains(t, content, "# case_kind=chain")
 	assert.Contains(t, content, "# priority=P1")
 

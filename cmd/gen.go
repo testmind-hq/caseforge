@@ -244,6 +244,8 @@ func runGen(cmd *cobra.Command, args []string) error {
 	}
 
 	// Short-circuit: skip regeneration if spec is unchanged and output exists.
+	// Note: this compares only the spec file hash; changes to --operations,
+	// --technique, or other filter flags are not detected — use --force in that case.
 	if specHash != "" && !genForce && !genResume {
 		if existingIndex, readErr := writer.NewJSONSchemaWriter().ReadFull(filepath.Join(genOutput, "index.json")); readErr == nil {
 			if existingIndex.Meta.SpecHash == specHash {

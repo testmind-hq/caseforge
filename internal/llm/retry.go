@@ -25,7 +25,8 @@ func isRateLimitErr(err error) bool {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "429") ||
+	return strings.Contains(msg, "status 429") ||
+		strings.Contains(msg, "status code 429") ||
 		strings.Contains(msg, "rate limit") ||
 		strings.Contains(msg, "too many requests") ||
 		strings.Contains(msg, "ratelimit")
@@ -76,9 +77,3 @@ func Retry(ctx context.Context, maxAttempts int, fn func() (*CompletionResponse,
 	return nil, lastErr
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

@@ -258,7 +258,7 @@ func (e *Engine) annotateOperation(op *spec.Operation) (*spec.SemanticAnnotation
 			"Return: {resource_type, action_type, has_state_machine, state_field, unique_fields, implicit_rules}",
 		op.Method, op.Path, op.Summary, op.Description,
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	req := &llm.CompletionRequest{
