@@ -50,9 +50,10 @@ var (
 	genExcludePath string
 	genIncludeTag  string
 	genExcludeTag  string
-	genAuthBootstrap bool
-	genWithOracles   bool
-	genForce         bool
+	genAuthBootstrap    bool
+	genWithOracles      bool
+	genForce            bool
+	genAnnotationBatch  int
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -108,6 +109,7 @@ func init() {
 	genCmd.Flags().BoolVar(&genAuthBootstrap, "auth-bootstrap", false, "Wrap all secured-endpoint cases with an auth setup step")
 	genCmd.Flags().BoolVar(&genWithOracles, "with-oracles", false, "Mine response body constraints via LLM and inject as assertions (requires LLM)")
 	genCmd.Flags().BoolVar(&genForce, "force", false, "Regenerate even when spec hash matches existing output")
+	genCmd.Flags().IntVar(&genAnnotationBatch, "annotation-batch", 0, "Number of operations to annotate per LLM call (0 = one call per operation, recommended: 8–20)")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -400,6 +402,9 @@ func runGen(cmd *cobra.Command, args []string) error {
 	}
 	if genMaxCasesPerOp > 0 {
 		engine.SetMaxCasesPerOp(genMaxCasesPerOp)
+	}
+	if genAnnotationBatch > 0 {
+		engine.SetAnnotationBatch(genAnnotationBatch)
 	}
 	newCases, err := engine.Generate(parsedSpec)
 	if err != nil {

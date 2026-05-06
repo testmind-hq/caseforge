@@ -146,6 +146,7 @@
 | AT-249 | Hurl output contains case_name field | `caseforge gen --no-ai --format hurl --spec petstore.yaml --output /tmp/at249` | Every `.hurl` file has a `# case_name=` header line | ✅ PASS |
 | AT-250 | gen skips regeneration on unchanged spec | Run `gen` twice on the same spec | Second run prints "unchanged" and exits without regenerating | ✅ PASS |
 | AT-251 | gen --force regenerates despite matching hash | Run `gen` then `gen --force` on the same spec | `--force` run prints "Generated" (bypasses dedup) | ✅ PASS |
+| AT-252 | gen --annotation-batch flag is registered | `caseforge gen --help` | Help text contains `annotation-batch` | ✅ PASS |
 
 ---
 
