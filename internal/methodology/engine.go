@@ -243,7 +243,7 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 	if !e.llm.IsAvailable() {
 		return // NoopProvider: skip annotation, SemanticInfo stays nil
 	}
-	if e.annotationBatch > 1 {
+	if e.annotationBatch >= 1 {
 		e.annotateOperationsBatch(ops, e.annotationBatch)
 		return
 	}
@@ -272,6 +272,9 @@ func (e *Engine) annotateOperations(ops []*spec.Operation) {
 // and generation continues unaffected (annotation is best-effort).
 func (e *Engine) annotateOperationsBatch(ops []*spec.Operation, batchSize int) {
 	for start := 0; start < len(ops); start += batchSize {
+		if start > 0 {
+			time.Sleep(200 * time.Millisecond) // light throttle between batches
+		}
 		end := start + batchSize
 		if end > len(ops) {
 			end = len(ops)
@@ -307,7 +310,11 @@ func (e *Engine) annotateBatch(ops []*spec.Operation) (map[string]*spec.Semantic
 		if id == "" {
 			id = op.Method + "_" + op.Path
 		}
-		fmt.Fprintf(&sb, "- operation_id: %q  %s %s  summary: %s\n", id, op.Method, op.Path, op.Summary)
+		desc := op.Summary
+		if op.Description != "" {
+			desc = op.Summary + " — " + op.Description
+		}
+		fmt.Fprintf(&sb, "- operation_id: %q  %s %s  summary: %s\n", id, op.Method, op.Path, desc)
 	}
 	sb.WriteString("\nReturn ONLY the JSON array, no other text.")
 
@@ -317,7 +324,7 @@ func (e *Engine) annotateBatch(ops []*spec.Operation) (map[string]*spec.Semantic
 	req := &llm.CompletionRequest{
 		System:    "You are an API testing expert. Analyze operations and return structured JSON.",
 		Messages:  []llm.Message{{Role: "user", Content: sb.String()}},
-		MaxTokens: 256 * len(ops), // ~256 tokens per op is enough for the annotation fields
+		MaxTokens: min(256*len(ops), 8192), // cap at 8192 — smallest common provider output limit
 	}
 	resp, err := llm.Retry(ctx, 5, func() (*llm.CompletionResponse, error) {
 		return e.llm.Complete(ctx, req)

@@ -360,10 +360,8 @@ func (b *batchLLMProvider) IsAvailable() bool { return true }
 func (b *batchLLMProvider) Name() string       { return "batch-stub" }
 func (b *batchLLMProvider) Complete(_ context.Context, req *llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	b.muCalls.Lock()
-	n := b.calls
 	b.calls++
 	b.muCalls.Unlock()
-	_ = n
 	text := b.responseFor(req.Messages[0].Content)
 	return &llm.CompletionResponse{Text: text}, nil
 }
