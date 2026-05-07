@@ -41,3 +41,6 @@ docs/design/
 
 # Build output
 bin/
+
+# Generated test case output (caseforge gen default output dir)
+cases/

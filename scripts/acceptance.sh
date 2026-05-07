@@ -1055,6 +1055,13 @@ run "AT-251" "gen --force regenerates even when spec is unchanged" \
   "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --output '$AT251DIR' 2>&1 | grep -q 'Generated' && \
    '$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --force --output '$AT251DIR' 2>&1 | grep -q 'Generated'"
 
+# AT-252: --annotation-batch flag is registered and runs without error
+AT252DIR=$(mktemp -d)
+contains "AT-252" "gen --annotation-batch flag is registered" "annotation-batch" \
+  "$BIN gen --help"
+run "AT-252b" "gen --annotation-batch flag runs gen to completion" \
+  "'$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --annotation-batch 5 --output '$AT252DIR' 2>&1 | grep -q 'Generated'"
+
 echo ""
 
 # -------------------------------------------------------
