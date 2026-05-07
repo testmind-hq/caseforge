@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,27 +43,31 @@ func TestAskCommand_RequiresDescription(t *testing.T) {
 }
 
 func TestAskCommand_FailsWhenNoProvider(t *testing.T) {
-	// Clear all API key env vars so config.Load() returns a noop provider.
-	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("OPENAI_API_KEY", "")
-	t.Setenv("GEMINI_API_KEY", "")
-	// NoopProvider.IsAvailable() returns false → Generator.Generate returns error.
+	// Reset viper and set noop provider — prior tests may have loaded ~/.caseforge.yaml
+	// via rootCmd.Execute(), leaving a real API key in viper's state.
+	viper.Reset()
+	t.Cleanup(func() { viper.Reset() })
+	viper.Set("ai.provider", "noop")
+
 	err := runAsk(askCmd, []string{"POST /users - create user"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AI provider")
 }
 
 func TestAskCommand_Integration_NoProvider(t *testing.T) {
-	// Clear env so no real LLM is configured.
-	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("OPENAI_API_KEY", "")
-	t.Setenv("GEMINI_API_KEY", "")
+	// Use a temp config with provider=noop so initConfig() doesn't pick up
+	// the real ~/.caseforge.yaml (which may have a real API key).
+	tmpCfg := filepath.Join(t.TempDir(), ".caseforge.yaml")
+	require.NoError(t, os.WriteFile(tmpCfg, []byte("ai:\n  provider: noop\n"), 0600))
+
+	viper.Reset()
+	t.Cleanup(func() { viper.Reset() })
 
 	outDir := t.TempDir()
 	t.Cleanup(func() { rootCmd.SetArgs(nil) })
-	rootCmd.SetArgs([]string{"ask", "--output", outDir, "POST /users create user"})
+	rootCmd.SetArgs([]string{"ask", "--config", tmpCfg, "--output", outDir, "POST /users create user"})
 	err := rootCmd.Execute()
-	// With no provider configured, we expect an "AI provider" error.
+	// With noop provider, Generator.Generate returns "AI provider" error.
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AI provider")
 }

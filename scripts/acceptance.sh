@@ -1503,8 +1503,10 @@ contains "AT-233" "conformance --spec required" "required flag" \
   "$BIN conformance --target http://localhost:8080 2>&1 || true"
 contains "AT-234" "conformance --target required" "required flag" \
   "(cd $REPO_ROOT && $BIN conformance --spec cmd/testdata/crud.yaml 2>&1 || true)"
+NOPROV_CFG=$(mktemp /tmp/caseforge-noprov-XXXXXX.yaml)
+printf 'ai:\n  provider: noop\n' > "$NOPROV_CFG"
 contains "AT-235" "conformance no LLM fails gracefully" "LLM provider not available" \
-  "(cd $REPO_ROOT && $BIN conformance --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true)"
+  "(cd $REPO_ROOT && $BIN conformance --config '$NOPROV_CFG' --spec cmd/testdata/crud.yaml --target http://localhost:8080 2>&1 || true)"
 
 echo ""
 
