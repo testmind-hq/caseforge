@@ -61,7 +61,10 @@ func TestAskCommand_Integration_NoProvider(t *testing.T) {
 	require.NoError(t, os.WriteFile(tmpCfg, []byte("ai:\n  provider: noop\n"), 0600))
 
 	viper.Reset()
-	t.Cleanup(func() { viper.Reset() })
+	t.Cleanup(func() {
+		viper.Reset()
+		cfgFile = "" // prevent stale temp path from leaking into subsequent rootCmd.Execute() calls
+	})
 
 	outDir := t.TempDir()
 	t.Cleanup(func() { rootCmd.SetArgs(nil) })
