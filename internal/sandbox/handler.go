@@ -107,6 +107,9 @@ func makeHandler(op *spec.Operation, store StateStore, gen *ResponseGenerator, l
 			}
 			status, body := gen.Generate(op, pathParams)
 			id := extractID(body, op.Path)
+			if id == "" && hasPathParam(op) {
+				id = r.PathValue(idParam)
+			}
 			if id == "" {
 				id = fmt.Sprintf("%v", body["id"])
 			}
