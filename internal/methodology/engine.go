@@ -87,8 +87,8 @@ func (e *Engine) SetMaxCasesPerOp(n int) {
 
 // SetAnnotationBatch sets the number of operations to annotate per LLM call.
 // 0 (default) uses sequential mode: one call per operation.
-// Values > 0 batch that many operations into a single call, reducing round-trips
-// at the cost of larger prompts. Recommended range: 5–20.
+// Values >= 1 batch that many operations into a single call, reducing round-trips
+// at the cost of larger prompts. Recommended range: 8–20.
 func (e *Engine) SetAnnotationBatch(n int) {
 	e.annotationBatch = n
 }

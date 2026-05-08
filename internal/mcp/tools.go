@@ -40,10 +40,6 @@ func generateTestCasesTool() *mcpsdk.Tool {
                     "description": "Output format: hurl|markdown|csv|postman|k6 (default: hurl)",
                     "enum": ["hurl", "markdown", "csv", "postman", "k6"]
                 },
-                "force": {
-                    "type": "boolean",
-                    "description": "Regenerate even when spec hash matches existing output (default: false)"
-                },
                 "annotation_batch": {
                     "type": "integer",
                     "description": "Number of operations to annotate per LLM call; reduces round-trips on large specs (0 = one call per op, recommended: 8–20)"
@@ -59,7 +55,6 @@ func makeGenerateHandler(ctx context.Context, req *mcpsdk.CallToolRequest) (*mcp
 		Spec            string `json:"spec"`
 		Output          string `json:"output"`
 		Format          string `json:"format"`
-		Force           bool   `json:"force"`
 		AnnotationBatch int    `json:"annotation_batch"`
 	}
 	if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
