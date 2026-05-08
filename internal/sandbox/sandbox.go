@@ -3,11 +3,11 @@ package sandbox
 
 // Options controls the sandbox server's runtime behaviour.
 type Options struct {
-	Host      string // listen address, default "127.0.0.1"
-	Port      int    // 0 = OS-assigned random port
-	LogLevel  string // "info" | "warn" | "error" | "silent"
-	LogFile   string // path to append JSON log; "" = no file
-	Format    string // "auto" | "schema" | "faker"
+	Host     string // listen address, default "127.0.0.1"
+	Port     int    // 0 = OS-assigned random port
+	LogLevel string // "info" | "warn" | "error" | "silent"
+	LogFile  string // path to append JSON log; "" = no file
+	Format   string // "auto" | "schema" | "faker"
 }
 
 func (o Options) hostOrDefault() string {
