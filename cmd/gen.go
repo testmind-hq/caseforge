@@ -403,7 +403,7 @@ func runGen(cmd *cobra.Command, args []string) error {
 	if genMaxCasesPerOp > 0 {
 		engine.SetMaxCasesPerOp(genMaxCasesPerOp)
 	}
-	if genAnnotationBatch > 0 {
+	if genAnnotationBatch >= 1 {
 		engine.SetAnnotationBatch(genAnnotationBatch)
 	}
 	newCases, err := engine.Generate(parsedSpec)

@@ -27,7 +27,18 @@ func TestNewServerReturnsNonNil(t *testing.T) {
 }
 
 func TestServerHasGenerateTestCasesTool(t *testing.T) {
-	assert.NotNil(t, generateTestCasesTool())
+	tool := generateTestCasesTool()
+	require.NotNil(t, tool)
+	assert.Equal(t, "generate_test_cases", tool.Name)
+
+	rawSchema, _ := tool.InputSchema.(json.RawMessage)
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal(rawSchema, &schema))
+	required, _ := schema["required"].([]any)
+	assert.Contains(t, required, "spec")
+
+	props, _ := schema["properties"].(map[string]any)
+	assert.Contains(t, props, "annotation_batch", "annotation_batch must be in schema for MCP clients to discover it")
 }
 
 func TestServerHasLintSpecTool(t *testing.T) {

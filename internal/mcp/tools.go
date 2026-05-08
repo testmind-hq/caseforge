@@ -39,6 +39,10 @@ func generateTestCasesTool() *mcpsdk.Tool {
                     "type": "string",
                     "description": "Output format: hurl|markdown|csv|postman|k6 (default: hurl)",
                     "enum": ["hurl", "markdown", "csv", "postman", "k6"]
+                },
+                "annotation_batch": {
+                    "type": "integer",
+                    "description": "Number of operations to annotate per LLM call; reduces round-trips on large specs (0 = one call per op, recommended: 8–20)"
                 }
             },
             "required": ["spec"]
@@ -48,9 +52,10 @@ func generateTestCasesTool() *mcpsdk.Tool {
 
 func makeGenerateHandler(ctx context.Context, req *mcpsdk.CallToolRequest) (*mcpsdk.CallToolResult, error) {
 	var args struct {
-		Spec   string `json:"spec"`
-		Output string `json:"output"`
-		Format string `json:"format"`
+		Spec            string `json:"spec"`
+		Output          string `json:"output"`
+		Format          string `json:"format"`
+		AnnotationBatch int    `json:"annotation_batch"`
 	}
 	if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
 		r := &mcpsdk.CallToolResult{}
@@ -88,6 +93,9 @@ func makeGenerateHandler(ctx context.Context, req *mcpsdk.CallToolRequest) (*mcp
 	)
 	engine.AddSpecTechnique(methodology.NewChainTechnique())
 	engine.AddSpecTechnique(methodology.NewSecuritySpecTechnique())
+	if args.AnnotationBatch >= 1 {
+		engine.SetAnnotationBatch(args.AnnotationBatch)
+	}
 
 	cases, err := engine.Generate(parsedSpec)
 	if err != nil {

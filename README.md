@@ -157,7 +157,17 @@ caseforge lint --spec openapi.yaml
 --exclude-tag string    Comma-separated OpenAPI tags to exclude (e.g. 'deprecated')
 --auth-bootstrap      Wrap all secured-endpoint cases with an auth setup step
 --with-oracles        Mine response body constraints via LLM and inject as assertions (requires LLM)
+--force               Regenerate even when spec hash matches existing output
+--annotation-batch N  Number of operations to annotate per LLM call (0 = one call per op; recommended: 8–20)
 ```
+
+**Smart regeneration:** `gen` hashes the spec file on each run. If the hash matches the previously generated output, it exits early with a `✓ Spec unchanged` message. Use `--force` to bypass this.
+
+**Batch annotation:** By default each operation is annotated in a separate LLM call. On large specs (20+ operations) this can take several minutes. `--annotation-batch 10` groups 10 operations per call, reducing round-trips dramatically.
+
+**Rate-limit backoff:** 429 responses from LLM providers trigger automatic exponential backoff (5 s → 15 s → 30 s → 60 s) before retrying.
+
+**Hurl output headers:** Every generated `.hurl` file includes `# case_id=` and `# case_name=` comment headers for traceability.
 
 ### `caseforge run`
 
