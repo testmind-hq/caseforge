@@ -8,13 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Documentation
-- NOTICE file expanded to enumerate all 11 referenced projects and academic papers (Schemathesis, CATS, EvoMaster, Tcases, RESTler, Portman, Microcks, RBCTest, AutoRestTest, RESTifAI, OWASP API Top 10) with explicit "concept-level reference / no source code embedded or derived" wording
-- README Acknowledgements section restructured into three groups (open-source projects / academic research / standards)
-- Code comments in `internal/score/scorer.go` and `internal/dea/explorer.go` strengthened with explicit "no source code derived" language matching NOTICE
+## [0.11.0] - 2026-05-08
+
+### Added
+- **AWS Bedrock provider**: configure `provider: bedrock` with any Claude model via AWS credentials; `caseforge doctor` validates region and credentials
+- **Batch LLM annotation** (`--annotation-batch N`): group N operations per LLM call to cut annotation time dramatically on large specs (36-op spec: ~9 min → ~1–2 min with `--annotation-batch 10`)
+- **Spec-hash deduplication**: `gen` exits early with `✓ Spec unchanged` when the spec file hash matches previously generated output; bypass with `--force`
+- **`# case_name=` header in Hurl output**: every generated `.hurl` file now includes both `# case_id=` and `# case_name=` comment headers for traceability
+- **Rate-limit backoff**: 429 responses from LLM providers trigger exponential backoff (5 s → 15 s → 30 s → 60 s) before retrying
+- **MCP `generate_test_cases` tool**: exposes `annotation_batch` parameter so AI clients can control batch size
+- **Onboarding wizard redesign**: provider-specific sub-prompts, MCP/skill multi-select, config written to `~/.caseforge.yaml`
+- **AI config validation**: `config.Load()` validates `api_key`/`base_url` at startup with actionable error messages
+
+### Changed
+- Generated output filenames are now path-first (e.g. `pets_get_200.hurl`) for better filesystem sorting and readability
+- OWASP methodology labels translated from Chinese to English in all generated output
+- TUI annotation progress now visible during LLM pre-pass
 
 ### Fixed
-- Bump `google.golang.org/grpc` to v1.80.0 (resolves GHSA-p77j-4mvh-x3m3, critical authorization-bypass vulnerability)
+- Makefile build output moved to `bin/` and added to `.gitignore`
+- `gen` warn lines route through TUI instead of raw stderr during interactive runs
+- `cases/` directory added to `.gitignore` — generated test output no longer accidentally committed
+
+### Documentation
+- NOTICE expanded to enumerate all 11 referenced projects and academic papers with explicit attribution wording
+- README updated with `--force`, `--annotation-batch`, dedup behavior, rate-limit backoff, and Hurl header fields
+- Bump `google.golang.org/grpc` to v1.80.0 (resolves GHSA-p77j-4mvh-x3m3)
 
 ## [0.10.2] - 2026-05-03
 
