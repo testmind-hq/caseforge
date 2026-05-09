@@ -49,9 +49,9 @@ func (g *ResponseGenerator) Generate(op *spec.Operation, pathParams map[string]s
 	}
 	// Normalize to map[string]any
 	m := toMap(body)
-	// Guarantee an id field is present for write operations so StateStore can key on it
+	// Guarantee a non-empty id field is present for write operations so StateStore can key on it
 	if isWriteOp(op.Method) {
-		if _, ok := m["id"]; !ok {
+		if v, ok := m["id"]; !ok || fmt.Sprintf("%v", v) == "" {
 			m["id"] = gofakeit.UUID()
 		}
 	}
