@@ -127,7 +127,7 @@ func runConformance(cmd *cobra.Command, _ []string) error {
 	}
 
 	r := runner.NewHurlRunner()
-	result, runErr := r.Run(tmpDir, map[string]string{"BASE_URL": target})
+	result, runErr := r.Run(tmpDir, map[string]string{"base_url": target})
 	if runErr != nil {
 		return fmt.Errorf("running conformance tests: %w", runErr)
 	}

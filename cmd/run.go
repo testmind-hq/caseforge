@@ -22,7 +22,7 @@ var runCmd = &cobra.Command{
 	Long: `Run executes generated test case files against a live API.
 
 Supports hurl (.hurl files) and k6 (k6_tests.js) formats.
-Use --target to set the API base URL (injected as BASE_URL variable).
+Use --target to set the API base URL (injected as base_url for hurl, BASE_URL for k6).
 Use --output to write a run-report.json with structured results.
 
 Exit codes:
@@ -44,7 +44,7 @@ func init() {
 	_ = runCmd.MarkFlagRequired("cases")
 	runCmd.Flags().StringArray("var", nil, "Variables as key=value (repeatable)")
 	runCmd.Flags().StringVar(&runFormat, "format", "hurl", "Test runner format: hurl|k6")
-	runCmd.Flags().String("target", "", "API base URL, e.g. http://localhost:8080 (injected as BASE_URL)")
+	runCmd.Flags().String("target", "", "API base URL, e.g. http://localhost:8080 (injected as base_url for hurl, BASE_URL for k6)")
 	runCmd.Flags().String("output", "", "Directory to write run-report.json (optional)")
 }
 
@@ -54,19 +54,25 @@ func runRun(cmd *cobra.Command, _ []string) error {
 	outputDir, _ := cmd.Flags().GetString("output")
 
 	vars := runner.ParseVars(varFlags)
-	if target != "" {
-		if _, alreadySet := vars["BASE_URL"]; alreadySet {
-			fmt.Fprintf(cmd.ErrOrStderr(), "warning: --target overrides BASE_URL set via --var\n")
-		}
-		vars["BASE_URL"] = target
-	}
 
 	var r runner.Runner
 	switch runFormat {
 	case "k6":
 		r = runner.NewK6Runner()
+		if target != "" {
+			if _, alreadySet := vars["BASE_URL"]; alreadySet {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: --target overrides BASE_URL set via --var\n")
+			}
+			vars["BASE_URL"] = target
+		}
 	default:
 		r = runner.NewHurlRunner()
+		if target != "" {
+			if _, alreadySet := vars["base_url"]; alreadySet {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: --target overrides base_url set via --var\n")
+			}
+			vars["base_url"] = target
+		}
 	}
 
 	result, err := r.Run(runCases, vars)
