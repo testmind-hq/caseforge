@@ -339,8 +339,10 @@ via `--data-pool` to seed realistic field values into generated chain probes.
 
 ### `caseforge sandbox`
 
-Start a local HTTP mock server that serves realistic responses generated from an OpenAPI spec.
-Useful for interactive development and debugging without a real backend.
+Start a local HTTP mock server that serves realistic responses generated from an OpenAPI spec. Stop with Ctrl-C (SIGINT/SIGTERM triggers graceful shutdown).
+
+- **Use `sandbox`** for interactive development and debugging — explore with curl or Postman, inspect logs, iterate on your spec.
+- **Use `gen --with-sandbox`** for CI one-shot validation — generates cases and runs them against the sandbox automatically.
 
 ```
 --spec string         OpenAPI spec file (required)
@@ -351,11 +353,19 @@ Useful for interactive development and debugging without a real backend.
 --format string       Response generation strategy: auto | schema | faker (default: auto)
 ```
 
+`--format auto` tries strategies in order: first uses spec examples (`x-examples` / `components/examples`), then derives zero-values from the JSON Schema, then falls back to faker-generated values.
+
 On startup prints: `caseforge sandbox listening on http://127.0.0.1:<port>`
 
-Stateful CRUD: `POST /resource` stores the generated response body; subsequent `GET /resource/{id}` returns the same object (200) or 404 if absent; `DELETE /resource/{id}` returns 204.
+**Stateful CRUD:** `POST /resource` generates a response body, stores it, and returns the resource ID in both the body and the `X-Sandbox-ID` response header. A subsequent `GET /resource/{id}` returns the same stored object (200) or 404 if absent; `DELETE /resource/{id}` removes it and returns 204; `GET /resource` (no ID) returns all stored objects as a JSON array.
 
-For CI one-shot validation without a real backend, use `gen --with-sandbox` instead.
+**CI one-shot tip:** The sandbox always returns success responses, so test cases that assert 4xx status codes will fail. Pair `--with-sandbox` with `--technique equivalence_partitioning` and a spec that defines only success responses to generate only happy-path cases:
+
+```bash
+caseforge gen --spec api.yaml --no-ai \
+  --technique equivalence_partitioning \
+  --format hurl --output ./cases --with-sandbox
+```
 
 ### `caseforge watch`
 
