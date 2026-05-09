@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/testmind-hq/caseforge/internal/checkpoint"
@@ -22,6 +24,8 @@ import (
 	"github.com/testmind-hq/caseforge/internal/output/render"
 	"github.com/testmind-hq/caseforge/internal/output/schema"
 	"github.com/testmind-hq/caseforge/internal/output/writer"
+	"github.com/testmind-hq/caseforge/internal/runner"
+	"github.com/testmind-hq/caseforge/internal/sandbox"
 	"github.com/testmind-hq/caseforge/internal/webhook"
 	"github.com/testmind-hq/caseforge/internal/spec"
 	"github.com/testmind-hq/caseforge/internal/tui"
@@ -54,6 +58,7 @@ var (
 	genWithOracles      bool
 	genForce            bool
 	genAnnotationBatch  int
+	genWithSandbox      bool
 )
 
 // allTechniqueNames is the canonical list used for --technique completion.
@@ -110,6 +115,7 @@ func init() {
 	genCmd.Flags().BoolVar(&genWithOracles, "with-oracles", false, "Mine response body constraints via LLM and inject as assertions (requires LLM)")
 	genCmd.Flags().BoolVar(&genForce, "force", false, "Regenerate even when spec hash matches existing output")
 	genCmd.Flags().IntVar(&genAnnotationBatch, "annotation-batch", 0, "Number of operations to annotate per LLM call (0 = one call per operation, recommended: 8–20)")
+	genCmd.Flags().BoolVar(&genWithSandbox, "with-sandbox", false, "Start a local sandbox server and run generated cases against it")
 	_ = genCmd.MarkFlagRequired("spec")
 
 	// Dynamic completion: --operations reads the spec and suggests operationIds.
@@ -499,6 +505,13 @@ func runGen(cmd *cobra.Command, args []string) error {
 	_ = ckptMgr.Delete()
 
 	fmt.Fprintf(os.Stderr, "✓ Generated %d test cases → %s\n", len(cases), genOutput)
+
+	if genWithSandbox {
+		if err := runWithSandbox(cmd, parsedSpec, genOutput); err != nil {
+			return fmt.Errorf("sandbox run: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -582,6 +595,45 @@ func filterByPriority(cases []schema.TestCase, minPriority string) []schema.Test
 		}
 	}
 	return out
+}
+
+// runWithSandbox starts a sandbox server, runs the generated cases against it via Hurl,
+// prints results, and shuts the server down. Used by gen --with-sandbox.
+func runWithSandbox(cmd *cobra.Command, ps *spec.ParsedSpec, casesDir string) error {
+	srv := sandbox.NewSandboxServer(ps, sandbox.Options{LogLevel: "silent"})
+	if err := srv.Start("127.0.0.1", 0); err != nil {
+		return err
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(ctx)
+	}()
+
+	fmt.Fprintf(cmd.ErrOrStderr(), "sandbox ready on http://%s\n", srv.Addr())
+
+	r := runner.NewHurlRunner()
+	vars := map[string]string{"BASE_URL": "http://" + srv.Addr()}
+	result, err := r.Run(casesDir, vars)
+	if err != nil {
+		return fmt.Errorf("running cases: %w", err)
+	}
+
+	out := cmd.OutOrStdout()
+	for _, c := range result.Cases {
+		if c.Passed {
+			color.New(color.FgGreen).Fprintf(out, "  ✓ [%s] %s\n", c.ID, c.Title)
+		} else {
+			color.New(color.FgRed).Fprintf(out, "  ✗ [%s] %s\n", c.ID, c.Title)
+		}
+	}
+	total := result.Passed + result.Failed
+	if result.Failed == 0 {
+		color.New(color.FgGreen).Fprintf(out, "✓ %d/%d sandbox tests passed\n", result.Passed, total)
+	} else {
+		color.New(color.FgYellow).Fprintf(out, "✗ %d/%d sandbox tests passed\n", result.Passed, total)
+	}
+	return nil
 }
 
 // splitTrimmed splits s on commas and trims whitespace from each token.
