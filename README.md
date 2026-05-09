@@ -111,6 +111,7 @@ caseforge lint --spec openapi.yaml
 
 | Command | Description |
 |---------|-------------|
+| `sandbox` | Start a local HTTP mock server that generates realistic responses from an OpenAPI spec |
 | `chain` | Generate multi-step chain cases via BFS over the dependency graph |
 | `watch` | Watch a spec file and regenerate cases on change |
 | `suite create` | Create a `suite.json` orchestration file |
@@ -157,6 +158,7 @@ caseforge lint --spec openapi.yaml
 --exclude-tag string    Comma-separated OpenAPI tags to exclude (e.g. 'deprecated')
 --auth-bootstrap      Wrap all secured-endpoint cases with an auth setup step
 --with-oracles        Mine response body constraints via LLM and inject as assertions (requires LLM)
+--with-sandbox        Start a local sandbox server, run generated cases against it, exit non-zero on failure
 --force               Regenerate even when spec hash matches existing output
 --annotation-batch N  Number of operations to annotate per LLM call (0 = one call per op; recommended: 8–20)
 ```
@@ -334,6 +336,26 @@ via `--data-pool` to seed realistic field values into generated chain probes.
 --dry-run             Report what would be deleted without deleting
 --format string       terminal | json (default: terminal)
 ```
+
+### `caseforge sandbox`
+
+Start a local HTTP mock server that serves realistic responses generated from an OpenAPI spec.
+Useful for interactive development and debugging without a real backend.
+
+```
+--spec string         OpenAPI spec file (required)
+--port int            Listen port; 0 = random (default: 0)
+--host string         Listen address (default: 127.0.0.1)
+--log-level string    info | warn | error | silent (default: info)
+--log-file string     Append JSON structured logs to file (optional)
+--format string       Response generation strategy: auto | schema | faker (default: auto)
+```
+
+On startup prints: `caseforge sandbox listening on http://127.0.0.1:<port>`
+
+Stateful CRUD: `POST /resource` stores the generated response body; subsequent `GET /resource/{id}` returns the same object (200) or 404 if absent; `DELETE /resource/{id}` returns 204.
+
+For CI one-shot validation without a real backend, use `gen --with-sandbox` instead.
 
 ### `caseforge watch`
 
