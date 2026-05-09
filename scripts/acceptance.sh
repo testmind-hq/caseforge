@@ -55,6 +55,12 @@ exits_with() {
     [ -n "$VERBOSE" ] && cat "$WORKDIR/out"
   fi
 }
+skip() {
+  local id="$1"; local desc="$2"; local reason="${3:-}"
+  log "  ⏭  SKIP  $id: $desc${reason:+  [$reason]}"
+}
+# random_port: portable random port in [20000, 39999]
+random_port() { echo $(( (RANDOM % 20000) + 20000 )); }
 
 # -------------------------------------------------------
 # Fixtures
@@ -1524,6 +1530,99 @@ run AT-237 "generate --no-ai works with bedrock config" \
    printf 'ai:\n  provider: bedrock\n  region: us-east-1\n' > '$WORKDIR/at237/.caseforge.yaml' && \
    cd '$WORKDIR/at237' && \
    '$BIN' gen --spec '$WORKDIR/petstore.yaml' --no-ai --output '$WORKDIR/at237/cases'"
+echo ""
+
+# -------------------------------------------------------
+# AT-301 – AT-303: sandbox command
+# -------------------------------------------------------
+echo "# AT-301 – AT-303: sandbox"
+
+# AT-301: sandbox starts and GET /pets returns 200
+run "AT-301" "sandbox GET /pets returns 200" \
+  "PORT=\$(random_port)
+   '$BIN' sandbox --spec '$WORKDIR/petstore.yaml' --port \$PORT &
+   SBX_PID=\$!
+   for i in \$(seq 1 20); do curl -sf http://127.0.0.1:\$PORT/pets > /dev/null 2>&1 && break; sleep 0.1; done
+   STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:\$PORT/pets)
+   kill \$SBX_PID 2>/dev/null; wait \$SBX_PID 2>/dev/null
+   [ \"\$STATUS\" = '200' ]"
+
+# AT-302: full CRUD flow POST→GET→DELETE
+run "AT-302" "sandbox CRUD flow POST→GET→DELETE" \
+  "PORT=\$(random_port)
+   '$BIN' sandbox --spec '$WORKDIR/petstore.yaml' --port \$PORT &
+   SBX_PID=\$!
+   for i in \$(seq 1 20); do curl -sf http://127.0.0.1:\$PORT/pets > /dev/null 2>&1 && break; sleep 0.1; done
+   POST_STATUS=\$(curl -s -o /tmp/at302body.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{\"name\":\"Fido\"}' http://127.0.0.1:\$PORT/pets)
+   PET_ID=\$(python3 -c \"import json,sys; d=json.load(open('/tmp/at302body.json')); print(d.get('id',''))\" 2>/dev/null)
+   if [ -z \"\$PET_ID\" ]; then PET_ID=\$(curl -s -D - -X POST -H 'Content-Type: application/json' -d '{\"name\":\"Rex\"}' http://127.0.0.1:\$PORT/pets | grep -i x-sandbox-id | awk '{print \$2}' | tr -d '\r'); fi
+   GET_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:\$PORT/pets/\$PET_ID)
+   DEL_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' -X DELETE http://127.0.0.1:\$PORT/pets/\$PET_ID)
+   kill \$SBX_PID 2>/dev/null; wait \$SBX_PID 2>/dev/null
+   [ \"\$POST_STATUS\" = '201' ] && [ \"\$GET_STATUS\" = '200' ] && [ \"\$DEL_STATUS\" = '204' ]"
+
+# AT-303: gen --with-sandbox end-to-end (skipped when hurl is not installed)
+# Uses a minimal spec with no 4xx responses and --technique equivalence_partitioning
+# so only happy-path cases are generated — cases the sandbox can satisfy.
+if command -v hurl > /dev/null 2>&1; then
+  cat > "$WORKDIR/sandbox-smoke.yaml" << 'SPECEOF'
+openapi: "3.0.0"
+info:
+  title: Sandbox Smoke Test
+  version: "1.0"
+paths:
+  /items:
+    get:
+      operationId: listItems
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+    post:
+      operationId: createItem
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+SPECEOF
+  run "AT-303" "gen --with-sandbox runs happy-path cases against sandbox and exits 0" \
+    "mkdir -p '$WORKDIR/at303' && \
+     NOPROV='$WORKDIR/at303/.caseforge.yaml' && \
+     printf 'ai:\n  provider: noop\n' > \"\$NOPROV\" && \
+     '$BIN' gen --config \"\$NOPROV\" --spec '$WORKDIR/sandbox-smoke.yaml' --no-ai \
+       --technique equivalence_partitioning \
+       --format hurl --output '$WORKDIR/at303/cases' --with-sandbox"
+else
+  skip "AT-303" "gen --with-sandbox end-to-end" "hurl not installed"
+fi
+
 echo ""
 
 # -------------------------------------------------------

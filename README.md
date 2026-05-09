@@ -111,6 +111,7 @@ caseforge lint --spec openapi.yaml
 
 | Command | Description |
 |---------|-------------|
+| `sandbox` | Start a local HTTP mock server that generates realistic responses from an OpenAPI spec |
 | `chain` | Generate multi-step chain cases via BFS over the dependency graph |
 | `watch` | Watch a spec file and regenerate cases on change |
 | `suite create` | Create a `suite.json` orchestration file |
@@ -157,6 +158,7 @@ caseforge lint --spec openapi.yaml
 --exclude-tag string    Comma-separated OpenAPI tags to exclude (e.g. 'deprecated')
 --auth-bootstrap      Wrap all secured-endpoint cases with an auth setup step
 --with-oracles        Mine response body constraints via LLM and inject as assertions (requires LLM)
+--with-sandbox        Start a local sandbox server, run generated cases against it, exit non-zero on failure
 --force               Regenerate even when spec hash matches existing output
 --annotation-batch N  Number of operations to annotate per LLM call (0 = one call per op; recommended: 8–20)
 ```
@@ -333,6 +335,36 @@ via `--data-pool` to seed realistic field values into generated chain probes.
 --merge               Auto-delete lower-scoring duplicates
 --dry-run             Report what would be deleted without deleting
 --format string       terminal | json (default: terminal)
+```
+
+### `caseforge sandbox`
+
+Start a local HTTP mock server that serves realistic responses generated from an OpenAPI spec. Stop with Ctrl-C (SIGINT/SIGTERM triggers graceful shutdown).
+
+- **Use `sandbox`** for interactive development and debugging — explore with curl or Postman, inspect logs, iterate on your spec.
+- **Use `gen --with-sandbox`** for CI one-shot validation — generates cases and runs them against the sandbox automatically.
+
+```
+--spec string         OpenAPI spec file (required)
+--port int            Listen port; 0 = random (default: 0)
+--host string         Listen address (default: 127.0.0.1)
+--log-level string    info | warn | error | silent (default: info)
+--log-file string     Append JSON structured logs to file (optional)
+--format string       Response generation strategy: auto | schema | faker (default: auto)
+```
+
+`--format auto` tries strategies in order: first uses spec examples (`x-examples` / `components/examples`), then derives zero-values from the JSON Schema, then falls back to faker-generated values.
+
+On startup prints: `caseforge sandbox listening on http://127.0.0.1:<port>`
+
+**Stateful CRUD:** `POST /resource` generates a response body, stores it, and returns the resource ID in both the body and the `X-Sandbox-ID` response header. A subsequent `GET /resource/{id}` returns the same stored object (200) or 404 if absent; `DELETE /resource/{id}` removes it and returns 204; `GET /resource` (no ID) returns all stored objects as a JSON array.
+
+**CI one-shot tip:** The sandbox always returns success responses, so test cases that assert 4xx status codes will fail. Pair `--with-sandbox` with `--technique equivalence_partitioning` and a spec that defines only success responses to generate only happy-path cases:
+
+```bash
+caseforge gen --spec api.yaml --no-ai \
+  --technique equivalence_partitioning \
+  --format hurl --output ./cases --with-sandbox
 ```
 
 ### `caseforge watch`
