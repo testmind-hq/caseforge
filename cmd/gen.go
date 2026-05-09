@@ -613,7 +613,7 @@ func runWithSandbox(cmd *cobra.Command, ps *spec.ParsedSpec, casesDir string) er
 	fmt.Fprintf(cmd.ErrOrStderr(), "sandbox ready on http://%s\n", srv.Addr())
 
 	r := runner.NewHurlRunner()
-	vars := map[string]string{"BASE_URL": "http://" + srv.Addr()}
+	vars := map[string]string{"base_url": "http://" + srv.Addr()}
 	result, err := r.Run(casesDir, vars)
 	if err != nil {
 		return fmt.Errorf("running cases: %w", err)
