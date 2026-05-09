@@ -630,10 +630,10 @@ func runWithSandbox(cmd *cobra.Command, ps *spec.ParsedSpec, casesDir string) er
 	total := result.Passed + result.Failed
 	if result.Failed == 0 {
 		color.New(color.FgGreen).Fprintf(out, "✓ %d/%d sandbox tests passed\n", result.Passed, total)
-	} else {
-		color.New(color.FgYellow).Fprintf(out, "✗ %d/%d sandbox tests passed\n", result.Passed, total)
+		return nil
 	}
-	return nil
+	color.New(color.FgYellow).Fprintf(out, "✗ %d/%d sandbox tests passed\n", result.Passed, total)
+	return fmt.Errorf("sandbox tests: %d/%d failed", result.Failed, total)
 }
 
 // splitTrimmed splits s on commas and trims whitespace from each token.
