@@ -1527,6 +1527,41 @@ run AT-237 "generate --no-ai works with bedrock config" \
 echo ""
 
 # -------------------------------------------------------
+# AT-301 – AT-303: sandbox command
+# -------------------------------------------------------
+echo "# AT-301 – AT-303: sandbox"
+
+# AT-301: sandbox starts and GET /pets returns 200
+run "AT-301" "sandbox GET /pets returns 200" \
+  "PORT=\$(shuf -i 20000-29999 -n 1)
+   '$BIN' sandbox --spec '$WORKDIR/petstore.yaml' --port \$PORT &
+   SBX_PID=\$!
+   for i in \$(seq 1 20); do curl -sf http://127.0.0.1:\$PORT/pets > /dev/null 2>&1 && break; sleep 0.1; done
+   STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:\$PORT/pets)
+   kill \$SBX_PID 2>/dev/null; wait \$SBX_PID 2>/dev/null
+   [ \"\$STATUS\" = '200' ]"
+
+# AT-302: full CRUD flow POST→GET→DELETE
+run "AT-302" "sandbox CRUD flow POST→GET→DELETE" \
+  "PORT=\$(shuf -i 30000-39999 -n 1)
+   '$BIN' sandbox --spec '$WORKDIR/petstore.yaml' --port \$PORT &
+   SBX_PID=\$!
+   for i in \$(seq 1 20); do curl -sf http://127.0.0.1:\$PORT/pets > /dev/null 2>&1 && break; sleep 0.1; done
+   POST_STATUS=\$(curl -s -o /tmp/at302body.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{\"name\":\"Fido\"}' http://127.0.0.1:\$PORT/pets)
+   PET_ID=\$(python3 -c \"import json,sys; d=json.load(open('/tmp/at302body.json')); print(d.get('id',''))\" 2>/dev/null)
+   if [ -z \"\$PET_ID\" ]; then PET_ID=\$(curl -s -D - -X POST -H 'Content-Type: application/json' -d '{\"name\":\"Rex\"}' http://127.0.0.1:\$PORT/pets | grep -i x-sandbox-id | awk '{print \$2}' | tr -d '\r'); fi
+   GET_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:\$PORT/pets/\$PET_ID)
+   DEL_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' -X DELETE http://127.0.0.1:\$PORT/pets/\$PET_ID)
+   kill \$SBX_PID 2>/dev/null; wait \$SBX_PID 2>/dev/null
+   [ \"\$POST_STATUS\" = '201' ] && [ \"\$GET_STATUS\" = '200' ] && [ \"\$DEL_STATUS\" = '204' ]"
+
+# AT-303: --with-sandbox flag is registered
+contains "AT-303" "gen --with-sandbox flag registered" "with-sandbox" \
+  "'$BIN' gen --help 2>&1"
+
+echo ""
+
+# -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
 TOTAL=$((PASS+FAIL))
