@@ -149,7 +149,7 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	_ = mutation.Persist("", run)
 
 	if mutateOutput != "" {
-		if err := mutation.WriteReport(mutateOutput, run); err != nil {
+		if err := mutation.WriteReport(mutateOutput, run, []string{"json"}); err != nil {
 			return fmt.Errorf("writing report: %w", err)
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",

@@ -29,16 +29,35 @@ func TextSummary(run MutationRun) string {
 	return sb.String()
 }
 
-// WriteReport writes mutation-report.json to outputDir.
-func WriteReport(outputDir string, run MutationRun) error {
+// WriteReport writes mutation report files in the requested formats to outputDir.
+// formats: slice containing any of "json", "markdown", "html".
+func WriteReport(outputDir string, run MutationRun, formats []string) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(run, "", "  ")
-	if err != nil {
-		return err
+	for _, f := range formats {
+		switch f {
+		case "json":
+			data, err := json.MarshalIndent(run, "", "  ")
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(filepath.Join(outputDir, "mutation-report.json"), data, 0644); err != nil {
+				return err
+			}
+		case "markdown":
+			if err := os.WriteFile(filepath.Join(outputDir, "mutation-report.md"),
+				[]byte(RenderMarkdown(run)), 0644); err != nil {
+				return err
+			}
+		case "html":
+			if err := os.WriteFile(filepath.Join(outputDir, "mutation-report.html"),
+				[]byte(RenderHTML(run)), 0644); err != nil {
+				return err
+			}
+		}
 	}
-	return os.WriteFile(filepath.Join(outputDir, "mutation-report.json"), data, 0644)
+	return nil
 }
 
 // Persist writes a timestamped run file to baseDir.
