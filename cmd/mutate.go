@@ -2,13 +2,17 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"github.com/testmind-hq/caseforge/internal/config"
+	"github.com/testmind-hq/caseforge/internal/llm"
 	"github.com/testmind-hq/caseforge/internal/mutation"
 )
 
@@ -52,6 +56,9 @@ func init() {
 	mutateCmd.Flags().StringVar(&mutateOperators, "operator", "", "Comma-separated operator names to run (default: all 12)")
 	mutateCmd.Flags().String("spec", "", "OpenAPI spec file (optional; passed to LLM in Phase 2)")
 	mutateCmd.Flags().IntVar(&mutateConcurrency, "concurrency", 4, "Number of cases processed concurrently per operator")
+	mutateCmd.Flags().Bool("feedback", false, "Run LLM feedback analysis on survivors (requires LLM provider in .caseforge.yaml)")
+	mutateCmd.Flags().Bool("auto-fix", false, "Patch index.json with suggested assertions (requires --feedback)")
+	mutateCmd.Flags().Bool("yes", false, "Skip confirmation prompt for --auto-fix")
 }
 
 func runMutate(cmd *cobra.Command, _ []string) error {
@@ -76,6 +83,38 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	}
 
 	run.Clusters = mutation.ClusterSurvivors(run)
+
+	feedbackFlag, _ := cmd.Flags().GetBool("feedback")
+	if feedbackFlag && run.Survivors > 0 {
+		cfg, cfgErr := config.Load()
+		if cfgErr == nil {
+			provider := llm.NewProviderWithConfig(llm.ProviderConfig{
+				APIKey:   cfg.AI.APIKey,
+				Provider: cfg.AI.Provider,
+				Model:    cfg.AI.Model,
+				BaseURL:  cfg.AI.BaseURL,
+				Region:   cfg.AI.Region,
+			})
+			items, fbErr := mutation.Analyze(context.Background(), run, provider)
+			if fbErr == nil && len(items) > 0 {
+				run.Feedback = items
+				fmt.Fprintf(out, "\nFeedback (%d cases with weak assertions):\n", len(items))
+				for _, item := range items {
+					fmt.Fprintf(out, "  ⚠ [%s] %s  risk=%.2f  → %d suggested assertion(s)\n",
+						item.CaseID, item.Title, item.RiskScore, len(item.SuggestedAssertions))
+				}
+				autoFix, _ := cmd.Flags().GetBool("auto-fix")
+				if autoFix {
+					yes, _ := cmd.Flags().GetBool("yes")
+					if err := runAutoFix(run, mutateCases, yes, out); err != nil {
+						fmt.Fprintf(cmd.ErrOrStderr(), "auto-fix: %v\n", err)
+					}
+				} else {
+					fmt.Fprintln(out, "Run with --feedback --auto-fix to patch index.json")
+				}
+			}
+		}
+	}
 
 	for _, r := range run.Results {
 		if r.Survived {
@@ -142,4 +181,8 @@ func operatorNames(ops []mutation.Operator) string {
 		names[i] = op.Name()
 	}
 	return strings.Join(names, ", ")
+}
+
+func runAutoFix(_ mutation.MutationRun, _ string, _ bool, _ io.Writer) error {
+	return fmt.Errorf("--auto-fix not yet implemented")
 }
