@@ -39,6 +39,7 @@ caseforge lint --spec openapi.yaml
 
 | Command | Purpose |
 |---------|---------|
+| `mutate` | Run HTTP boundary mutations via a reverse proxy to find weak test assertions; survivors = mutations hurl didn't catch |
 | `rbt` | Risk-based testing: detect which API ops are at risk from recent git changes |
 | `rbt index` | Auto-generate `caseforge-map.yaml` by analysing source code |
 | `explore` | Probe a live API to discover implicit validation rules (DEA) |
@@ -49,6 +50,7 @@ caseforge lint --spec openapi.yaml
 
 | Command | Purpose |
 |---------|---------|
+| `sandbox` | Start a local HTTP mock server from an OpenAPI spec (realistic responses via example → schema → faker chain) |
 | `watch` | Watch spec file and regenerate on change |
 | `suite create` | Create `suite.json` for cross-case DAG orchestration |
 | `suite validate` | Validate `suite.json` against `index.json` |

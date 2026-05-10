@@ -101,6 +101,7 @@ caseforge lint --spec openapi.yaml
 
 | Command | Description |
 |---------|-------------|
+| `mutate` | Run HTTP boundary mutations via a reverse proxy to find weak test assertions |
 | `rbt` | Risk-based testing: assess which operations are at risk from recent git changes |
 | `rbt index` | Auto-generate `caseforge-map.yaml` by analysing source code |
 | `explore` | Dynamically probe a live API and infer implicit validation rules |
@@ -335,6 +336,42 @@ via `--data-pool` to seed realistic field values into generated chain probes.
 --merge               Auto-delete lower-scoring duplicates
 --dry-run             Report what would be deleted without deleting
 --format string       terminal | json (default: terminal)
+```
+
+### `caseforge mutate`
+
+Run HTTP boundary mutations through a reverse proxy between hurl and your API. For each operator × test case combination, the proxy alters the response before hurl evaluates assertions. Cases where hurl still passes are **survivors** — mutations your assertions failed to catch.
+
+Requires hurl on PATH and test cases previously generated with `caseforge gen`.
+
+```
+--cases string        Directory containing index.json and .hurl files (required)
+--target string       API base URL, e.g. http://localhost:8080 (required)
+--output string       Directory to write mutation-report.json (optional)
+--operator string     Comma-separated operator names to run (default: all 12)
+--concurrency int     Cases processed concurrently per operator (default: 4)
+--spec string         OpenAPI spec file (passed to LLM for context with --feedback)
+--feedback            Run LLM analysis on survivors and suggest stronger assertions
+--auto-fix            Patch index.json with suggested assertions (requires --feedback)
+--yes                 Skip confirmation prompt for --auto-fix
+```
+
+**12 operators:** `field_drop`, `field_type_swap`, `array_to_null`, `null_to_array`, `status_swap_2xx`, `error_inflation`, `pagination_off_by_one`, `empty_result_injection`, `content_type_swap`, `header_drop`, `date_format_swap`, `numeric_precision_loss`
+
+Exit codes: `0` — no survivors; `6` — one or more mutations survived.
+
+Each run is persisted to `.caseforge/mutation/runs/<timestamp>.json`.
+
+```bash
+# Run all 12 operators, write JSON report
+caseforge mutate --cases ./cases --target http://localhost:8080 --output ./reports
+
+# Run a specific operator only
+caseforge mutate --cases ./cases --target http://localhost:8080 --operator field_drop
+
+# Phase 2: LLM feedback + auto-fix (requires provider in .caseforge.yaml)
+caseforge mutate --cases ./cases --target http://localhost:8080 \
+  --feedback --auto-fix --yes
 ```
 
 ### `caseforge sandbox`
