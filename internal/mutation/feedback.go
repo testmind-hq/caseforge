@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/llm"
@@ -98,4 +100,79 @@ func parseSuggestedAssertions(text string) []SuggestedAssertion {
 func diagnosisFromCluster(cluster SurvivorCluster) string {
 	return fmt.Sprintf("%d operator(s) survived (%s) — assertions do not cover response mutations",
 		len(cluster.Operators), strings.Join(cluster.Operators, ", "))
+}
+
+// PatchIndex appends suggested assertions from FeedbackItems to matching test cases
+// in index.json and writes the updated file back.
+func PatchIndex(casesDir string, items []FeedbackItem) error {
+	indexPath := filepath.Join(casesDir, "index.json")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		return fmt.Errorf("reading index.json: %w", err)
+	}
+
+	var idx struct {
+		TestCases []json.RawMessage `json:"test_cases"`
+	}
+	if err := json.Unmarshal(data, &idx); err != nil {
+		return fmt.Errorf("parsing index.json: %w", err)
+	}
+
+	patches := map[string][]SuggestedAssertion{}
+	for _, item := range items {
+		patches[item.CaseID] = item.SuggestedAssertions
+	}
+
+	updated := make([]json.RawMessage, len(idx.TestCases))
+	for i, raw := range idx.TestCases {
+		var tc map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &tc); err != nil {
+			updated[i] = raw
+			continue
+		}
+		var id string
+		if idRaw, ok := tc["id"]; !ok {
+			updated[i] = raw
+			continue
+		} else {
+			_ = json.Unmarshal(idRaw, &id)
+		}
+		newAssertions, hasPatch := patches[id]
+		if !hasPatch {
+			updated[i] = raw
+			continue
+		}
+
+		var steps []json.RawMessage
+		if err := json.Unmarshal(tc["steps"], &steps); err != nil || len(steps) == 0 {
+			updated[i] = raw
+			continue
+		}
+		var step map[string]json.RawMessage
+		if err := json.Unmarshal(steps[0], &step); err != nil {
+			updated[i] = raw
+			continue
+		}
+		var assertions []json.RawMessage
+		_ = json.Unmarshal(step["assertions"], &assertions)
+		for _, a := range newAssertions {
+			ab, _ := json.Marshal(a)
+			assertions = append(assertions, json.RawMessage(ab))
+		}
+		ab, _ := json.Marshal(assertions)
+		step["assertions"] = json.RawMessage(ab)
+		sb, _ := json.Marshal(step)
+		steps[0] = json.RawMessage(sb)
+		stepsBytes, _ := json.Marshal(steps)
+		tc["steps"] = json.RawMessage(stepsBytes)
+		tcBytes, _ := json.Marshal(tc)
+		updated[i] = json.RawMessage(tcBytes)
+	}
+
+	idx.TestCases = updated
+	out, err := json.MarshalIndent(idx, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(indexPath, out, 0644)
 }

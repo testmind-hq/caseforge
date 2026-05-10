@@ -2,7 +2,10 @@
 package mutation_test
 
 import (
+	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -42,5 +45,32 @@ func TestBuildObservePrompt(t *testing.T) {
 	}
 	if !strings.Contains(prompt, "TC-0001") {
 		t.Error("prompt must mention case ID")
+	}
+}
+
+func TestPatchIndex(t *testing.T) {
+	dir := t.TempDir()
+	indexData := []byte(`{"test_cases":[{"id":"TC-0001","title":"GET /pets","steps":[{"id":"step-1","assertions":[{"target":"status_code","operator":"eq","expected":200}]}]}]}`)
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), indexData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	items := []mutation.FeedbackItem{{
+		CaseID: "TC-0001",
+		SuggestedAssertions: []mutation.SuggestedAssertion{
+			{Target: "jsonpath $.id", Operator: "exists"},
+		},
+	}}
+
+	if err := mutation.PatchIndex(dir, items); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "index.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(data, []byte("jsonpath $.id")) {
+		t.Fatalf("patched index.json must contain new assertion:\n%s", data)
 	}
 }

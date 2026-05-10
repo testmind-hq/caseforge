@@ -183,6 +183,35 @@ func operatorNames(ops []mutation.Operator) string {
 	return strings.Join(names, ", ")
 }
 
-func runAutoFix(_ mutation.MutationRun, _ string, _ bool, _ io.Writer) error {
-	return fmt.Errorf("--auto-fix not yet implemented")
+func runAutoFix(run mutation.MutationRun, casesDir string, skipConfirm bool, out io.Writer) error {
+	if len(run.Feedback) == 0 {
+		return nil
+	}
+
+	fmt.Fprintf(out, "\nAuto-fix will append %d assertion(s) across %d case(s).\n",
+		countSuggestions(run.Feedback), len(run.Feedback))
+
+	if !skipConfirm {
+		fmt.Fprint(out, "Apply? [y/N] ")
+		var answer string
+		fmt.Scanln(&answer)
+		if answer != "y" && answer != "Y" {
+			fmt.Fprintln(out, "Skipped.")
+			return nil
+		}
+	}
+
+	if err := mutation.PatchIndex(casesDir, run.Feedback); err != nil {
+		return fmt.Errorf("patching index.json: %w", err)
+	}
+	fmt.Fprintln(out, "index.json updated.")
+	return nil
+}
+
+func countSuggestions(items []mutation.FeedbackItem) int {
+	n := 0
+	for _, item := range items {
+		n += len(item.SuggestedAssertions)
+	}
+	return n
 }
