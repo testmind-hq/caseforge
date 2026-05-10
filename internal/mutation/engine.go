@@ -82,9 +82,8 @@ func Run(opts RunOptions) (MutationRun, error) {
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
-		return MutationRun{}, err
-	}
+	// goroutines always return nil (proxy failures are logged and skipped)
+	_ = g.Wait()
 
 	killed, survivors := 0, 0
 	for _, r := range results {
