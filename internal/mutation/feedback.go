@@ -186,5 +186,8 @@ func PatchIndex(casesDir string, items []FeedbackItem) error {
 	if err != nil {
 		return fmt.Errorf("reading patched index.json: %w", err)
 	}
-	return render.NewHurlRenderer("").Render(cases, casesDir)
+	if err := render.NewHurlRenderer("").Render(cases, casesDir); err != nil {
+		return fmt.Errorf("index.json patched but .hurl re-render failed: %w", err)
+	}
+	return nil
 }

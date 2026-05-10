@@ -62,9 +62,9 @@ func init() {
 }
 
 func runMutate(cmd *cobra.Command, _ []string) error {
+	feedbackFlag, _ := cmd.Flags().GetBool("feedback")
 	autoFixFlag, _ := cmd.Flags().GetBool("auto-fix")
-	feedbackFlagCheck, _ := cmd.Flags().GetBool("feedback")
-	if autoFixFlag && !feedbackFlagCheck {
+	if autoFixFlag && !feedbackFlag {
 		return fmt.Errorf("--auto-fix requires --feedback")
 	}
 
@@ -90,7 +90,6 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 
 	run.Clusters = mutation.ClusterSurvivors(run)
 
-	feedbackFlag, _ := cmd.Flags().GetBool("feedback")
 	if feedbackFlag && run.Survivors > 0 {
 		cfg, cfgErr := config.Load()
 		if cfgErr != nil {
