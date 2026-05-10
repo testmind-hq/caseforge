@@ -29,16 +29,45 @@ func TextSummary(run MutationRun) string {
 	return sb.String()
 }
 
-// WriteReport writes mutation-report.json to outputDir.
-func WriteReport(outputDir string, run MutationRun) error {
+// WriteReport writes mutation report files in the requested formats to outputDir.
+// formats: slice of "json", "markdown", "html"; "all" expands to all three.
+func WriteReport(outputDir string, run MutationRun, formats []string) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(run, "", "  ")
-	if err != nil {
-		return err
+	expanded := make([]string, 0, len(formats))
+	for _, f := range formats {
+		if f == "all" {
+			expanded = append(expanded, "json", "markdown", "html")
+		} else {
+			expanded = append(expanded, f)
+		}
 	}
-	return os.WriteFile(filepath.Join(outputDir, "mutation-report.json"), data, 0644)
+	for _, f := range expanded {
+		switch f {
+		case "json":
+			data, err := json.MarshalIndent(run, "", "  ")
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(filepath.Join(outputDir, "mutation-report.json"), data, 0644); err != nil {
+				return err
+			}
+		case "markdown":
+			if err := os.WriteFile(filepath.Join(outputDir, "mutation-report.md"),
+				[]byte(RenderMarkdown(run)), 0644); err != nil {
+				return err
+			}
+		case "html":
+			if err := os.WriteFile(filepath.Join(outputDir, "mutation-report.html"),
+				[]byte(RenderHTML(run)), 0644); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown report format %q", f)
+		}
+	}
+	return nil
 }
 
 // Persist writes a timestamped run file to baseDir.

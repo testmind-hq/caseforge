@@ -34,45 +34,56 @@ func Run(opts RunOptions) (MutationRun, error) {
 		return MutationRun{}, fmt.Errorf("no test cases found in %s/index.json", opts.CasesDir)
 	}
 
-	proxy, err := NewProxy(opts.Target)
-	if err != nil {
-		return MutationRun{}, fmt.Errorf("starting proxy: %w", err)
+	operators := opts.Operators
+	if len(operators) == 0 {
+		operators = Registry()
 	}
-	defer proxy.Close()
 
 	var (
 		mu      sync.Mutex
 		results []CaseMutationResult
 	)
 
-	operators := opts.Operators
-	if len(operators) == 0 {
-		operators = Registry()
-	}
+	opSem := make(chan struct{}, opts.OperatorConcurrency)
+	g, _ := errgroup.WithContext(context.Background())
 
 	for _, op := range operators {
-		proxy.SetActive(op)
-		g, _ := errgroup.WithContext(context.Background())
-		sem := make(chan struct{}, opts.Concurrency)
+		g.Go(func() error {
+			opSem <- struct{}{}
+			defer func() { <-opSem }()
 
-		for _, tc := range cases {
-			g.Go(func() error {
-				sem <- struct{}{}
-				defer func() { <-sem }()
-				survived := runOnce(proxy.Addr(), opts.CasesDir, tc.ID)
-				mu.Lock()
-				results = append(results, CaseMutationResult{
-					CaseID:   tc.ID,
-					Title:    tc.Title,
-					Operator: op.Name(),
-					Survived: survived,
+			proxy, err := NewProxy(opts.Target)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "warn: operator %s: proxy start failed: %v\n", op.Name(), err)
+				return nil // skip this operator; don't abort others
+			}
+			defer proxy.Close()
+			proxy.SetActive(op)
+
+			caseSem := make(chan struct{}, opts.Concurrency)
+			cg, _ := errgroup.WithContext(context.Background())
+			for _, tc := range cases {
+				cg.Go(func() error {
+					caseSem <- struct{}{}
+					defer func() { <-caseSem }()
+					survived := runOnce(proxy.Addr(), opts.CasesDir, tc.ID)
+					mu.Lock()
+					results = append(results, CaseMutationResult{
+						CaseID:   tc.ID,
+						Title:    tc.Title,
+						Operator: op.Name(),
+						Survived: survived,
+					})
+					mu.Unlock()
+					return nil
 				})
-				mu.Unlock()
-				return nil
-			})
-		}
-		_ = g.Wait()
+			}
+			_ = cg.Wait()
+			return nil
+		})
 	}
+	// goroutines always return nil (proxy failures are logged and skipped)
+	_ = g.Wait()
 
 	killed, survivors := 0, 0
 	for _, r := range results {

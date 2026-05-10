@@ -17,11 +17,13 @@ import (
 )
 
 var (
-	mutateCases       string
-	mutateTarget      string
-	mutateOutput      string
-	mutateOperators   string
-	mutateConcurrency int
+	mutateCases             string
+	mutateTarget            string
+	mutateOutput            string
+	mutateOperators         string
+	mutateReportFormat      string
+	mutateConcurrency       int
+	mutateOperatorConcurrency int
 )
 
 var mutateCmd = &cobra.Command{
@@ -48,24 +50,50 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(mutateCmd)
-	mutateCmd.Flags().StringVar(&mutateCases, "cases", "", "Directory containing index.json and .hurl files (required)")
-	_ = mutateCmd.MarkFlagRequired("cases")
-	mutateCmd.Flags().StringVar(&mutateTarget, "target", "", "API base URL, e.g. http://localhost:8080 (required)")
-	_ = mutateCmd.MarkFlagRequired("target")
+	mutateCmd.Flags().StringVar(&mutateCases, "cases", "", "Directory containing index.json and .hurl files (required when not using --history)")
+	mutateCmd.Flags().StringVar(&mutateTarget, "target", "", "API base URL, e.g. http://localhost:8080 (required when not using --history)")
 	mutateCmd.Flags().StringVar(&mutateOutput, "output", "", "Directory to write mutation-report.json (optional)")
 	mutateCmd.Flags().StringVar(&mutateOperators, "operator", "", "Comma-separated operator names to run (default: all 12)")
 	mutateCmd.Flags().String("spec", "", "OpenAPI spec file (optional; passed to LLM in Phase 2)")
 	mutateCmd.Flags().IntVar(&mutateConcurrency, "concurrency", 4, "Number of cases processed concurrently per operator")
+	mutateCmd.Flags().IntVar(&mutateOperatorConcurrency, "operator-concurrency", 2, "Number of operators to run in parallel")
+	mutateCmd.Flags().StringVar(&mutateReportFormat, "report-format", "json", `Comma-separated report formats: json,markdown,html,all`)
+	mutateCmd.Flags().Bool("history", false, "Print mutation score history (does not run mutations; --target not required)")
+	mutateCmd.Flags().Int("history-limit", 10, "Maximum number of historical runs to display")
 	mutateCmd.Flags().Bool("feedback", false, "Run LLM feedback analysis on survivors (requires LLM provider in .caseforge.yaml)")
 	mutateCmd.Flags().Bool("auto-fix", false, "Patch index.json with suggested assertions (requires --feedback)")
 	mutateCmd.Flags().Bool("yes", false, "Skip confirmation prompt for --auto-fix")
 }
 
 func runMutate(cmd *cobra.Command, _ []string) error {
+	if historyFlag, _ := cmd.Flags().GetBool("history"); historyFlag {
+		limit, _ := cmd.Flags().GetInt("history-limit")
+		runs, err := mutation.LoadHistory("", limit)
+		if err != nil {
+			return fmt.Errorf("loading history: %w", err)
+		}
+		fmt.Fprint(cmd.OutOrStdout(), mutation.RenderHistory(runs))
+		return nil
+	}
+
+	// --cases and --target are required when not using --history
+	if mutateCases == "" {
+		return fmt.Errorf("required flag \"cases\" not set")
+	}
+	if mutateTarget == "" {
+		return fmt.Errorf("required flag \"target\" not set")
+	}
+
 	feedbackFlag, _ := cmd.Flags().GetBool("feedback")
 	autoFixFlag, _ := cmd.Flags().GetBool("auto-fix")
 	if autoFixFlag && !feedbackFlag {
 		return fmt.Errorf("--auto-fix requires --feedback")
+	}
+
+	// Validate --report-format unconditionally so a typo is always caught early.
+	reportFormats, err := parseReportFormats(mutateReportFormat)
+	if err != nil {
+		return err
 	}
 
 	ops, err := resolveOperators(mutateOperators)
@@ -77,10 +105,11 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintf(out, "Running %d operator(s) × cases in %s...\n", len(ops), mutateCases)
 
 	opts := mutation.RunOptions{
-		Target:      mutateTarget,
-		CasesDir:    mutateCases,
-		Operators:   ops,
-		Concurrency: mutateConcurrency,
+		Target:              mutateTarget,
+		CasesDir:            mutateCases,
+		Operators:           ops,
+		Concurrency:         mutateConcurrency,
+		OperatorConcurrency: mutateOperatorConcurrency,
 	}
 
 	run, err := mutation.Run(opts)
@@ -146,11 +175,16 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	_ = mutation.Persist("", run)
 
 	if mutateOutput != "" {
-		if err := mutation.WriteReport(mutateOutput, run); err != nil {
+		if err := mutation.WriteReport(mutateOutput, run, reportFormats); err != nil {
 			return fmt.Errorf("writing report: %w", err)
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",
-			filepath.Join(mutateOutput, "mutation-report.json"))
+		extMap := map[string]string{"json": ".json", "markdown": ".md", "html": ".html"}
+		for _, f := range reportFormats {
+			if ext, ok := extMap[f]; ok {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",
+					filepath.Join(mutateOutput, "mutation-report"+ext))
+			}
+		}
 	}
 
 	if run.Survivors > 0 {
@@ -221,4 +255,40 @@ func countSuggestions(items []mutation.FeedbackItem) int {
 		n += len(item.SuggestedAssertions)
 	}
 	return n
+}
+
+// parseReportFormats splits the comma-separated format string, expands "all"
+// to ["json", "markdown", "html"], and deduplicates. Returns ["json"] if empty.
+// Returns an error for unrecognized format names.
+func parseReportFormats(s string) ([]string, error) {
+	if s == "" {
+		return []string{"json"}, nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	for fmtName := range strings.SplitSeq(s, ",") {
+		fmtName = strings.ToLower(strings.TrimSpace(fmtName))
+		if fmtName == "all" {
+			for _, fn := range []string{"json", "markdown", "html"} {
+				if !seen[fn] {
+					seen[fn] = true
+					out = append(out, fn)
+				}
+			}
+		} else if fmtName != "" {
+			switch fmtName {
+			case "json", "markdown", "html":
+				if !seen[fmtName] {
+					seen[fmtName] = true
+					out = append(out, fmtName)
+				}
+			default:
+				return nil, fmt.Errorf("unknown report format %q; valid: json, markdown, html, all", fmtName)
+			}
+		}
+	}
+	if len(out) == 0 {
+		return []string{"json"}, nil
+	}
+	return out, nil
 }

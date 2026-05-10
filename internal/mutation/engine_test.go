@@ -117,3 +117,57 @@ func TestEngineRun_NoHurlFiles(t *testing.T) {
 		t.Fatalf("expected 1 total run, got %d", run.TotalRuns)
 	}
 }
+
+func TestEngineRun_TwoOperatorsParallel(t *testing.T) {
+	if _, err := exec.LookPath("hurl"); err != nil {
+		t.Skip("hurl not installed")
+	}
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"id":1}`))
+	}))
+	defer backend.Close()
+
+	dir := t.TempDir()
+	buildTestHurlFile(t, dir, "TC-PAR", "GET {{base_url}}/\nHTTP 200\n")
+	buildTestIndexJSON(t, dir, "TC-PAR", "parallel test")
+
+	opts := mutation.RunOptions{
+		Target:              backend.URL,
+		CasesDir:            dir,
+		Operators:           []mutation.Operator{mutation.NewFieldDropOperator(), mutation.NewStatusSwap2xxOperator()},
+		Concurrency:         1,
+		OperatorConcurrency: 2,
+	}
+	run, err := mutation.Run(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.TotalRuns != 2 {
+		t.Fatalf("expected 2 total runs (2 operators × 1 case), got %d", run.TotalRuns)
+	}
+	ops := map[string]bool{}
+	for _, r := range run.Results {
+		ops[r.Operator] = true
+	}
+	if !ops["field_drop"] || !ops["status_swap_2xx"] {
+		t.Error("both operators must appear in results when run with OperatorConcurrency=2")
+	}
+}
+
+func TestEngineRun_OperatorConcurrencyZeroDefault(t *testing.T) {
+	dir := t.TempDir()
+	buildTestIndexJSON(t, dir, "TC-DEF", "defaults test")
+	opts := mutation.RunOptions{
+		Target:              "http://127.0.0.1:1",
+		CasesDir:            dir,
+		Operators:           []mutation.Operator{mutation.NewFieldDropOperator()},
+		Concurrency:         1,
+		OperatorConcurrency: 0, // must not panic; defaults to 2
+	}
+	_, err := mutation.Run(opts)
+	if err != nil {
+		t.Fatal(err) // missing hurl file is OK (returns killed), no panic expected
+	}
+}

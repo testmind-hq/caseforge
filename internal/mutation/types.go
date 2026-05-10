@@ -63,16 +63,20 @@ type MutationRun struct {
 
 // RunOptions configures a mutation run.
 type RunOptions struct {
-	Target      string
-	CasesDir    string
-	OutputDir   string
-	Operators   []Operator
-	Concurrency int
+	Target              string
+	CasesDir            string
+	OutputDir           string
+	Operators           []Operator
+	Concurrency         int // cases per operator (default 4)
+	OperatorConcurrency int // operators in parallel (default 2)
 }
 
 func (o *RunOptions) setDefaults() {
 	if o.Concurrency <= 0 {
 		o.Concurrency = 4
+	}
+	if o.OperatorConcurrency <= 0 {
+		o.OperatorConcurrency = 2
 	}
 }
 

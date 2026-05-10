@@ -47,7 +47,7 @@ func TestTextSummary(t *testing.T) {
 func TestWriteReport(t *testing.T) {
 	dir := t.TempDir()
 	run := sampleRun()
-	if err := mutation.WriteReport(dir, run); err != nil {
+	if err := mutation.WriteReport(dir, run, []string{"json"}); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "mutation-report.json"))
@@ -60,6 +60,78 @@ func TestWriteReport(t *testing.T) {
 	}
 	if decoded.Survivors != 2 {
 		t.Fatalf("expected 2 survivors in report, got %d", decoded.Survivors)
+	}
+}
+
+func TestWriteReport_Markdown(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	run.Clusters = mutation.ClusterSurvivors(run)
+	if err := mutation.WriteReport(dir, run, []string{"markdown"}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "mutation-report.md"))
+	if err != nil {
+		t.Fatalf("mutation-report.md not created: %v", err)
+	}
+	if !strings.Contains(string(data), "Mutation Score") {
+		t.Error("mutation-report.md must contain 'Mutation Score'")
+	}
+}
+
+func TestWriteReport_HTML(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	run.Clusters = mutation.ClusterSurvivors(run)
+	if err := mutation.WriteReport(dir, run, []string{"html"}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "mutation-report.html"))
+	if err != nil {
+		t.Fatalf("mutation-report.html not created: %v", err)
+	}
+	if !strings.Contains(string(data), "<table") {
+		t.Error("mutation-report.html must contain a table")
+	}
+}
+
+func TestWriteReport_All(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	run.Clusters = mutation.ClusterSurvivors(run)
+	if err := mutation.WriteReport(dir, run, []string{"json", "markdown", "html"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"mutation-report.json", "mutation-report.md", "mutation-report.html"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("expected %s to exist: %v", name, err)
+		}
+	}
+}
+
+func TestWriteReport_AllKeyword(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	run.Clusters = mutation.ClusterSurvivors(run)
+	if err := mutation.WriteReport(dir, run, []string{"all"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"mutation-report.json", "mutation-report.md", "mutation-report.html"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("\"all\" keyword: expected %s to exist: %v", name, err)
+		}
+	}
+}
+
+func TestWriteReport_UnknownFormat(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	err := mutation.WriteReport(dir, run, []string{"pdf"})
+	if err == nil {
+		t.Fatal("expected error for unknown format, got nil")
+	}
+	if !strings.Contains(err.Error(), "pdf") {
+		t.Errorf("error should name the bad format, got: %v", err)
 	}
 }
 
