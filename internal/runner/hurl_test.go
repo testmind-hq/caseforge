@@ -58,13 +58,11 @@ func TestHurlRunnerNoBinary(t *testing.T) {
 }
 
 func TestBuildRunResult(t *testing.T) {
-	reportJSON := `{
-		"entries": [
-			{"filename": "TC-abc.hurl", "success": true},
-			{"filename": "TC-def.hurl", "success": false},
-			{"filename": "TC-ghi.hurl", "success": true}
-		]
-	}`
+	reportJSON := `[
+		{"filename": "TC-abc.hurl", "success": true},
+		{"filename": "TC-def.hurl", "success": false},
+		{"filename": "TC-ghi.hurl", "success": true}
+	]`
 	result := buildRunResult([]byte(reportJSON))
 	assert.Equal(t, 2, result.Passed)
 	assert.Equal(t, 1, result.Failed)
