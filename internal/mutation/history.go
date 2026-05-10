@@ -80,7 +80,7 @@ func RenderHistory(runs []MutationRun) string {
 			if diff > 0 {
 				delta = fmt.Sprintf("↑+%d%%", diff)
 			} else if diff < 0 {
-				delta = fmt.Sprintf("↓%d%%", diff)
+				delta = fmt.Sprintf("↓%d%%", -diff)
 			} else {
 				delta = "—"
 			}

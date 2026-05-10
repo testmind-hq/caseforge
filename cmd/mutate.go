@@ -90,14 +90,10 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--auto-fix requires --feedback")
 	}
 
-	// Validate --report-format early so a bad value fails before the run starts.
-	var reportFormats []string
-	if mutateOutput != "" {
-		var fmtErr error
-		reportFormats, fmtErr = parseReportFormats(mutateReportFormat)
-		if fmtErr != nil {
-			return fmtErr
-		}
+	// Validate --report-format unconditionally so a typo is always caught early.
+	reportFormats, err := parseReportFormats(mutateReportFormat)
+	if err != nil {
+		return err
 	}
 
 	ops, err := resolveOperators(mutateOperators)

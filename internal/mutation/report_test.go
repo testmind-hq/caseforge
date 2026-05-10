@@ -123,6 +123,18 @@ func TestWriteReport_AllKeyword(t *testing.T) {
 	}
 }
 
+func TestWriteReport_UnknownFormat(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	err := mutation.WriteReport(dir, run, []string{"pdf"})
+	if err == nil {
+		t.Fatal("expected error for unknown format, got nil")
+	}
+	if !strings.Contains(err.Error(), "pdf") {
+		t.Errorf("error should name the bad format, got: %v", err)
+	}
+}
+
 func TestPersist(t *testing.T) {
 	dir := t.TempDir()
 	run := sampleRun()

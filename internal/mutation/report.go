@@ -63,6 +63,8 @@ func WriteReport(outputDir string, run MutationRun, formats []string) error {
 				[]byte(RenderHTML(run)), 0644); err != nil {
 				return err
 			}
+		default:
+			return fmt.Errorf("unknown report format %q", f)
 		}
 	}
 	return nil

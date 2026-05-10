@@ -96,16 +96,24 @@ func TestRenderHistory_Empty(t *testing.T) {
 
 func TestRenderHistory_Trend(t *testing.T) {
 	runs := []mutation.MutationRun{
+		{GeneratedAt: "2026-05-04T12:00:00Z", TotalRuns: 10, Killed: 6, MutationScore: 0.6},
 		{GeneratedAt: "2026-05-03T12:00:00Z", TotalRuns: 10, Killed: 8, MutationScore: 0.8},
 		{GeneratedAt: "2026-05-02T12:00:00Z", TotalRuns: 10, Killed: 6, MutationScore: 0.6},
 		{GeneratedAt: "2026-05-01T12:00:00Z", TotalRuns: 10, Killed: 6, MutationScore: 0.6},
 	}
 	out := mutation.RenderHistory(runs)
-	// First run (newest) should show ↑+20% compared to second
+	// Second run (80%) vs third (60%) → increase: ↑+20%
 	if !strings.Contains(out, "↑+20%") {
 		t.Errorf("expected ↑+20%% delta, got:\n%s", out)
 	}
-	// Second and third are equal → show —
+	// First run (60%) vs second (80%) → decrease: ↓20% (no minus sign)
+	if !strings.Contains(out, "↓20%") {
+		t.Errorf("expected ↓20%% delta (no minus sign), got:\n%s", out)
+	}
+	if strings.Contains(out, "↓-") {
+		t.Errorf("delta must not contain redundant minus after ↓, got:\n%s", out)
+	}
+	// Third and fourth are equal → show —
 	if !strings.Contains(out, "—") {
 		t.Errorf("expected — delta for equal scores, got:\n%s", out)
 	}
