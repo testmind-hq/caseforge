@@ -1661,6 +1661,40 @@ fi
 # AT-404: --operator-concurrency flag registered
 contains "AT-404" "operator-concurrency flag in help" "operator-concurrency" "'$BIN' mutate --help"
 
+# AT-405 – AT-407: --report-format flag
+# ─────────────────────────────────────────────────────────────────────────────
+
+echo "# AT-405 – AT-407: report-format flag"
+
+# AT-405: --report-format flag registered
+contains "AT-405" "report-format flag in help" "report-format" "'$BIN' mutate --help"
+
+# AT-406 & AT-407: markdown report written and contains expected content
+if command -v hurl >/dev/null 2>&1; then
+  AT406_CASES=$(mktemp -d)
+  AT406_REPORT=$(mktemp -d)
+  "$BIN" gen --spec "$WORKDIR/petstore.yaml" --no-ai \
+    --technique equivalence_partitioning \
+    --format hurl --output "$AT406_CASES" >/dev/null 2>&1
+
+  run "AT-406" "mutate --report-format markdown creates mutation-report.md" \
+    "PORT406=\$(random_port)
+     '$BIN' sandbox --spec '$WORKDIR/petstore.yaml' --port \$PORT406 >/dev/null 2>&1 &
+     SBX406_PID=\$!
+     for i in \$(seq 1 20); do curl -sf http://127.0.0.1:\$PORT406/pets >/dev/null 2>&1 && break; sleep 0.1; done
+     '$BIN' mutate --cases '$AT406_CASES' --target \"http://127.0.0.1:\$PORT406\" --output '$AT406_REPORT' --report-format markdown --operator field_drop || true
+     kill \$SBX406_PID 2>/dev/null || true
+     test -f '$AT406_REPORT/mutation-report.md'"
+
+  contains "AT-407" "mutation-report.md contains Mutation Score" "Mutation Score" \
+    "cat '$AT406_REPORT/mutation-report.md'"
+
+  rm -rf "$AT406_CASES" "$AT406_REPORT"
+else
+  skip "AT-406" "mutate markdown report" "hurl not installed"
+  skip "AT-407" "mutation-report.md content" "hurl not installed"
+fi
+
 echo ""
 
 # -------------------------------------------------------
