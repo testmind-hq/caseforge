@@ -56,7 +56,6 @@ func Run(opts RunOptions) (MutationRun, error) {
 		sem := make(chan struct{}, opts.Concurrency)
 
 		for _, tc := range cases {
-			tc := tc
 			g.Go(func() error {
 				sem <- struct{}{}
 				defer func() { <-sem }()
