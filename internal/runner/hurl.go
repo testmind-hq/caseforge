@@ -16,11 +16,10 @@ type HurlRunner struct{}
 
 func NewHurlRunner() *HurlRunner { return &HurlRunner{} }
 
-type hurlReport struct {
-	Entries []struct {
-		Filename string `json:"filename"`
-		Success  bool   `json:"success"`
-	} `json:"entries"`
+// hurlReportFile represents one file entry in the hurl JSON report array.
+type hurlReportFile struct {
+	Filename string `json:"filename"`
+	Success  bool   `json:"success"`
 }
 
 // Run executes all .hurl files in casesDir and returns a RunResult.
@@ -71,12 +70,12 @@ func (r *HurlRunner) Run(casesDir string, vars map[string]string) (RunResult, er
 }
 
 func buildRunResult(data []byte) RunResult {
-	var report hurlReport
-	if err := json.Unmarshal(data, &report); err != nil {
+	var files []hurlReportFile
+	if err := json.Unmarshal(data, &files); err != nil {
 		return RunResult{}
 	}
 	result := RunResult{}
-	for _, e := range report.Entries {
+	for _, e := range files {
 		id := strings.TrimSuffix(filepath.Base(e.Filename), ".hurl")
 		result.Cases = append(result.Cases, CaseResult{ID: id, Title: id, Passed: e.Success})
 		if e.Success {

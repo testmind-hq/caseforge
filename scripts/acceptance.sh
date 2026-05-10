@@ -1623,6 +1623,41 @@ else
   skip "AT-303" "gen --with-sandbox end-to-end" "hurl not installed"
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# AT-401 – AT-403: mutate command
+# ─────────────────────────────────────────────────────────────────────────────
+
+echo "# AT-401 – AT-403: mutate"
+
+# AT-401: mutate --help mentions "mutation"
+contains "AT-401" "mutate command is registered" "mutation" "'$BIN' mutate --help"
+
+# AT-402: mutate without required flags returns non-zero
+run "AT-402" "mutate requires --cases and --target" \
+  "! '$BIN' mutate >/dev/null 2>&1"
+
+# AT-403: full mutation run against sandbox (skipped when hurl not installed)
+if command -v hurl >/dev/null 2>&1; then
+  AT403_CASES=$(mktemp -d)
+  AT403_REPORT=$(mktemp -d)
+  "$BIN" gen --spec "$WORKDIR/petstore.yaml" --no-ai \
+    --technique equivalence_partitioning \
+    --format hurl --output "$AT403_CASES" >/dev/null 2>&1
+
+  run "AT-403" "mutate runs against sandbox and writes report" \
+    "PORT403=\$(random_port)
+     '$BIN' sandbox --spec '$WORKDIR/petstore.yaml' --port \$PORT403 >/dev/null 2>&1 &
+     SBX403_PID=\$!
+     for i in \$(seq 1 20); do curl -sf http://127.0.0.1:\$PORT403/pets >/dev/null 2>&1 && break; sleep 0.1; done
+     '$BIN' mutate --cases '$AT403_CASES' --target \"http://127.0.0.1:\$PORT403\" --output '$AT403_REPORT' --operator field_drop || true
+     kill \$SBX403_PID 2>/dev/null || true
+     test -f '$AT403_REPORT/mutation-report.json'"
+
+  rm -rf "$AT403_CASES" "$AT403_REPORT"
+else
+  skip "AT-403" "mutate full end-to-end" "hurl not installed"
+fi
+
 echo ""
 
 # -------------------------------------------------------
