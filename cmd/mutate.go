@@ -50,22 +50,40 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(mutateCmd)
-	mutateCmd.Flags().StringVar(&mutateCases, "cases", "", "Directory containing index.json and .hurl files (required)")
-	_ = mutateCmd.MarkFlagRequired("cases")
-	mutateCmd.Flags().StringVar(&mutateTarget, "target", "", "API base URL, e.g. http://localhost:8080 (required)")
-	_ = mutateCmd.MarkFlagRequired("target")
+	mutateCmd.Flags().StringVar(&mutateCases, "cases", "", "Directory containing index.json and .hurl files (required when not using --history)")
+	mutateCmd.Flags().StringVar(&mutateTarget, "target", "", "API base URL, e.g. http://localhost:8080 (required when not using --history)")
 	mutateCmd.Flags().StringVar(&mutateOutput, "output", "", "Directory to write mutation-report.json (optional)")
 	mutateCmd.Flags().StringVar(&mutateOperators, "operator", "", "Comma-separated operator names to run (default: all 12)")
 	mutateCmd.Flags().String("spec", "", "OpenAPI spec file (optional; passed to LLM in Phase 2)")
 	mutateCmd.Flags().IntVar(&mutateConcurrency, "concurrency", 4, "Number of cases processed concurrently per operator")
 	mutateCmd.Flags().IntVar(&mutateOperatorConcurrency, "operator-concurrency", 2, "Number of operators to run in parallel")
 	mutateCmd.Flags().StringVar(&mutateReportFormat, "report-format", "json", `Comma-separated report formats: json,markdown,html,all`)
+	mutateCmd.Flags().Bool("history", false, "Print mutation score history (does not run mutations; --target not required)")
+	mutateCmd.Flags().Int("history-limit", 10, "Maximum number of historical runs to display")
 	mutateCmd.Flags().Bool("feedback", false, "Run LLM feedback analysis on survivors (requires LLM provider in .caseforge.yaml)")
 	mutateCmd.Flags().Bool("auto-fix", false, "Patch index.json with suggested assertions (requires --feedback)")
 	mutateCmd.Flags().Bool("yes", false, "Skip confirmation prompt for --auto-fix")
 }
 
 func runMutate(cmd *cobra.Command, _ []string) error {
+	if historyFlag, _ := cmd.Flags().GetBool("history"); historyFlag {
+		limit, _ := cmd.Flags().GetInt("history-limit")
+		runs, err := mutation.LoadHistory("", limit)
+		if err != nil {
+			return fmt.Errorf("loading history: %w", err)
+		}
+		fmt.Fprint(cmd.OutOrStdout(), mutation.RenderHistory(runs))
+		return nil
+	}
+
+	// --cases and --target are required when not using --history
+	if mutateCases == "" {
+		return fmt.Errorf("required flag \"cases\" not set")
+	}
+	if mutateTarget == "" {
+		return fmt.Errorf("required flag \"target\" not set")
+	}
+
 	feedbackFlag, _ := cmd.Flags().GetBool("feedback")
 	autoFixFlag, _ := cmd.Flags().GetBool("auto-fix")
 	if autoFixFlag && !feedbackFlag {
