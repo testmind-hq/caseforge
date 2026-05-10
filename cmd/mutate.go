@@ -90,6 +90,16 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--auto-fix requires --feedback")
 	}
 
+	// Validate --report-format early so a bad value fails before the run starts.
+	var reportFormats []string
+	if mutateOutput != "" {
+		var fmtErr error
+		reportFormats, fmtErr = parseReportFormats(mutateReportFormat)
+		if fmtErr != nil {
+			return fmtErr
+		}
+	}
+
 	ops, err := resolveOperators(mutateOperators)
 	if err != nil {
 		return err
@@ -169,12 +179,11 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	_ = mutation.Persist("", run)
 
 	if mutateOutput != "" {
-		formats := parseReportFormats(mutateReportFormat)
-		if err := mutation.WriteReport(mutateOutput, run, formats); err != nil {
+		if err := mutation.WriteReport(mutateOutput, run, reportFormats); err != nil {
 			return fmt.Errorf("writing report: %w", err)
 		}
 		extMap := map[string]string{"json": ".json", "markdown": ".md", "html": ".html"}
-		for _, f := range formats {
+		for _, f := range reportFormats {
 			if ext, ok := extMap[f]; ok {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",
 					filepath.Join(mutateOutput, "mutation-report"+ext))
@@ -254,9 +263,10 @@ func countSuggestions(items []mutation.FeedbackItem) int {
 
 // parseReportFormats splits the comma-separated format string, expands "all"
 // to ["json", "markdown", "html"], and deduplicates. Returns ["json"] if empty.
-func parseReportFormats(s string) []string {
+// Returns an error for unrecognized format names.
+func parseReportFormats(s string) ([]string, error) {
 	if s == "" {
-		return []string{"json"}
+		return []string{"json"}, nil
 	}
 	seen := map[string]bool{}
 	var out []string
@@ -269,13 +279,20 @@ func parseReportFormats(s string) []string {
 					out = append(out, fn)
 				}
 			}
-		} else if fmtName != "" && !seen[fmtName] {
-			seen[fmtName] = true
-			out = append(out, fmtName)
+		} else if fmtName != "" {
+			switch fmtName {
+			case "json", "markdown", "html":
+				if !seen[fmtName] {
+					seen[fmtName] = true
+					out = append(out, fmtName)
+				}
+			default:
+				return nil, fmt.Errorf("unknown report format %q; valid: json, markdown, html, all", fmtName)
+			}
 		}
 	}
 	if len(out) == 0 {
-		return []string{"json"}
+		return []string{"json"}, nil
 	}
-	return out
+	return out, nil
 }

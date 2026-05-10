@@ -28,14 +28,18 @@ func LoadHistory(baseDir string, limit int) ([]MutationRun, error) {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Name() > entries[j].Name()
 	})
-	if limit > 0 && len(entries) > limit {
-		entries = entries[:limit]
-	}
-	runs := make([]MutationRun, 0, len(entries))
+	// filter to .json only before applying limit so non-JSON files don't count
+	var jsonEntries []os.DirEntry
 	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".json") {
-			continue
+		if strings.HasSuffix(e.Name(), ".json") {
+			jsonEntries = append(jsonEntries, e)
 		}
+	}
+	if limit > 0 && len(jsonEntries) > limit {
+		jsonEntries = jsonEntries[:limit]
+	}
+	runs := make([]MutationRun, 0, len(jsonEntries))
+	for _, e := range jsonEntries {
 		data, err := os.ReadFile(filepath.Join(baseDir, e.Name()))
 		if err != nil {
 			continue // skip unreadable files
