@@ -1695,6 +1695,42 @@ else
   skip "AT-407" "mutation-report.md content" "hurl not installed"
 fi
 
+# AT-408 – AT-409: --history flag
+# ─────────────────────────────────────────────────────────────────────────────
+
+echo "# AT-408 – AT-409: history flag"
+
+# AT-408: --history flag registered in help
+contains "AT-408" "history flag in help" "history" "'$BIN' mutate --help"
+
+# AT-409: after one mutate run, --history prints "Mutation History"
+if command -v hurl >/dev/null 2>&1; then
+  AT409_CASES=$(mktemp -d)
+  AT409_RUNS=$(mktemp -d)
+  "$BIN" gen --spec "$WORKDIR/petstore.yaml" --no-ai \
+    --technique equivalence_partitioning \
+    --format hurl --output "$AT409_CASES" >/dev/null 2>&1
+
+  PORT409=$(random_port)
+  "$BIN" sandbox --spec "$WORKDIR/petstore.yaml" --port $PORT409 >/dev/null 2>&1 &
+  SBX409_PID=$!
+  for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT409/pets" >/dev/null 2>&1 && break; sleep 0.1; done
+
+  # Run mutate to create a history entry (persist writes to .caseforge/mutation/runs in cwd)
+  AT409_WORKDIR=$(mktemp -d)
+  (cd "$AT409_WORKDIR" && "$BIN" mutate --cases "$AT409_CASES" \
+    --target "http://127.0.0.1:$PORT409" --operator field_drop || true) >/dev/null 2>&1
+
+  kill $SBX409_PID 2>/dev/null || true
+
+  contains "AT-409" "--history prints Mutation History after a run" "Mutation History" \
+    "(cd '$AT409_WORKDIR' && '$BIN' mutate --history)"
+
+  rm -rf "$AT409_CASES" "$AT409_WORKDIR"
+else
+  skip "AT-409" "--history after mutate run" "hurl not installed"
+fi
+
 echo ""
 
 # -------------------------------------------------------
