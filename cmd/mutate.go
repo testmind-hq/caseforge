@@ -17,11 +17,12 @@ import (
 )
 
 var (
-	mutateCases       string
-	mutateTarget      string
-	mutateOutput      string
-	mutateOperators   string
-	mutateConcurrency int
+	mutateCases             string
+	mutateTarget            string
+	mutateOutput            string
+	mutateOperators         string
+	mutateConcurrency       int
+	mutateOperatorConcurrency int
 )
 
 var mutateCmd = &cobra.Command{
@@ -56,6 +57,7 @@ func init() {
 	mutateCmd.Flags().StringVar(&mutateOperators, "operator", "", "Comma-separated operator names to run (default: all 12)")
 	mutateCmd.Flags().String("spec", "", "OpenAPI spec file (optional; passed to LLM in Phase 2)")
 	mutateCmd.Flags().IntVar(&mutateConcurrency, "concurrency", 4, "Number of cases processed concurrently per operator")
+	mutateCmd.Flags().IntVar(&mutateOperatorConcurrency, "operator-concurrency", 2, "Number of operators to run in parallel")
 	mutateCmd.Flags().Bool("feedback", false, "Run LLM feedback analysis on survivors (requires LLM provider in .caseforge.yaml)")
 	mutateCmd.Flags().Bool("auto-fix", false, "Patch index.json with suggested assertions (requires --feedback)")
 	mutateCmd.Flags().Bool("yes", false, "Skip confirmation prompt for --auto-fix")
@@ -77,10 +79,11 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintf(out, "Running %d operator(s) × cases in %s...\n", len(ops), mutateCases)
 
 	opts := mutation.RunOptions{
-		Target:      mutateTarget,
-		CasesDir:    mutateCases,
-		Operators:   ops,
-		Concurrency: mutateConcurrency,
+		Target:              mutateTarget,
+		CasesDir:            mutateCases,
+		Operators:           ops,
+		Concurrency:         mutateConcurrency,
+		OperatorConcurrency: mutateOperatorConcurrency,
 	}
 
 	run, err := mutation.Run(opts)
