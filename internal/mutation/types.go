@@ -15,10 +15,11 @@ type Operator interface {
 
 // CaseMutationResult records whether one operator survived against one test case.
 type CaseMutationResult struct {
-	CaseID   string `json:"case_id"`
-	Title    string `json:"title"`
-	Operator string `json:"operator"`
-	Survived bool   `json:"survived"` // true = mutation was not caught by assertions
+	CaseID    string `json:"case_id"`
+	Title     string `json:"title"`
+	Operation string `json:"operation"` // from source.spec_path; "(unknown)" if absent
+	Operator  string `json:"operator"`
+	Survived  bool   `json:"survived"` // true = mutation was not caught by assertions
 }
 
 // SurvivorCluster groups all operators that survived a single test case.
@@ -27,6 +28,15 @@ type SurvivorCluster struct {
 	Title     string   `json:"title"`
 	Operators []string `json:"operators"`
 	RiskScore float64  `json:"risk_score"` // len(Operators) / total operators in run
+}
+
+// OperationScore holds the per-operation mutation score breakdown.
+type OperationScore struct {
+	Operation     string  `json:"operation"`      // "METHOD /path"
+	TotalRuns     int     `json:"total_runs"`
+	Killed        int     `json:"killed"`
+	Survivors     int     `json:"survivors"`
+	MutationScore float64 `json:"mutation_score"` // killed / total_runs
 }
 
 // SuggestedAssertion is one LLM-suggested assertion to add to an existing test case.
@@ -55,10 +65,11 @@ type MutationRun struct {
 	Killed        int                  `json:"killed"`
 	Survivors     int                  `json:"survivors"`
 	MutationScore float64              `json:"mutation_score"` // killed / total_runs
-	Results       []CaseMutationResult `json:"results"`
-	Clusters      []SurvivorCluster    `json:"clusters,omitempty"` // Phase 2
-	Feedback      []FeedbackItem       `json:"feedback,omitempty"` // Phase 2
-	GeneratedAt   string               `json:"generated_at"`
+	Results         []CaseMutationResult `json:"results"`
+	Clusters        []SurvivorCluster    `json:"clusters,omitempty"` // Phase 2
+	OperationScores []OperationScore    `json:"operation_scores,omitempty"`
+	Feedback        []FeedbackItem      `json:"feedback,omitempty"` // Phase 2
+	GeneratedAt     string              `json:"generated_at"`
 }
 
 // RunOptions configures a mutation run.
