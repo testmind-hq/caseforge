@@ -87,8 +87,8 @@ func TestContentTypeSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Header.Get("Content-Type") != "text/plain" {
-		t.Fatalf("expected text/plain, got %s", r.Header.Get("Content-Type"))
+	if r.Header.Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Fatalf("expected text/plain; charset=utf-8, got %s", r.Header.Get("Content-Type"))
 	}
 }
 

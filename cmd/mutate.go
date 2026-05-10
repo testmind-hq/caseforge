@@ -62,6 +62,12 @@ func init() {
 }
 
 func runMutate(cmd *cobra.Command, _ []string) error {
+	autoFixFlag, _ := cmd.Flags().GetBool("auto-fix")
+	feedbackFlagCheck, _ := cmd.Flags().GetBool("feedback")
+	if autoFixFlag && !feedbackFlagCheck {
+		return fmt.Errorf("--auto-fix requires --feedback")
+	}
+
 	ops, err := resolveOperators(mutateOperators)
 	if err != nil {
 		return err
@@ -87,7 +93,9 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	feedbackFlag, _ := cmd.Flags().GetBool("feedback")
 	if feedbackFlag && run.Survivors > 0 {
 		cfg, cfgErr := config.Load()
-		if cfgErr == nil {
+		if cfgErr != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warn: --feedback: failed to load config: %v\n", cfgErr)
+		} else {
 			provider := llm.NewProviderWithConfig(llm.ProviderConfig{
 				APIKey:   cfg.AI.APIKey,
 				Provider: cfg.AI.Provider,

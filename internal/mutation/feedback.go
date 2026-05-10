@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/testmind-hq/caseforge/internal/llm"
+	"github.com/testmind-hq/caseforge/internal/output/render"
+	"github.com/testmind-hq/caseforge/internal/output/writer"
 )
 
 // Analyze runs LLM OC-prompting on survivor clusters and returns FeedbackItems.
@@ -26,6 +28,7 @@ func Analyze(ctx context.Context, run MutationRun, provider llm.LLMProvider) ([]
 	for _, cluster := range run.Clusters {
 		item, err := analyzeCluster(ctx, cluster, provider)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: feedback for %s: %v\n", cluster.CaseID, err)
 			continue
 		}
 		items = append(items, item)
@@ -174,5 +177,14 @@ func PatchIndex(casesDir string, items []FeedbackItem) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(indexPath, out, 0644)
+	if err := os.WriteFile(indexPath, out, 0644); err != nil {
+		return err
+	}
+
+	// Re-render .hurl files so patched assertions take effect
+	cases, err := writer.NewJSONSchemaWriter().Read(indexPath)
+	if err != nil {
+		return fmt.Errorf("reading patched index.json: %w", err)
+	}
+	return render.NewHurlRenderer("").Render(cases, casesDir)
 }

@@ -1,7 +1,11 @@
 // internal/mutation/operator_status.go
 package mutation
 
-import "net/http"
+import (
+	"net/http"
+	"sort"
+	"strings"
+)
 
 // --- StatusSwap2xxOperator ---
 
@@ -44,9 +48,9 @@ func NewContentTypeSwapOperator() Operator { return &contentTypeSwapOperator{} }
 func (o *contentTypeSwapOperator) Name() string { return "content_type_swap" }
 
 func (o *contentTypeSwapOperator) Apply(resp *http.Response, body []byte) ([]byte, error) {
-	ct := resp.Header.Get("Content-Type")
-	if ct == "application/json" || ct == "application/json; charset=utf-8" {
-		resp.Header.Set("Content-Type", "text/plain")
+	ct := strings.ToLower(resp.Header.Get("Content-Type"))
+	if strings.HasPrefix(ct, "application/json") {
+		resp.Header.Set("Content-Type", "text/plain; charset=utf-8")
 	}
 	return body, nil
 }
@@ -66,12 +70,15 @@ func NewHeaderDropOperator() Operator { return &headerDropOperator{} }
 func (o *headerDropOperator) Name() string { return "header_drop" }
 
 func (o *headerDropOperator) Apply(resp *http.Response, body []byte) ([]byte, error) {
+	keys := make([]string, 0, len(resp.Header))
 	for k := range resp.Header {
-		if skipHeaders[k] {
-			continue
+		if !skipHeaders[k] {
+			keys = append(keys, k)
 		}
-		resp.Header.Del(k)
-		return body, nil
+	}
+	sort.Strings(keys)
+	if len(keys) > 0 {
+		resp.Header.Del(keys[0])
 	}
 	return body, nil
 }

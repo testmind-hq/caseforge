@@ -4,6 +4,7 @@ package mutation
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -197,7 +198,7 @@ func (o *numericPrecisionLossOperator) Apply(_ *http.Response, body []byte) ([]b
 
 // --- shared helper ---
 
-// parseObjectBody decodes body as a JSON object and returns the map and a stable key slice.
+// parseObjectBody decodes body as a JSON object and returns the map and a sorted key slice.
 func parseObjectBody(body []byte) (map[string]any, []string, error) {
 	var m map[string]any
 	if err := json.Unmarshal(body, &m); err != nil {
@@ -207,5 +208,6 @@ func parseObjectBody(body []byte) (map[string]any, []string, error) {
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	return m, keys, nil
 }
