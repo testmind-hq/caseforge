@@ -109,6 +109,20 @@ func TestWriteReport_All(t *testing.T) {
 	}
 }
 
+func TestWriteReport_AllKeyword(t *testing.T) {
+	dir := t.TempDir()
+	run := sampleRun()
+	run.Clusters = mutation.ClusterSurvivors(run)
+	if err := mutation.WriteReport(dir, run, []string{"all"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"mutation-report.json", "mutation-report.md", "mutation-report.html"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("\"all\" keyword: expected %s to exist: %v", name, err)
+		}
+	}
+}
+
 func TestPersist(t *testing.T) {
 	dir := t.TempDir()
 	run := sampleRun()

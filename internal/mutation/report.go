@@ -30,12 +30,20 @@ func TextSummary(run MutationRun) string {
 }
 
 // WriteReport writes mutation report files in the requested formats to outputDir.
-// formats: slice containing any of "json", "markdown", "html".
+// formats: slice of "json", "markdown", "html"; "all" expands to all three.
 func WriteReport(outputDir string, run MutationRun, formats []string) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return err
 	}
+	expanded := make([]string, 0, len(formats))
 	for _, f := range formats {
+		if f == "all" {
+			expanded = append(expanded, "json", "markdown", "html")
+		} else {
+			expanded = append(expanded, f)
+		}
+	}
+	for _, f := range expanded {
 		switch f {
 		case "json":
 			data, err := json.MarshalIndent(run, "", "  ")
