@@ -1658,6 +1658,9 @@ else
   skip "AT-403" "mutate full end-to-end" "hurl not installed"
 fi
 
+# AT-404: --operator-concurrency flag registered
+contains "AT-404" "operator-concurrency flag in help" "operator-concurrency" "'$BIN' mutate --help"
+
 echo ""
 
 # -------------------------------------------------------
