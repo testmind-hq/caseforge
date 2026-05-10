@@ -21,6 +21,7 @@ var (
 	mutateTarget            string
 	mutateOutput            string
 	mutateOperators         string
+	mutateReportFormat      string
 	mutateConcurrency       int
 	mutateOperatorConcurrency int
 )
@@ -58,6 +59,7 @@ func init() {
 	mutateCmd.Flags().String("spec", "", "OpenAPI spec file (optional; passed to LLM in Phase 2)")
 	mutateCmd.Flags().IntVar(&mutateConcurrency, "concurrency", 4, "Number of cases processed concurrently per operator")
 	mutateCmd.Flags().IntVar(&mutateOperatorConcurrency, "operator-concurrency", 2, "Number of operators to run in parallel")
+	mutateCmd.Flags().StringVar(&mutateReportFormat, "report-format", "json", `Comma-separated report formats: json,markdown,html,all`)
 	mutateCmd.Flags().Bool("feedback", false, "Run LLM feedback analysis on survivors (requires LLM provider in .caseforge.yaml)")
 	mutateCmd.Flags().Bool("auto-fix", false, "Patch index.json with suggested assertions (requires --feedback)")
 	mutateCmd.Flags().Bool("yes", false, "Skip confirmation prompt for --auto-fix")
@@ -149,11 +151,17 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	_ = mutation.Persist("", run)
 
 	if mutateOutput != "" {
-		if err := mutation.WriteReport(mutateOutput, run, []string{"json"}); err != nil {
+		formats := parseReportFormats(mutateReportFormat)
+		if err := mutation.WriteReport(mutateOutput, run, formats); err != nil {
 			return fmt.Errorf("writing report: %w", err)
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",
-			filepath.Join(mutateOutput, "mutation-report.json"))
+		extMap := map[string]string{"json": ".json", "markdown": ".md", "html": ".html"}
+		for _, f := range formats {
+			if ext, ok := extMap[f]; ok {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",
+					filepath.Join(mutateOutput, "mutation-report"+ext))
+			}
+		}
 	}
 
 	if run.Survivors > 0 {
@@ -224,4 +232,32 @@ func countSuggestions(items []mutation.FeedbackItem) int {
 		n += len(item.SuggestedAssertions)
 	}
 	return n
+}
+
+// parseReportFormats splits the comma-separated format string, expands "all"
+// to ["json", "markdown", "html"], and deduplicates. Returns ["json"] if empty.
+func parseReportFormats(s string) []string {
+	if s == "" {
+		return []string{"json"}
+	}
+	seen := map[string]bool{}
+	var out []string
+	for fmtName := range strings.SplitSeq(s, ",") {
+		fmtName = strings.ToLower(strings.TrimSpace(fmtName))
+		if fmtName == "all" {
+			for _, fn := range []string{"json", "markdown", "html"} {
+				if !seen[fn] {
+					seen[fn] = true
+					out = append(out, fn)
+				}
+			}
+		} else if fmtName != "" && !seen[fmtName] {
+			seen[fmtName] = true
+			out = append(out, fmtName)
+		}
+	}
+	if len(out) == 0 {
+		return []string{"json"}
+	}
+	return out
 }
