@@ -1733,6 +1733,48 @@ fi
 
 echo ""
 
+# AT-410 – AT-412: per-operation mutation score
+# ─────────────────────────────────────────────────────────────────────────────
+
+echo "# AT-410 – AT-412: per-operation score"
+
+# AT-410: existing flags unaffected (sanity)
+contains "AT-410" "mutate --help still contains cases flag" "cases" "'$BIN' mutate --help"
+
+# AT-411 & AT-412: full run produces per-operation data
+if command -v hurl >/dev/null 2>&1; then
+  AT411_CASES=$(mktemp -d)
+  AT411_REPORT=$(mktemp -d)
+  "$BIN" gen --spec "$WORKDIR/petstore.yaml" --no-ai \
+    --technique equivalence_partitioning \
+    --format hurl --output "$AT411_CASES" >/dev/null 2>&1
+
+  PORT411=$(random_port)
+  "$BIN" sandbox --spec "$WORKDIR/petstore.yaml" --port $PORT411 >/dev/null 2>&1 &
+  SBX411_PID=$!
+  for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT411/pets" >/dev/null 2>&1 && break; sleep 0.1; done
+
+  "$BIN" mutate --cases "$AT411_CASES" \
+    --target "http://127.0.0.1:$PORT411" \
+    --output "$AT411_REPORT" \
+    --report-format markdown,json \
+    --operator field_drop || true
+  kill $SBX411_PID 2>/dev/null || true
+
+  contains "AT-411" "mutation-report.md contains Per-Operation" "Per-Operation" \
+    "cat '$AT411_REPORT/mutation-report.md'"
+
+  contains "AT-412" "mutation-report.json contains operation_scores" "operation_scores" \
+    "cat '$AT411_REPORT/mutation-report.json'"
+
+  rm -rf "$AT411_CASES" "$AT411_REPORT"
+else
+  skip "AT-411" "per-operation markdown section" "hurl not installed"
+  skip "AT-412" "operation_scores in JSON" "hurl not installed"
+fi
+
+echo ""
+
 # -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
