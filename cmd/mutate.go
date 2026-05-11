@@ -60,6 +60,8 @@ func init() {
 	mutateCmd.Flags().StringVar(&mutateReportFormat, "report-format", "json", `Comma-separated report formats: json,markdown,html,all`)
 	mutateCmd.Flags().Bool("history", false, "Print mutation score history (does not run mutations; --target not required)")
 	mutateCmd.Flags().Int("history-limit", 10, "Maximum number of historical runs to display")
+	mutateCmd.Flags().Float64("min-score", 0,
+		"Per-operation minimum mutation score (0.0–1.0); exit 6 if any operation scores below this")
 	mutateCmd.Flags().Bool("feedback", false, "Run LLM feedback analysis on survivors (requires LLM provider in .caseforge.yaml)")
 	mutateCmd.Flags().Bool("auto-fix", false, "Patch index.json with suggested assertions (requires --feedback)")
 	mutateCmd.Flags().Bool("yes", false, "Skip confirmation prompt for --auto-fix")
@@ -94,6 +96,11 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 	reportFormats, err := parseReportFormats(mutateReportFormat)
 	if err != nil {
 		return err
+	}
+
+	minScore, _ := cmd.Flags().GetFloat64("min-score")
+	if minScore < 0 || minScore > 1.0 {
+		return fmt.Errorf("--min-score must be between 0.0 and 1.0, got %.2f", minScore)
 	}
 
 	ops, err := resolveOperators(mutateOperators)
@@ -184,6 +191,23 @@ func runMutate(cmd *cobra.Command, _ []string) error {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Report written to: %s\n",
 					filepath.Join(mutateOutput, "mutation-report"+ext))
 			}
+		}
+	}
+
+	if minScore > 0 {
+		var failing []mutation.OperationScore
+		for _, op := range run.OperationScores {
+			if op.MutationScore < minScore {
+				failing = append(failing, op)
+			}
+		}
+		if len(failing) > 0 {
+			color.New(color.FgRed).Fprintf(out,
+				"\n✗ %d operation(s) below --min-score %.0f%%:\n", len(failing), minScore*100)
+			for _, op := range failing {
+				fmt.Fprintf(out, "  %-52s %3.0f%%\n", op.Operation, op.MutationScore*100)
+			}
+			os.Exit(ExitPartialSuccess)
 		}
 	}
 
