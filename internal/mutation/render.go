@@ -19,6 +19,8 @@ func RenderMarkdown(run MutationRun) string {
 	fmt.Fprintf(&b, "Mutation Score: **%d/%d killed (%d%%)** · Survivors: **%d**\n\n",
 		run.Killed, run.TotalRuns, pct, run.Survivors)
 
+	b.WriteString(renderOperationTable(run))
+
 	if len(run.Clusters) > 0 {
 		b.WriteString("## Survivor Summary (by risk)\n\n")
 		b.WriteString("| Case | Title | Risk | Survived Operators |\n")
@@ -45,6 +47,31 @@ func RenderMarkdown(run MutationRun) string {
 		}
 	}
 
+	return b.String()
+}
+
+// renderOperationTable returns the per-operation Markdown table, or "" if no scores.
+func renderOperationTable(run MutationRun) string {
+	if len(run.OperationScores) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "## Per-Operation Mutation Score\n\n")
+	fmt.Fprintf(&b, "| Operation | Score | Killed | Survivors |\n")
+	fmt.Fprintf(&b, "|-----------|-------|--------|-----------|\n")
+	for _, op := range run.OperationScores {
+		pct := int(op.MutationScore * 100)
+		badge := ""
+		switch {
+		case op.MutationScore == 1.0:
+			badge = " ✓"
+		case op.MutationScore < 0.7:
+			badge = " ⚠"
+		}
+		fmt.Fprintf(&b, "| %s | %d%%%s | %d/%d | %d |\n",
+			op.Operation, pct, badge, op.Killed, op.TotalRuns, op.Survivors)
+	}
+	b.WriteString("\n")
 	return b.String()
 }
 

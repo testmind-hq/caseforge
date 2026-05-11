@@ -112,3 +112,36 @@ func TestRenderHTML_NoSurvivors(t *testing.T) {
 		t.Error("must not show Survivors by Risk table when no clusters")
 	}
 }
+
+func TestRenderMarkdown_OperationTable(t *testing.T) {
+	run := sampleRun()
+	run.OperationScores = []mutation.OperationScore{
+		{Operation: "GET /pets", TotalRuns: 2, Killed: 1, Survivors: 1, MutationScore: 0.5},
+		{Operation: "POST /pets", TotalRuns: 2, Killed: 2, Survivors: 0, MutationScore: 1.0},
+	}
+	out := mutation.RenderMarkdown(run)
+	if !strings.Contains(out, "Per-Operation Mutation Score") {
+		t.Error("expected per-operation section header")
+	}
+	if !strings.Contains(out, "GET /pets") {
+		t.Error("expected GET /pets row")
+	}
+	if !strings.Contains(out, "50%") {
+		t.Error("expected 50% score for GET /pets")
+	}
+	if !strings.Contains(out, "⚠") {
+		t.Error("expected ⚠ badge for score < 70%")
+	}
+	if !strings.Contains(out, "✓") {
+		t.Error("expected ✓ badge for 100% score")
+	}
+}
+
+func TestRenderMarkdown_NoOperationScores(t *testing.T) {
+	run := sampleRun()
+	run.OperationScores = nil
+	out := mutation.RenderMarkdown(run)
+	if strings.Contains(out, "Per-Operation") {
+		t.Error("per-operation section must be absent when OperationScores is nil")
+	}
+}
