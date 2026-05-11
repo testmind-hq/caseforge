@@ -75,6 +75,32 @@ func renderOperationTable(run MutationRun) string {
 	return b.String()
 }
 
+// renderOperationTableHTML returns the per-operation HTML table, or "" if no scores.
+func renderOperationTableHTML(run MutationRun) string {
+	if len(run.OperationScores) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("<h2>Per-Operation Mutation Score</h2>\n")
+	b.WriteString("<table>\n<tr><th>Operation</th><th>Score</th><th>Killed</th><th>Survivors</th></tr>\n")
+	for _, op := range run.OperationScores {
+		pct := int(op.MutationScore * 100)
+		rowClass := ""
+		switch {
+		case op.MutationScore == 1.0:
+			rowClass = " class=\"op-high\""
+		case op.MutationScore < 0.7:
+			rowClass = " class=\"op-low\""
+		}
+		fmt.Fprintf(&b, "<tr%s><td>%s</td><td>%d%%</td><td>%d/%d</td><td>%d</td></tr>\n",
+			rowClass,
+			html.EscapeString(op.Operation),
+			pct, op.Killed, op.TotalRuns, op.Survivors)
+	}
+	b.WriteString("</table>\n")
+	return b.String()
+}
+
 // RenderHTML returns a self-contained HTML mutation report (no external resources).
 func RenderHTML(run MutationRun) string {
 	// build operator×case result grid
@@ -113,6 +139,8 @@ td{padding:4px 8px;border:1px solid #e5e7eb;white-space:nowrap}
 .killed{background:#dcfce7;color:#166534;text-align:center}
 .survived{background:#fee2e2;color:#991b1b;text-align:center}
 .na{background:#f9fafb;color:#9ca3af;text-align:center}
+.op-low{background:#fef2f2}
+.op-high{background:#f0fdf4}
 h2{margin-top:2rem}
 </style></head><body>
 `)
@@ -157,6 +185,7 @@ h2{margin-top:2rem}
 		b.WriteString("</table>\n")
 	}
 
+	b.WriteString(renderOperationTableHTML(run))
 	b.WriteString("</body></html>\n")
 	return b.String()
 }

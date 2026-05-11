@@ -145,3 +145,24 @@ func TestRenderMarkdown_NoOperationScores(t *testing.T) {
 		t.Error("per-operation section must be absent when OperationScores is nil")
 	}
 }
+
+func TestRenderHTML_OperationTable(t *testing.T) {
+	run := sampleRun()
+	run.OperationScores = []mutation.OperationScore{
+		{Operation: "GET /pets", TotalRuns: 2, Killed: 1, Survivors: 1, MutationScore: 0.5},
+		{Operation: "DELETE /pets/{id}", TotalRuns: 2, Killed: 2, Survivors: 0, MutationScore: 1.0},
+	}
+	out := mutation.RenderHTML(run)
+	if !strings.Contains(out, "Per-Operation") {
+		t.Error("expected Per-Operation section in HTML")
+	}
+	if !strings.Contains(out, "GET /pets") {
+		t.Error("expected GET /pets row in HTML")
+	}
+	if !strings.Contains(out, "fef2f2") {
+		t.Error("expected light-red background for score < 70%")
+	}
+	if !strings.Contains(out, "f0fdf4") {
+		t.Error("expected light-green background for 100% score")
+	}
+}
