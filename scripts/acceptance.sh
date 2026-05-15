@@ -1775,6 +1775,60 @@ fi
 
 echo ""
 
+# AT-413 – AT-416: --min-score CI gate
+# ─────────────────────────────────────────────────────────────────────────────
+
+echo "# AT-413 – AT-416: min-score CI gate"
+
+# AT-413: flag appears in help
+contains "AT-413" "min-score flag in help" "min-score" "'$BIN' mutate --help"
+
+# AT-414: out-of-range value fails before running
+run "AT-414" "--min-score 1.5 returns error immediately" \
+  "! '$BIN' mutate --cases /tmp --target http://x --min-score 1.5 >/dev/null 2>&1"
+
+# AT-415 & AT-416: full integration with hurl
+if command -v hurl >/dev/null 2>&1; then
+  AT415_CASES=$(mktemp -d)
+  "$BIN" gen --spec "$WORKDIR/petstore.yaml" --no-ai \
+    --technique equivalence_partitioning \
+    --format hurl --output "$AT415_CASES" >/dev/null 2>&1
+
+  PORT415=$(random_port)
+  "$BIN" sandbox --spec "$WORKDIR/petstore.yaml" --port $PORT415 >/dev/null 2>&1 &
+  SBX415_PID=$!
+  for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT415/pets" >/dev/null 2>&1 && break; sleep 0.1; done
+
+  # AT-415: --min-score 0 (default) exits 0 when no survivors
+  exits_with "AT-415" "--min-score 0 exits 0 when no survivors" "0" \
+    "'$BIN' mutate --cases '$AT415_CASES' --target \"http://127.0.0.1:$PORT415\" --min-score 0 --operator status_swap_2xx"
+  kill $SBX415_PID 2>/dev/null || true
+
+  # AT-416: --min-score 0.99 exits 6 and prints "below --min-score" when operators survive
+  # Use a hand-crafted cases dir (TC-XXXX.hurl naming) so runOnce can actually find the file.
+  # The hurl only checks status — field_drop on an array body returns unchanged → mutation survives.
+  AT416_CASES=$(mktemp -d)
+  printf '{"test_cases":[{"id":"TC-0416","title":"GET /pets","source":{"spec_path":"GET /pets"}}]}' \
+    > "$AT416_CASES/index.json"
+  printf 'GET {{base_url}}/pets\nHTTP 200\n' > "$AT416_CASES/TC-0416.hurl"
+
+  PORT416=$(random_port)
+  "$BIN" sandbox --spec "$WORKDIR/petstore.yaml" --port $PORT416 >/dev/null 2>&1 &
+  SBX416_PID=$!
+  for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT416/pets" >/dev/null 2>&1 && break; sleep 0.1; done
+
+  contains "AT-416" "--min-score 0.99 prints below threshold message" "below --min-score" \
+    "'$BIN' mutate --cases '$AT416_CASES' --target \"http://127.0.0.1:$PORT416\" --min-score 0.99 --operator field_drop || true"
+  kill $SBX416_PID 2>/dev/null || true
+
+  rm -rf "$AT415_CASES" "$AT416_CASES"
+else
+  skip "AT-415" "--min-score 0 no-op" "hurl not installed"
+  skip "AT-416" "--min-score 0.99 breach" "hurl not installed"
+fi
+
+echo ""
+
 # -------------------------------------------------------
 # Summary
 # -------------------------------------------------------
