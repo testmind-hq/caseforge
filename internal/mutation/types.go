@@ -32,7 +32,7 @@ type SurvivorCluster struct {
 
 // OperationScore holds the per-operation mutation score breakdown.
 type OperationScore struct {
-	Operation     string  `json:"operation"`      // "METHOD /path"
+	Operation     string  `json:"operation"` // "METHOD /path"
 	TotalRuns     int     `json:"total_runs"`
 	Killed        int     `json:"killed"`
 	Survivors     int     `json:"survivors"`
@@ -57,19 +57,19 @@ type FeedbackItem struct {
 
 // MutationRun is the top-level report for a complete mutation run.
 type MutationRun struct {
-	Target        string               `json:"target"`
-	CasesDir      string               `json:"cases_dir"`
-	Operators     []string             `json:"operators"`
-	TotalCases    int                  `json:"total_cases"`
-	TotalRuns     int                  `json:"total_runs"`    // cases × operators
-	Killed        int                  `json:"killed"`
-	Survivors     int                  `json:"survivors"`
-	MutationScore float64              `json:"mutation_score"` // killed / total_runs
+	Target          string               `json:"target"`
+	CasesDir        string               `json:"cases_dir"`
+	Operators       []string             `json:"operators"`
+	TotalCases      int                  `json:"total_cases"`
+	TotalRuns       int                  `json:"total_runs"` // cases × operators
+	Killed          int                  `json:"killed"`
+	Survivors       int                  `json:"survivors"`
+	MutationScore   float64              `json:"mutation_score"` // killed / total_runs
 	Results         []CaseMutationResult `json:"results"`
 	Clusters        []SurvivorCluster    `json:"clusters,omitempty"` // Phase 2
-	OperationScores []OperationScore    `json:"operation_scores,omitempty"`
-	Feedback        []FeedbackItem      `json:"feedback,omitempty"` // Phase 2
-	GeneratedAt     string              `json:"generated_at"`
+	OperationScores []OperationScore     `json:"operation_scores,omitempty"`
+	Feedback        []FeedbackItem       `json:"feedback,omitempty"` // Phase 2
+	GeneratedAt     string               `json:"generated_at"`
 }
 
 // RunOptions configures a mutation run.

@@ -17,12 +17,12 @@ import (
 )
 
 var (
-	mutateCases             string
-	mutateTarget            string
-	mutateOutput            string
-	mutateOperators         string
-	mutateReportFormat      string
-	mutateConcurrency       int
+	mutateCases               string
+	mutateTarget              string
+	mutateOutput              string
+	mutateOperators           string
+	mutateReportFormat        string
+	mutateConcurrency         int
 	mutateOperatorConcurrency int
 )
 
@@ -38,7 +38,7 @@ Requires hurl on PATH. Test cases must be previously generated with 'caseforge g
 
 Exit codes:
   0 — run complete, no survivors
-  6 — one or more mutations survived
+  6 — one or more mutations survived, or --min-score threshold breached
 
 Examples:
   caseforge mutate --cases ./cases --target http://localhost:8080
