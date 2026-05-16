@@ -19,6 +19,9 @@ type indexFile struct {
 	TestCases []struct {
 		ID    string `json:"id"`
 		Title string `json:"title"`
+		Source struct {
+			SpecPath string `json:"spec_path"`
+		} `json:"source"`
 	} `json:"test_cases"`
 }
 
@@ -69,10 +72,11 @@ func Run(opts RunOptions) (MutationRun, error) {
 					survived := runOnce(proxy.Addr(), opts.CasesDir, tc.ID)
 					mu.Lock()
 					results = append(results, CaseMutationResult{
-						CaseID:   tc.ID,
-						Title:    tc.Title,
-						Operator: op.Name(),
-						Survived: survived,
+						CaseID:    tc.ID,
+						Title:     tc.Title,
+						Operation: tc.Operation,
+						Operator:  op.Name(),
+						Survived:  survived,
 					})
 					mu.Unlock()
 					return nil
@@ -106,16 +110,17 @@ func Run(opts RunOptions) (MutationRun, error) {
 	}
 
 	return MutationRun{
-		Target:        opts.Target,
-		CasesDir:      opts.CasesDir,
-		Operators:     opNames,
-		TotalCases:    len(cases),
-		TotalRuns:     total,
-		Killed:        killed,
-		Survivors:     survivors,
-		MutationScore: score,
-		Results:       results,
-		GeneratedAt:   time.Now().UTC().Format("2006-01-02T15:04:05Z"),
+		Target:          opts.Target,
+		CasesDir:        opts.CasesDir,
+		Operators:       opNames,
+		TotalCases:      len(cases),
+		TotalRuns:       total,
+		Killed:          killed,
+		Survivors:       survivors,
+		MutationScore:   score,
+		Results:         results,
+		OperationScores: ComputeOperationScores(results),
+		GeneratedAt:     time.Now().UTC().Format("2006-01-02T15:04:05Z"),
 	}, nil
 }
 
@@ -152,8 +157,9 @@ func runOnce(proxyAddr, casesDir, caseID string) bool {
 }
 
 type caseRef struct {
-	ID    string
-	Title string
+	ID        string
+	Title     string
+	Operation string // source.spec_path; "(unknown)" if absent
 }
 
 func loadCases(casesDir string) ([]caseRef, error) {
@@ -167,7 +173,11 @@ func loadCases(casesDir string) ([]caseRef, error) {
 	}
 	refs := make([]caseRef, len(idx.TestCases))
 	for i, tc := range idx.TestCases {
-		refs[i] = caseRef{ID: tc.ID, Title: tc.Title}
+		op := tc.Source.SpecPath
+		if op == "" {
+			op = "(unknown)"
+		}
+		refs[i] = caseRef{ID: tc.ID, Title: tc.Title, Operation: op}
 	}
 	return refs, nil
 }

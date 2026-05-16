@@ -19,6 +19,8 @@ func RenderMarkdown(run MutationRun) string {
 	fmt.Fprintf(&b, "Mutation Score: **%d/%d killed (%d%%)** · Survivors: **%d**\n\n",
 		run.Killed, run.TotalRuns, pct, run.Survivors)
 
+	b.WriteString(renderOperationTable(run))
+
 	if len(run.Clusters) > 0 {
 		b.WriteString("## Survivor Summary (by risk)\n\n")
 		b.WriteString("| Case | Title | Risk | Survived Operators |\n")
@@ -45,6 +47,57 @@ func RenderMarkdown(run MutationRun) string {
 		}
 	}
 
+	return b.String()
+}
+
+// renderOperationTable returns the per-operation Markdown table, or "" if no scores.
+func renderOperationTable(run MutationRun) string {
+	if len(run.OperationScores) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "## Per-Operation Mutation Score\n\n")
+	fmt.Fprintf(&b, "| Operation | Score | Killed | Survivors |\n")
+	fmt.Fprintf(&b, "|-----------|-------|--------|-----------|\n")
+	for _, op := range run.OperationScores {
+		pct := int(op.MutationScore * 100)
+		badge := ""
+		switch {
+		case op.MutationScore == 1.0:
+			badge = " ✓"
+		case op.MutationScore < 0.7:
+			badge = " ⚠"
+		}
+		fmt.Fprintf(&b, "| %s | %d%%%s | %d/%d | %d |\n",
+			op.Operation, pct, badge, op.Killed, op.TotalRuns, op.Survivors)
+	}
+	b.WriteString("\n")
+	return b.String()
+}
+
+// renderOperationTableHTML returns the per-operation HTML table, or "" if no scores.
+func renderOperationTableHTML(run MutationRun) string {
+	if len(run.OperationScores) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("<h2>Per-Operation Mutation Score</h2>\n")
+	b.WriteString("<table>\n<tr><th>Operation</th><th>Score</th><th>Killed</th><th>Survivors</th></tr>\n")
+	for _, op := range run.OperationScores {
+		pct := int(op.MutationScore * 100)
+		rowClass := ""
+		switch {
+		case op.MutationScore == 1.0:
+			rowClass = " class=\"op-high\""
+		case op.MutationScore < 0.7:
+			rowClass = " class=\"op-low\""
+		}
+		fmt.Fprintf(&b, "<tr%s><td>%s</td><td>%d%%</td><td>%d/%d</td><td>%d</td></tr>\n",
+			rowClass,
+			html.EscapeString(op.Operation),
+			pct, op.Killed, op.TotalRuns, op.Survivors)
+	}
+	b.WriteString("</table>\n")
 	return b.String()
 }
 
@@ -86,6 +139,8 @@ td{padding:4px 8px;border:1px solid #e5e7eb;white-space:nowrap}
 .killed{background:#dcfce7;color:#166534;text-align:center}
 .survived{background:#fee2e2;color:#991b1b;text-align:center}
 .na{background:#f9fafb;color:#9ca3af;text-align:center}
+.op-low{background:#fef2f2}
+.op-high{background:#f0fdf4}
 h2{margin-top:2rem}
 </style></head><body>
 `)
@@ -130,6 +185,7 @@ h2{margin-top:2rem}
 		b.WriteString("</table>\n")
 	}
 
+	b.WriteString(renderOperationTableHTML(run))
 	b.WriteString("</body></html>\n")
 	return b.String()
 }
