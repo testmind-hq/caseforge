@@ -15,6 +15,8 @@ CaseForge 读取你的 OpenAPI 规范，自动生成结构化、可追溯的测�
 
 开箱即用是纯算法生成模式（pairwise / 边界值 / 组合分析）。可选接入 LLM（Anthropic / OpenAI / Gemini / 任意 OpenAI 兼容 API）增强边缘场景发现和响应体约束挖掘。
 
+![demo](assets/demo.gif)
+
 ## 功能特性
 
 - **多 LLM provider（可选）** — Anthropic、OpenAI、Gemini，以及任何 OpenAI 兼容 API（DeepSeek、Qwen、Moonshot、Azure）；可完全关闭走纯算法模式

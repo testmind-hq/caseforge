@@ -15,6 +15,8 @@ CaseForge reads your OpenAPI specification and generates structured, traceable t
 
 It works as a pure algorithmic generator out of the box (pairwise, boundary-value, combinatorial). Optionally, you can plug in an LLM (Anthropic / OpenAI / Gemini / any OpenAI-compatible API) to enrich edge-case discovery and mine response-body constraints.
 
+![demo](assets/demo.gif)
+
 ## Features
 
 - **Multiple LLM providers (optional)** — Anthropic, OpenAI, Gemini, or any OpenAI-compatible API (DeepSeek, Qwen, Moonshot, Azure). Disable entirely for pure-algorithm mode.
